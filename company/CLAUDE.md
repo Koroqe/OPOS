@@ -1,0 +1,19 @@
+# <<COMPANY_NAME>> — Company-wide scope
+
+This scope holds company-wide non-departmental knowledge for <<COMPANY_NAME>>: strategy, policies, the shared knowledge base, and the cross-cutting backlog. Department-specific work lives under `departments/<dept>/`.
+
+## Inherits from
+
+`../CLAUDE.md` (root constitution).
+
+## Subscopes
+
+- `strategy/` — **restricted by convention** to `ceo`, `coo`, and `chief-of-staff`. See `strategy/CLAUDE.md`.
+- `policies/` — readable by all agents; the source of truth for company policy.
+- `knowledge-base/` — the company wiki: glossary, org chart, references.
+- `backlog/` — cross-cutting one-off work (not yet routine; not department-specific). Items get promoted to processes per `.claude/skills/promote-backlog-item/`.
+
+## Local rules
+
+- Strategy material does not get copied into other scopes. If a department needs strategy context, it links to the source file under `strategy/` rather than duplicating it.
+- Policy changes require a recorded decision (file in `policies/`) — no implicit policy.
