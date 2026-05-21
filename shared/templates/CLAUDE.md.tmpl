@@ -1,0 +1,48 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<COMPANY_NAME>>   — the company's name (root constitution only declares it; subscopes may re-reference)
+  <<SCOPE_NAME>>     — name of this scope (e.g. "Engineering", "Company strategy", "Operations")
+  <<PARENT_SCOPE>>   — path to the parent CLAUDE.md (e.g. "../CLAUDE.md" or "../../CLAUDE.md"); leave blank for the repo-root constitution
+
+Optional restricted-frontmatter block (uncomment the block below if this scope is access-restricted by convention).
+Note: this is convention-only — markdown is not access-controlled. See RISKS.md for enforcement options.
+
+  ---
+  restricted: true
+  audience: [ceo, coo, chief-of-staff]
+  enforcement: convention-only
+  ---
+-->
+
+# <<SCOPE_NAME>>
+
+## Scope
+
+What this CLAUDE.md governs and what it explicitly does NOT govern.
+
+## Mission
+
+Why this scope exists — its role in <<COMPANY_NAME>>.
+
+## Inherits from
+
+<<PARENT_SCOPE>>
+
+(The cascade is automatic in Claude Code — this line documents intent for human readers.)
+
+## Local rules
+
+- Rule 1
+- Rule 2
+
+## Out of scope
+
+- What lives elsewhere (link to the responsible scope)
+
+## Pointers
+
+- Agents in scope: see `.claude/agents/`
+- Skills (processes) in scope: see `.claude/skills/`
+- Data: see neighboring folders

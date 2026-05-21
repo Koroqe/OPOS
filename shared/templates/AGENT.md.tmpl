@@ -1,0 +1,51 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<AGENT_NAME>>       — kebab-case identifier (matches filename without .md)
+  <<AGENT_DESCRIPTION>>— one-line description Claude uses to decide when to delegate
+  <<DEPARTMENT>>       — owning department (e.g. "company", "engineering", "sales")
+  <<DELEGATES_TO>>     — comma-separated list of agent names this one calls
+  <<ESCALATES_TO>>     — agent name to escalate to (or "none" for top-of-tree)
+-->
+
+---
+name: <<AGENT_NAME>>
+description: <<AGENT_DESCRIPTION>>
+tools: ["Read", "Grep", "Glob"]
+model: opus
+department: <<DEPARTMENT>>
+owns_processes: []
+---
+
+# <<AGENT_NAME>>
+
+## Role
+
+One paragraph: what this agent is responsible for and what it does NOT do.
+
+## Delegation pattern
+
+Calls: <<DELEGATES_TO>>
+
+When and why each delegation happens.
+
+## Inputs
+
+What the agent expects to receive when invoked (paths, parameters, prior context).
+
+## Outputs
+
+What the agent returns or produces.
+
+## Escalation rules
+
+Escalates to: <<ESCALATES_TO>>
+
+Conditions that trigger escalation (decision required, scope outside authority, blockers).
+
+## Owned processes
+
+(Advisory — the binding-of-record is `owner:` in each PROCESS.md. Keep this list in sync with `owns_processes:` frontmatter above.)
+
+- None yet.

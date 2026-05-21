@@ -1,0 +1,61 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<PROCESS_NAME>>     — kebab-case identifier (matches the SKILL.md `name:` and parent folder)
+  <<OWNER_AGENT>>      — agent name (BINDING OF RECORD — `grep -rn "^owner:" .` discovers all processes by owner)
+  <<COLLABORATORS>>    — bracketed list of agent names
+  <<SLO>>              — service-level objective string (e.g. "1 working day", "30 min")
+-->
+
+---
+process_name: <<PROCESS_NAME>>
+owner: <<OWNER_AGENT>>
+collaborators: <<COLLABORATORS>>
+inputs: []
+success_criteria: []
+slo: <<SLO>>
+version: 0.1.0
+---
+
+# <<PROCESS_NAME>>
+
+## Narrative
+
+What this process is and why it exists. One short paragraph.
+
+## Pre-conditions
+
+What must be true before the process can start.
+
+## Steps
+
+1. Step 1 — actor, action, expected state change
+2. Step 2
+3. Step 3
+
+## Done when
+
+- Success criterion 1
+- Success criterion 2
+
+## Rollback
+
+How to undo the process if it fails midway or produces a bad outcome.
+
+## History
+
+Run records live in `./history/` — one file per run, named `YYYY-MM-DD-<run-id>.md`.
+
+Schema for each history entry (see root `CLAUDE.md` for the full description and exact YAML form):
+
+- `date`: YYYY-MM-DD
+- `run_id`: short identifier unique within this skill
+- `skill`: skill name
+- `actor`: agent name or "human"
+- `outcome`: `success` | `partial` | `failure`
+- `duration_min`: integer
+- `proposed_delta`: free text describing a suggested change to SKILL.md/PROCESS.md, or "none"
+- `status`: `open` | `applied` | `rejected`
+
+The entry body is free-form prose: notes, links to artifacts, decisions.

@@ -1,0 +1,47 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<SKILL_NAME>>       — kebab-case identifier (matches the parent folder name)
+  <<SKILL_DESCRIPTION>>— one-line description; Claude uses this to decide whether to auto-invoke
+  <<OWNER_AGENT>>      — agent name (must match a `name:` declared in some agent .md file)
+  <<TAGS>>             — bracketed list, e.g. [engineering, ops, release]
+-->
+
+---
+name: <<SKILL_NAME>>
+description: <<SKILL_DESCRIPTION>>
+version: 0.1.0
+tags: <<TAGS>>
+owner_agent: <<OWNER_AGENT>>
+---
+
+# <<SKILL_NAME>>
+
+## When to use
+
+Trigger conditions — what situation makes this skill the right tool.
+
+## Inputs
+
+What the skill needs to run (paths, parameters, prerequisite state).
+
+## Steps
+
+1. Step 1
+2. Step 2
+3. Step 3
+
+## Outputs
+
+What the skill produces (artifacts, status, history entry).
+
+## Failure modes
+
+- Failure mode 1 — symptom, cause, recovery
+- Failure mode 2
+
+## Related
+
+- Process definition: `./PROCESS.md`
+- Run history: `./history/`
