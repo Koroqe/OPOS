@@ -1,0 +1,8 @@
+{
+  "repo": "Koroqe/OPOS",
+  "default_labels": ["task"],
+  "department_label_prefix": "dept:",
+  "body_template_path": "shared/templates/task-issue.md.tmpl",
+  "comment_template_path": "shared/templates/task-update.md.tmpl",
+  "link_commits": true
+}

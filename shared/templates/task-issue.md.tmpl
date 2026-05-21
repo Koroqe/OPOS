@@ -1,0 +1,46 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  {{TITLE}}          — issue title (also passed to gh as --title)
+  {{GOAL}}           — one-paragraph goal
+  {{DEPARTMENTS}}    — comma-separated dept names (e.g. "engineering, company")
+  {{INITIATED_BY}}   — "chief-of-staff — YYYY-MM-DD"
+  {{PLAN_LINK}}      — markdown link to the plan file, or "(none)"
+
+Body convention:
+  The `<!-- progress-log -->` marker at the bottom is reserved for an optional v1
+  feature: insert progress entries INTO the body before this marker. v0 uses
+  comments instead. Removing the marker is fine; using it for anything other
+  than progress-log insertion is not.
+-->
+
+## Goal
+
+{{GOAL}}
+
+## Departments
+
+{{DEPARTMENTS}}
+
+## Initiated by
+
+{{INITIATED_BY}}
+
+## Plan
+
+{{PLAN_LINK}}
+
+## Deliverables
+
+- (filled by chief-of-staff as the task progresses)
+
+## Acceptance criteria
+
+- (filled by chief-of-staff during task-register or by the first task-update)
+
+## Status
+
+**Status:** open
+
+<!-- progress-log -->

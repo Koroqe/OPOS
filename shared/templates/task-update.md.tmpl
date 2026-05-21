@@ -1,0 +1,16 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  {{KEY}}            — idempotency key; embedded in HTML marker; passed by caller
+  {{TIMESTAMP}}      — ISO 8601 timestamp
+  {{STATUS_LINE}}    — either "**Status:** <new>" or empty (when no status change)
+  {{MESSAGE}}        — the update body (markdown)
+-->
+
+<!-- update-key: {{KEY}} -->
+### Update — {{TIMESTAMP}}
+
+{{STATUS_LINE}}
+
+{{MESSAGE}}

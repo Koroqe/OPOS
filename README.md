@@ -50,6 +50,8 @@ Every artifact in the repo is a copy-with-substitution of one of these:
 - [`shared/templates/SKILL.md.tmpl`](shared/templates/SKILL.md.tmpl) — runnable form of a process
 - [`shared/templates/PROCESS.md.tmpl`](shared/templates/PROCESS.md.tmpl) — process-as-data (owner, inputs, success criteria)
 - [`shared/templates/BACKLOG-ITEM.md.tmpl`](shared/templates/BACKLOG-ITEM.md.tmpl) — one-off task with runs log
+- [`shared/templates/task-issue.md.tmpl`](shared/templates/task-issue.md.tmpl) — GitHub issue body for tracked tasks
+- [`shared/templates/task-update.md.tmpl`](shared/templates/task-update.md.tmpl) — comment body for mid-task progress updates
 
 Each template's header lists its substitution tokens. The convention is **copy-then-substitute**, not symlink or runtime reference — templates are scaffolding, the copies are the artifacts.
 
@@ -64,6 +66,16 @@ The framework's process-creation primitive is itself a skill: [`design-process`]
 5. On approval, the files are written to the chosen path (global or dept-scoped), the owner agent's advisory `owns_processes:` is updated, and (if a backlog item was the input) it's flipped to `state: designed` with a `designed_as:` pointer.
 
 Backlog items remain a useful notebook for ideas and one-offs that aren't yet formalized — see [`departments/engineering/backlog/example-add-rollback-step.md`](departments/engineering/backlog/example-add-rollback-step.md) for a worked example of an item in `state: active` that hasn't yet been fed into `design-process`.
+
+## The task-tracking loop
+
+Three sibling skills track each new task as a GitHub issue, owned by [`chief-of-staff`](.claude/agents/company/chief-of-staff.md):
+
+- [`task-register`](.claude/skills/task-register/) — open a GitHub issue at the start of a new task; capture title, departments, plan link, goal. Records the active issue number in `.claude/.current-task`.
+- [`task-update`](.claude/skills/task-update/) — mid-execution, post a progress comment and optionally patch the issue's `**Status:**` line. Idempotent via a per-update `--key`.
+- [`task-complete`](.claude/skills/task-complete/) — at completion, post a final report (agent summary + auto-generated `git log` changelog + PR links + deliverables), apply the `status:done` label, and close the issue.
+
+The target GitHub repo is configured in [`.claude/task-tracking.config.json`](.claude/task-tracking.config.json). All three skills shell out to the `gh` CLI via Bash; the `gh` CLI must be authenticated on the machine. Department labels follow the `dept:<name>` convention (lowercased; auto-created if missing).
 
 ## Self-improvement log schema
 
