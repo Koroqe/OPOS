@@ -4,7 +4,7 @@ owner: eng-lead
 created: 2026-05-21
 state: active
 runs: 0
-promotion_target: departments/engineering/.claude/skills/deploy/
+intended_target: departments/engineering/.claude/skills/deploy/
 labels: [ops, release]
 ---
 
@@ -22,13 +22,13 @@ A single run is successful when:
 2. The dry-run output is captured in the deploy's history entry under a `rollback_dry_run:` field.
 3. The dry-run exits clean (no errors); on dry-run failure the deploy itself is failed.
 
-## Promotion target
+## Intended target
 
-This item's `promotion_target` points back at the existing `deploy` skill rather than a new skill — i.e. successful runs would result in an update to `deploy/SKILL.md` and `deploy/PROCESS.md` adding the rollback step, rather than creating a new skill. The `promote-backlog-item` skill's default behavior is to create new folders; promoting INTO an existing skill is a manual variant the `eng-lead` would handle explicitly.
+This item's `intended_target` points back at the existing `deploy` skill rather than a new skill — i.e. when this work is formalized, it should result in an update to `deploy/SKILL.md` and `deploy/PROCESS.md` adding the rollback step, rather than creating a new skill. `design-process`'s default behavior is to create a new folder; designing changes INTO an existing skill is a manual variant the `eng-lead` would handle explicitly in conversation with `ops-manager`.
 
 ## Runs log
 
-After each run, append a row. Once `runs` reaches the promotion threshold (default 3, see [`../../../.claude/skills/promote-backlog-item/PROCESS.md`](../../../.claude/skills/promote-backlog-item/PROCESS.md)) AND every row's outcome is `success`, the owner may invoke the `promote-backlog-item` skill.
+An audit trail of manual executions; informational only. When `eng-lead` decides this item is ready to formalize, they invoke the `design-process` skill (owned by `ops-manager`) and pass this file's path as input — `design-process` is the path to formalization.
 
 | date | actor | outcome | notes |
 |------|-------|---------|-------|

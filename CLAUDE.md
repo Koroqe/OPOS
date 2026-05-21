@@ -17,15 +17,15 @@ This is the root CLAUDE.md for <<COMPANY_NAME>>. Anything written here is automa
 ## Operating principles
 
 - **AI-native.** Every role is held by an agent defined in `.claude/agents/`. Humans review and authorize; agents draft and execute.
-- **Processes-as-code.** Repeatable work lives as skills (`.claude/skills/<name>/`) with a paired `PROCESS.md` declaring its owner and success criteria. One-offs live in `backlog/` until promoted.
-- **Backlog-as-experiments.** Anything done at least once but not yet routine is a backlog item. Backlog items are promoted to processes after the threshold defined in `.claude/skills/promote-backlog-item/PROCESS.md`.
+- **Processes-as-code.** Repeatable work lives as skills (`.claude/skills/<name>/`) with a paired `PROCESS.md` declaring its owner and success criteria. New processes are designed deliberately via `.claude/skills/design-process/` (owned by `ops-manager`).
+- **Backlog-as-notebook.** Ideas and one-offs live in `backlog/` folders. Items don't auto-promote; when one is ready for formalization, it becomes an input to `design-process`.
 - **Self-improving.** Every process records each run in its `history/` folder. Owner agents review history and propose deltas to their own PROCESS.md.
 
 ## Global rules
 
 - No hardcoded secrets in this repo. Use environment variables or an MCP secrets server.
 - Folders marked `restricted: true` in their CLAUDE.md are honored by convention. Real enforcement is documented in `RISKS.md`.
-- Every process run MUST write a history entry following the schema in the "Self-improvement log" section below.
+- Every process RUN MUST write a history entry following the schema in the "Self-improvement log" section below. This applies to runs, not to creations — a newly-designed process starts with an empty `history/`.
 - Branch and commit per the standard git workflow: feature branches, conventional commits, one slice per commit.
 
 ## Self-improvement log schema

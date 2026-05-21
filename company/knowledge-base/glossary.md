@@ -8,9 +8,9 @@ Framework-level terms used throughout this repository. Adopters extend this with
 
 **Agent**: A role definition stored at `.claude/agents/<dept>/<role>.md`. Has a single responsibility, an allowed tool set, and a delegation pattern. Agents own zero or more processes; the binding-of-record is the `owner:` field in each `PROCESS.md`.
 
-**Backlog item**: A one-off task documented in a `backlog/` folder. Items track `runs` and `state`; items that reach the promotion threshold (default: 3 successful runs) become processes via the `promote-backlog-item` skill.
+**Backlog item**: A one-off task or idea documented in a `backlog/` folder. Items track `runs` and `state`; they may inform a future `design-process` invocation if the owner decides to formalize the work as a recurring process.
 
-**Promotion**: The act of converting a successful backlog item into a recurring process. Defined and executed by `.claude/skills/promote-backlog-item/`. Promotion creates a new `<skill>/SKILL.md` + `PROCESS.md` pair and flips the source backlog item's `state:` to `promoted`.
+**Process design**: The act of defining a new process from scratch. Performed by `ops-manager` via the `.claude/skills/design-process/` skill, in conversation with a human user. The skill consults involved department leads, drafts a `SKILL.md` + `PROCESS.md` pair, and writes the files on explicit user approval.
 
 **Department**: A scope under `departments/<name>/` with its own `CLAUDE.md` charter, agents (in `.claude/agents/<dept>/`), nested skills (`.claude/skills/`), backlog, and data.
 

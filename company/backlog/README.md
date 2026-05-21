@@ -9,15 +9,21 @@ Every backlog item is a markdown file following [`shared/templates/BACKLOG-ITEM.
 Required frontmatter:
 
 - `title`
-- `owner` — agent name responsible for running and (eventually) promoting this item
+- `owner` — agent name responsible for running this item and (when ready) feeding it to `design-process`
 - `created` — YYYY-MM-DD
-- `state` — `proposed` | `active` | `promoted` | `dropped`
-- `runs` — integer counter, incremented after each successful run
-- `promotion_target` — where the promoted skill will live
+- `state` — `proposed` | `active` | `designed` | `dropped`
+- `runs` — integer counter, incremented after each manual execution (informational)
+- `intended_target` — intended skill path if/when this item informs a process design
 
-## Promotion to a process
+Optional frontmatter (added retrospectively by `design-process` when the item is used as an input):
 
-Items become processes via the [`promote-backlog-item`](../../.claude/skills/promote-backlog-item/) skill. The default criteria: at least 3 runs with `outcome: success`, owner approval, no naming conflicts. See that skill's `PROCESS.md` for the exact rule and to tune the threshold for your fork.
+- `designed_as` — path to the new skill that was designed from this item
+
+## From idea to process
+
+Backlog items don't auto-promote. When an item is ready to formalize as a recurring process, invoke the global skill [`design-process`](../../.claude/skills/design-process/) — owned by `ops-manager` — and pass the item path as `backlog_item_path`. `ops-manager` reads the framework, consults involved department leads, drafts a SKILL.md + PROCESS.md pair, iterates with the human user, and on approval writes the files. The source item's `state:` is flipped to `designed` and a `designed_as:` pointer is added.
+
+Items can also be `dropped` if the work doesn't pan out — no formalization needed.
 
 ## Labels
 

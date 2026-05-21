@@ -84,24 +84,46 @@ grep -rn "^owner:" .
 
 When renaming an agent, update every PROCESS.md `owner:` for processes that agent owns, then update the agent's own file's `name:`, then update any advisory `owns_processes:` references in other agent files. The PROCESS.md change is the only mandatory one.
 
-## Risk 6 — Backlog `runs: 3` threshold is arbitrary
+## Risk 6 — Consultation cost
 
-**Status:** LOW impact; adopter-tunable.
+**Status:** LOW impact; cost-aware mitigation in v0.
 
-The default "promote after 3 successful runs" threshold is a v0 default chosen for simplicity, not derived from any empirical data. Some processes warrant more rigor before promotion (deploys, customer-facing changes); some can promote after a single run if the work is mechanical and well-understood.
+`design-process` spawns each involved department lead as a subagent via the `Task` tool. Each subagent invocation uses Opus tokens. A design session that touches three departments will run three subagent consultations, plus the main `ops-manager` thread.
 
 **Mitigation:**
 
-Adopters tune the threshold in their fork's [`.claude/skills/promote-backlog-item/PROCESS.md`](.claude/skills/promote-backlog-item/PROCESS.md). The threshold appears in both the `SKILL.md` body and the `PROCESS.md` pre-conditions — update both. The change itself is a backlog item worth recording in `company/backlog/`.
+The skill's step 3 ("Identify involved departments") consults only departments the job clearly touches based on their charters — not every department in the repo. Adopters with many departments should keep dept `CLAUDE.md` charters tight so the relevance check stays accurate.
+
+## Risk 7 — No formal review before file-write
+
+**Status:** MEDIUM impact; human-as-gate mitigation.
+
+`design-process` writes files on the user's in-session approval. There is no peer-review queue, no architecture-review board, no second pair of eyes other than the user. If the user approves a flawed design, the flawed design ships.
+
+**Mitigation:**
+
+- `ops-manager` is instructed (in `.claude/agents/company/ops-manager.md`) to surface trade-offs and open questions explicitly in every proposal — the user sees what they're signing off on.
+- Git revert is the recovery path: every design session lands as a single commit, easy to back out.
+- Adopters who want a formal review queue can fork `design-process` to write to a `proposals/` staging folder first.
+
+## Risk 8 — `design-process` cannot create new agent roles
+
+**Status:** LOW impact; documented escalation.
+
+If a designed process needs an agent role that doesn't exist (e.g. a "release-coordinator" with no matching `name:` in `.claude/agents/`), `design-process` escalates to `coo` and stops. The skill does not create new agents.
+
+**Forward path:**
+
+Creating agents is its own design problem and could be addressed by a future `design-agent` skill. For v0, expanding the org chart is a conversation between the user, `coo`, and (where applicable) `ceo`.
 
 ## Verification recipe (smoke test)
 
 Run this after substituting tokens for your company. All six steps should pass cleanly on a freshly-cloned, fully-substituted skeleton.
 
 1. **Cascade check.** From repo root, open `claude`. Ask: *"What CLAUDE.md files are in scope?"* Confirm the root constitution is loaded.
-2. **Subagent discovery.** Ask: *"List available subagents."* Expect at least 5: `ceo`, `coo`, `chief-of-staff`, `eng-lead`, `eng-reviewer`. More if you've added agents.
-3. **Global skills discovery.** Ask: *"List available skills."* Expect at least `promote-backlog-item`.
-4. **Dept-nested cascade.** Run `cd departments/engineering && claude`. Ask: *"What CLAUDE.md files are in scope?"* Expect root + dept charter. Then ask: *"List skills available here."* Expect both `promote-backlog-item` (global) AND `deploy` (dept-nested).
+2. **Subagent discovery.** Ask: *"List available subagents."* Expect at least 6: `ceo`, `coo`, `chief-of-staff`, `ops-manager`, `eng-lead`, `eng-reviewer`. More if you've added agents.
+3. **Global skills discovery.** Ask: *"List available skills."* Expect at least `design-process`.
+4. **Dept-nested cascade.** Run `cd departments/engineering && claude`. Ask: *"What CLAUDE.md files are in scope?"* Expect root + dept charter. Then ask: *"List skills available here."* Expect both `design-process` (global) AND `deploy` (dept-nested).
 5. **Token substitution check.** From repo root:
    ```bash
    grep -rn "<<[A-Z_]*>>" . --include="*.md"

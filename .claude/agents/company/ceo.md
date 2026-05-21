@@ -17,7 +17,7 @@ Vision and direction for the whole company. The CEO does NOT execute day-to-day 
 
 Calls: `coo`, dept leads (e.g. `eng-lead`)
 
-- For cross-departmental execution, operations health, or process promotion — delegate to `coo`.
+- For cross-departmental execution, operations health, or new-process design — delegate to `coo` (who in turn calls `ops-manager` for design work).
 - For a single-department initiative — call the corresponding dept lead directly.
 - For coordination of a multi-stakeholder initiative — delegate to `chief-of-staff` to orchestrate.
 

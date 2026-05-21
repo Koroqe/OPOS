@@ -53,16 +53,17 @@ Every artifact in the repo is a copy-with-substitution of one of these:
 
 Each template's header lists its substitution tokens. The convention is **copy-then-substitute**, not symlink or runtime reference — templates are scaffolding, the copies are the artifacts.
 
-## The promotion loop
+## The design loop
 
-The framework's self-improvement primitive is itself a skill: [`promote-backlog-item`](.claude/skills/promote-backlog-item/).
+The framework's process-creation primitive is itself a skill: [`design-process`](.claude/skills/design-process/), owned by the [`ops-manager`](.claude/agents/company/ops-manager.md) agent.
 
-1. New work starts as a `BACKLOG-ITEM.md` in a `backlog/` folder (company-level or dept-level), `state: proposed` or `state: active`.
-2. After each manual run, the owner appends a row to the item's runs log.
-3. Once the item reaches the threshold (default 3 successful runs) and the owner approves, they invoke `promote-backlog-item`.
-4. The skill drafts a new `SKILL.md` + `PROCESS.md` pair at the item's `promotion_target` path, seeds the `history/` folder with the promotion event, and flips the source item's `state:` to `promoted`.
+1. A new repeatable job arrives — either as a fresh job description from the user, or as a backlog item (`BACKLOG-ITEM.md`) the user is ready to formalize.
+2. `ops-manager` reads the framework (root `CLAUDE.md`, templates, an existing skill as reference), identifies which departments are involved by enumerating `departments/*/CLAUDE.md`, and consults each involved dept lead via the `Task` subagent tool.
+3. `ops-manager` drafts a `SKILL.md` + `PROCESS.md` pair and presents the proposal in chat along with a summary of consultations and open questions.
+4. The user iterates with `ops-manager` until satisfied, then approves explicitly ("write it," "ship it," etc.).
+5. On approval, the files are written to the chosen path (global or dept-scoped), the owner agent's advisory `owns_processes:` is updated, and (if a backlog item was the input) it's flipped to `state: designed` with a `designed_as:` pointer.
 
-Walk through the included example: [`departments/engineering/backlog/example-add-rollback-step.md`](departments/engineering/backlog/example-add-rollback-step.md) is in `state: active, runs: 0` — the starting state of the loop, before any runs have occurred.
+Backlog items remain a useful notebook for ideas and one-offs that aren't yet formalized — see [`departments/engineering/backlog/example-add-rollback-step.md`](departments/engineering/backlog/example-add-rollback-step.md) for a worked example of an item in `state: active` that hasn't yet been fed into `design-process`.
 
 ## Self-improvement log schema
 

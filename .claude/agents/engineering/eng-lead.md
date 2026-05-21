@@ -32,7 +32,7 @@ A deploy request, a technical decision to ratify, a production incident to resol
 
 ## Escalation rules
 
-Escalates to: `coo`. Escalates when a tradeoff requires cross-department coordination, when an incident's blast radius exceeds engineering, or when a backlog item is ready for promotion (the `coo` owns `promote-backlog-item`).
+Escalates to: `coo`. Escalates when a tradeoff requires cross-department coordination, when an incident's blast radius exceeds engineering, or when a backlog item is ready to formalize (the `ops-manager` owns `design-process`, called via `coo`).
 
 ## Owned processes
 

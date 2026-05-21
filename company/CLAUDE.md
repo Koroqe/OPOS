@@ -11,7 +11,7 @@ This scope holds company-wide non-departmental knowledge for <<COMPANY_NAME>>: s
 - `strategy/` — **restricted by convention** to `ceo`, `coo`, and `chief-of-staff`. See `strategy/CLAUDE.md`.
 - `policies/` — readable by all agents; the source of truth for company policy.
 - `knowledge-base/` — the company wiki: glossary, org chart, references.
-- `backlog/` — cross-cutting one-off work (not yet routine; not department-specific). Items get promoted to processes per `.claude/skills/promote-backlog-item/`.
+- `backlog/` — cross-cutting one-off work (not yet routine; not department-specific). Items become inputs to `.claude/skills/design-process/` when ready for formalization.
 
 ## Local rules
 

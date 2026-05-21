@@ -11,13 +11,17 @@ Required frontmatter:
 - `title`
 - `owner` — an engineering agent (`eng-lead` or `eng-reviewer`)
 - `created` — YYYY-MM-DD
-- `state` — `proposed` | `active` | `promoted` | `dropped`
-- `runs` — integer counter
-- `promotion_target` — intended path for the promoted skill (typically under `departments/engineering/.claude/skills/`)
+- `state` — `proposed` | `active` | `designed` | `dropped`
+- `runs` — integer counter (informational; updated after each manual execution)
+- `intended_target` — intended path for the skill that would be designed from this item (typically under `departments/engineering/.claude/skills/`)
 
-## Promotion path
+Optional frontmatter (added retrospectively by `design-process`):
 
-After 3+ successful runs, invoke the global skill [`promote-backlog-item`](../../../.claude/skills/promote-backlog-item/) — owned by `coo` — to convert this item into a recurring process. The skill drafts the new SKILL.md + PROCESS.md, seeds the history folder, and flips the source item's `state:` to `promoted`.
+- `designed_as` — path to the new skill that was designed from this item
+
+## From idea to process
+
+When an item is ready to formalize, invoke the global skill [`design-process`](../../../.claude/skills/design-process/) — owned by `ops-manager` — and pass the item's path as `backlog_item_path`. `ops-manager` reads the framework, consults involved department leads (in this scope, `eng-lead`), drafts a SKILL.md + PROCESS.md pair, iterates with the user, and on approval writes the files. The source item's `state:` is flipped to `designed`.
 
 ## Dept labels
 
@@ -31,4 +35,4 @@ Suggested labels for the `labels:` array:
 
 ## Example
 
-See [`example-add-rollback-step.md`](./example-add-rollback-step.md) for a worked example of a backlog item in `state: active, runs: 0` — i.e. the starting state of the promotion loop.
+See [`example-add-rollback-step.md`](./example-add-rollback-step.md) for a worked example of a backlog item in `state: active, runs: 0` — an idea waiting to be either manually executed a few times or fed directly to `design-process`.
