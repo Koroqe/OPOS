@@ -1,0 +1,65 @@
+# <<COMPANY_NAME>> — Company OS (Constitution)
+
+This is the root CLAUDE.md for <<COMPANY_NAME>>. Anything written here is automatically in scope for every Claude Code session opened anywhere in this repo. Keep it short — every line is loaded into context on every call.
+
+## Mission
+
+<<COMPANY_NAME>> exists to <one short sentence>. The company is operated by humans and AI agents working from this repository.
+
+## Values
+
+- Value 1 — one-line restatement.
+- Value 2 — one-line restatement.
+- Value 3 — one-line restatement.
+- Value 4 — one-line restatement.
+- Value 5 — one-line restatement.
+
+## Operating principles
+
+- **AI-native.** Every role is held by an agent defined in `.claude/agents/`. Humans review and authorize; agents draft and execute.
+- **Processes-as-code.** Repeatable work lives as skills (`.claude/skills/<name>/`) with a paired `PROCESS.md` declaring its owner and success criteria. One-offs live in `backlog/` until promoted.
+- **Backlog-as-experiments.** Anything done at least once but not yet routine is a backlog item. Backlog items are promoted to processes after the threshold defined in `.claude/skills/promote-backlog-item/PROCESS.md`.
+- **Self-improving.** Every process records each run in its `history/` folder. Owner agents review history and propose deltas to their own PROCESS.md.
+
+## Global rules
+
+- No hardcoded secrets in this repo. Use environment variables or an MCP secrets server.
+- Folders marked `restricted: true` in their CLAUDE.md are honored by convention. Real enforcement is documented in `RISKS.md`.
+- Every process run MUST write a history entry following the schema in the "Self-improvement log" section below.
+- Branch and commit per the standard git workflow: feature branches, conventional commits, one slice per commit.
+
+## Self-improvement log schema
+
+Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
+
+- `date`: YYYY-MM-DD
+- `run_id`: short identifier
+- `skill`: skill name
+- `actor`: agent name or "human"
+- `outcome`: `success` | `partial` | `failure`
+- `duration_min`: integer
+- `proposed_delta`: free text or "none"
+- `status`: `open` | `applied` | `rejected`
+
+Followed by a free-form body with notes, links, and decisions.
+
+## Glossary
+
+See `company/knowledge-base/glossary.md`.
+
+## Config files in this repo
+
+- `.mcp.json` — MCP server registry. **Strict JSON, no inline comments.** Per-agent MCP access is restricted via the `tools:` allow-list in each agent's frontmatter.
+- `.claude/settings.json` — Permissions and Claude Code settings. **Strict JSON, no inline comments.** Per-department settings are not supported (see `RISKS.md`); all permission policy is repo-root only.
+
+Any explanatory commentary about either file lives here in this `CLAUDE.md` or in `README.md` — never inline in the JSON.
+
+## How CLAUDE.md cascades
+
+Claude Code automatically walks the directory tree from the session's working directory upward, loading every `CLAUDE.md` it finds. A session opened in `departments/engineering/` sees this root constitution, then `company/CLAUDE.md` (if it ends up in the cascade), then `departments/engineering/CLAUDE.md`. Files closer to the working directory load last and have the highest priority.
+
+## Subscopes
+
+- `company/` — non-departmental company-wide knowledge (strategy, policies, knowledge base, company backlog)
+- `departments/` — one folder per department, each with its own CLAUDE.md charter, skills, backlog, and data
+- `shared/` — templates and cross-company resources reused across scopes
