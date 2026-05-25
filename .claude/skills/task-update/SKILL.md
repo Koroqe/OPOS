@@ -21,16 +21,17 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
 
 ## Steps
 
-1. Resolve repo root via `git rev-parse --show-toplevel`.
-2. Read `$REPO_ROOT/.claude/.current-task` (or use `--issue`). Exit clearly if neither is set.
-3. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo`.
-4. `gh issue view <number> --repo <repo> --json comments,state` — abort if state is `CLOSED` (the user must reopen with `gh issue reopen` or invoke `task-complete` instead).
-5. Scan the last 50 comments for the HTML marker `<!-- update-key: <key> -->`. If found, exit 0 silently with the message `duplicate key, no-op` (this is correct behavior, not an error). Still write a history entry with `outcome: partial` recording the skipped invocation.
-6. Render the comment from `shared/templates/task-update.md.tmpl`, substituting `{{KEY}}`, `{{TIMESTAMP}}` (ISO 8601, UTC), `{{STATUS_LINE}}` (either `**Status:** <new>` or empty), `{{MESSAGE}}`.
-7. `gh issue comment <number> --repo <repo> --body "<rendered>"`.
-8. If `--status` was provided: fetch the issue body via `gh issue view <number> --json body`. Find the canonical status line with the regex `/^\*\*Status:\*\* .+$/m` (single-line match, anchored at line start, multiline mode). Substitute the line with `**Status:** <new>`. If the regex does NOT match (body was hand-edited and lost the canonical line), ABORT with the message: `issue body no longer has the canonical Status line — restore the line or skip --status`. On match: `gh issue edit <number> --body "<patched>"`. NOTE: this is a read-modify-write against the API; if a human edits the body between view and edit, their change is silently lost. Documented as a known v0 race.
-9. Print one-line confirmation: `Updated: #<number> — key=<key>`.
-10. **Write history entry** to `$REPO_ROOT/.claude/skills/task-update/history/<YYYY-MM-DD>-<short-run-id>.md`. Include in body: the issue number, the key, the status change (if any), and a one-line preview of the message.
+1. **Check for upstream updates.** Invoke `check-for-updates` (silent unless an update is available; cached 6h). Best-effort — failures do not block this skill's run.
+2. Resolve repo root via `git rev-parse --show-toplevel`.
+3. Read `$REPO_ROOT/.claude/.current-task` (or use `--issue`). Exit clearly if neither is set.
+4. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo`.
+5. `gh issue view <number> --repo <repo> --json comments,state` — abort if state is `CLOSED` (the user must reopen with `gh issue reopen` or invoke `task-complete` instead).
+6. Scan the last 50 comments for the HTML marker `<!-- update-key: <key> -->`. If found, exit 0 silently with the message `duplicate key, no-op` (this is correct behavior, not an error). Still write a history entry with `outcome: partial` recording the skipped invocation.
+7. Render the comment from `shared/templates/task-update.md.tmpl`, substituting `{{KEY}}`, `{{TIMESTAMP}}` (ISO 8601, UTC), `{{STATUS_LINE}}` (either `**Status:** <new>` or empty), `{{MESSAGE}}`.
+8. `gh issue comment <number> --repo <repo> --body "<rendered>"`.
+9. If `--status` was provided: fetch the issue body via `gh issue view <number> --json body`. Find the canonical status line with the regex `/^\*\*Status:\*\* .+$/m` (single-line match, anchored at line start, multiline mode). Substitute the line with `**Status:** <new>`. If the regex does NOT match (body was hand-edited and lost the canonical line), ABORT with the message: `issue body no longer has the canonical Status line — restore the line or skip --status`. On match: `gh issue edit <number> --body "<patched>"`. NOTE: this is a read-modify-write against the API; if a human edits the body between view and edit, their change is silently lost. Documented as a known v0 race.
+10. Print one-line confirmation: `Updated: #<number> — key=<key>`.
+11. **Write history entry** to `$REPO_ROOT/.claude/skills/task-update/history/<YYYY-MM-DD>-<short-run-id>.md`. Include in body: the issue number, the key, the status change (if any), and a one-line preview of the message.
 
 ## Outputs
 

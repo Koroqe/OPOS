@@ -30,20 +30,21 @@ When `--since_sha` is not passed, resolve in this order:
 
 ## Steps
 
-1. Resolve repo root via `git rev-parse --show-toplevel`.
-2. Read `$REPO_ROOT/.claude/.current-task` (or `--issue`). Exit clearly if neither is set.
-3. Read and validate config.
-4. Resolve `since_sha` via the fallback chain above (if not passed).
-5. Compute the changelog: `git log <since_sha>..HEAD --oneline --no-merges`. Capture as a bulleted list.
-6. Find PR links via `gh issue view <number> --json closedByPullRequestsReferences` — extract URLs and titles from GitHub's native link references (PRs that say "Closes #N" or are otherwise GitHub-linked to the issue). More reliable than title or body search.
-7. Scan commits in the range for the `Refs: #<issue>` trailer. Collect commits LACKING the ref. If any are found, prepare a warning block for the final comment AND print to stdout.
-8. Render the final comment: agent summary (verbatim from `--summary`), then changelog bullets (or "_no commits in range_" line), then PR-link section (skip if empty), then deliverables (if provided), then the warning block (if commits missed the ref).
-9. `gh issue comment <number> --repo <repo> --body "<final>"`.
-10. Ensure label `status:done` exists; create with `gh label create status:done` if missing (warn on creation). Apply it: `gh issue edit <number> --add-label status:done`.
-11. `gh issue close <number> --repo <repo> --reason completed`.
-12. Delete `$REPO_ROOT/.claude/.current-task`.
-13. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
-14. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
+1. **Check for upstream updates.** Invoke `check-for-updates` (silent unless an update is available; cached 6h). Best-effort — failures do not block this skill's run.
+2. Resolve repo root via `git rev-parse --show-toplevel`.
+3. Read `$REPO_ROOT/.claude/.current-task` (or `--issue`). Exit clearly if neither is set.
+4. Read and validate config.
+5. Resolve `since_sha` via the fallback chain above (if not passed).
+6. Compute the changelog: `git log <since_sha>..HEAD --oneline --no-merges`. Capture as a bulleted list.
+7. Find PR links via `gh issue view <number> --json closedByPullRequestsReferences` — extract URLs and titles from GitHub's native link references (PRs that say "Closes #N" or are otherwise GitHub-linked to the issue). More reliable than title or body search.
+8. Scan commits in the range for the `Refs: #<issue>` trailer. Collect commits LACKING the ref. If any are found, prepare a warning block for the final comment AND print to stdout.
+9. Render the final comment: agent summary (verbatim from `--summary`), then changelog bullets (or "_no commits in range_" line), then PR-link section (skip if empty), then deliverables (if provided), then the warning block (if commits missed the ref).
+10. `gh issue comment <number> --repo <repo> --body "<final>"`.
+11. Ensure label `status:done` exists; create with `gh label create status:done` if missing (warn on creation). Apply it: `gh issue edit <number> --add-label status:done`.
+12. `gh issue close <number> --repo <repo> --reason completed`.
+13. Delete `$REPO_ROOT/.claude/.current-task`.
+14. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
+15. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
 
 ## Outputs
 

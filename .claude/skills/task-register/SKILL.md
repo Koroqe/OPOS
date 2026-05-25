@@ -21,17 +21,18 @@ At the start of a NEW task — NOT a fix or continuation of in-flight work. The 
 
 ## Steps
 
-1. Resolve repo root: `REPO_ROOT=$(git rev-parse --show-toplevel)`. All file paths in this skill are anchored to `$REPO_ROOT`.
-2. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo` is non-empty.
-3. Refuse if `$REPO_ROOT/.claude/.current-task` already exists; print the existing issue number and instructions to `task-complete` or manually clear the file (no `task-abandon` skill in v0).
-4. `gh repo view <repo> --json visibility` — if visibility is `public`, print a WARNING to stdout (do not block).
-5. Normalize each `--depts` value: trim whitespace and `tr A-Z a-z` (lowercase). For each normalized dept name, ensure label `dept:<name>` exists; create with `gh label create dept:<name> --description "Auto-created by task-register"` if missing — print a warning to stdout naming the created label AND record the label-creation event in the history-entry body.
-6. Ensure flat label `task` exists; create if missing (same warning convention).
-7. Render the issue body from `shared/templates/task-issue.md.tmpl`, substituting `{{TITLE}}`, `{{DEPARTMENTS}}` (joined human-friendly list), `{{INITIATED_BY}}` (= `chief-of-staff` + ISO date), `{{PLAN_LINK}}`, `{{GOAL}}`. Leave the `<!-- progress-log -->` marker intact (it serves as an anchor for the optional v1 body-insertion approach; v0 uses comments).
-8. `gh issue create --repo <repo> --title "<title>" --body "<rendered>" --label task --label dept:<each> --json url,number` — capture the returned issue number and URL.
-9. Write the issue number (digits only) to `$REPO_ROOT/.claude/.current-task`.
-10. Print a one-line summary: `Tracked: #<number> (<url>) — depts: <list>`.
-11. **Write history entry** to `$REPO_ROOT/.claude/skills/task-register/history/<YYYY-MM-DD>-<short-run-id>.md` per the root `CLAUDE.md` schema. Include in body: the issue URL, depts, plan_file, and any label-creation warnings from steps 5-6.
+1. **Check for upstream updates.** Invoke `check-for-updates` (silent unless an update is available; cached 6h). Best-effort — failures do not block this skill's run. If the user sees an update notice, they may want to invoke `/sync-from-core` after this skill completes.
+2. Resolve repo root: `REPO_ROOT=$(git rev-parse --show-toplevel)`. All file paths in this skill are anchored to `$REPO_ROOT`.
+3. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo` is non-empty.
+4. Refuse if `$REPO_ROOT/.claude/.current-task` already exists; print the existing issue number and instructions to `task-complete` or manually clear the file (no `task-abandon` skill in v0).
+5. `gh repo view <repo> --json visibility` — if visibility is `public`, print a WARNING to stdout (do not block).
+6. Normalize each `--depts` value: trim whitespace and `tr A-Z a-z` (lowercase). For each normalized dept name, ensure label `dept:<name>` exists; create with `gh label create dept:<name> --description "Auto-created by task-register"` if missing — print a warning to stdout naming the created label AND record the label-creation event in the history-entry body.
+7. Ensure flat label `task` exists; create if missing (same warning convention).
+8. Render the issue body from `shared/templates/task-issue.md.tmpl`, substituting `{{TITLE}}`, `{{DEPARTMENTS}}` (joined human-friendly list), `{{INITIATED_BY}}` (= `chief-of-staff` + ISO date), `{{PLAN_LINK}}`, `{{GOAL}}`. Leave the `<!-- progress-log -->` marker intact (it serves as an anchor for the optional v1 body-insertion approach; v0 uses comments).
+9. `gh issue create --repo <repo> --title "<title>" --body "<rendered>" --label task --label dept:<each> --json url,number` — capture the returned issue number and URL.
+10. Write the issue number (digits only) to `$REPO_ROOT/.claude/.current-task`.
+11. Print a one-line summary: `Tracked: #<number> (<url>) — depts: <list>`.
+12. **Write history entry** to `$REPO_ROOT/.claude/skills/task-register/history/<YYYY-MM-DD>-<short-run-id>.md` per the root `CLAUDE.md` schema. Include in body: the issue URL, depts, plan_file, and any label-creation warnings from steps 6-7.
 
 ## Outputs
 

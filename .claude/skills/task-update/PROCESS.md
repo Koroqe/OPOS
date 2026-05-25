@@ -3,7 +3,7 @@ process_name: task-update
 owner: chief-of-staff
 collaborators: [eng-lead]
 inputs: [message, key, status, issue]
-success_criteria: [comment_posted_or_skipped_idempotently, status_line_patched_if_provided_or_failed_clearly, issue_still_open_at_start, history_entry_written]
+success_criteria: [update_check_attempted, comment_posted_or_skipped_idempotently, status_line_patched_if_provided_or_failed_clearly, issue_still_open_at_start, history_entry_written]
 slo: "10 seconds"
 version: 0.1.0
 ---

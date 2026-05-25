@@ -3,7 +3,7 @@ process_name: task-register
 owner: chief-of-staff
 collaborators: [eng-lead]
 inputs: [title, depts, plan_file, goal]
-success_criteria: [issue_created, labels_applied_normalized, current_task_file_written_at_repo_root, config_validated, gh_auth_confirmed, history_entry_written]
+success_criteria: [update_check_attempted, issue_created, labels_applied_normalized, current_task_file_written_at_repo_root, config_validated, gh_auth_confirmed, history_entry_written]
 slo: "30 seconds"
 version: 0.1.0
 ---

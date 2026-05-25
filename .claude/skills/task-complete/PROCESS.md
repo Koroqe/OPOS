@@ -3,7 +3,7 @@ process_name: task-complete
 owner: chief-of-staff
 collaborators: [eng-lead]
 inputs: [summary, since_sha, issue, deliverables]
-success_criteria: [final_comment_posted, status_done_label_applied, issue_closed_with_reason_completed, current_task_cleared, missing_ref_warning_surfaced_if_applicable, history_entry_written]
+success_criteria: [update_check_attempted, final_comment_posted, status_done_label_applied, issue_closed_with_reason_completed, current_task_cleared, missing_ref_warning_surfaced_if_applicable, history_entry_written]
 slo: "30 seconds"
 version: 0.1.0
 ---
