@@ -1,14 +1,10 @@
-_envops:
-  block_start_string: "<%"
-  block_end_string: "%>"
-  variable_start_string: "<<"
-  variable_end_string: ">>"
-  comment_start_string: "<#"
-  comment_end_string: "#>"
-
-_templates_suffix: ""
-
 _min_copier_version: "9.0.0"
+
+# Default _templates_suffix is ".jinja" — only files with that suffix are
+# processed through Jinja substitution. Files without the suffix are copied
+# verbatim. The 5 templated files (CLAUDE.md, README.md, RISKS.md, company/
+# CLAUDE.md, departments/*/CLAUDE.md) are stored as *.md.jinja; Copier strips
+# the suffix on render to produce the destination filenames.
 
 _exclude:
   - .git
@@ -36,4 +32,4 @@ _skip_if_exists:
 
 COMPANY_NAME:
   type: str
-  help: Your company name (replaces <<COMPANY_NAME>> throughout)
+  help: Your company name (substituted into all CLAUDE.md and README files)

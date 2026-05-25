@@ -21,7 +21,7 @@ git init && git add -A && git commit -m "chore: initial OPOS scaffold (v0.1.0)"
 gh repo create my-company-os --private --source=. --push
 ```
 
-That gives you a fresh OPOS instance with all CORE files (agents, skills, templates) pre-installed and `<<COMPANY_NAME>>` substituted to your company name. The STARTER files (example departments, configs) ship once for you to customize — `copier update` will never overwrite them.
+That gives you a fresh OPOS instance with all CORE files (agents, skills, templates) pre-installed and {% raw %}`{{ COMPANY_NAME }}`{% endraw %} substituted to your company name. The STARTER files (example departments, configs) ship once for you to customize — `copier update` will never overwrite them.
 
 ## Updating from upstream
 
@@ -37,9 +37,9 @@ See [`RISKS.md`](RISKS.md) Risks 9–13 for known limitations (manual conflict r
 1. Clone this repo (or fork it). _Note: prefer `copier copy` above; this manual flow is for framework developers._
 2. Substitute the framework tokens for your company. List every remaining token with:
    ```bash
-   <%raw%>grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>
+   grep -rn "<<[A-Z_]*>>" . --include="*.md"
    ```
-   The primary token is `<<COMPANY_NAME>>`. Once substituted, this command should return zero matches.
+   The primary token is {% raw %}`{{ COMPANY_NAME }}`{% endraw %}. Once substituted, this command should return zero matches.
 3. Pick one department to start with. The `departments/engineering/` folder is a worked example — copy it to your first real department and rename.
 4. Add real MCP servers in `.mcp.json` and configure per-agent access via each agent's `tools:` allow-list.
 5. Open Claude Code at the repo root and verify the smoke test (see [`RISKS.md`](RISKS.md) for the recipe).

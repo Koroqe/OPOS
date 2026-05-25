@@ -56,14 +56,14 @@ Agents whose `tools:` omits `Edit` and `Write` cannot mutate files; agents whose
 
 **Status:** LOW impact; greppable guard available.
 
-Adopters can forget to substitute `<<COMPANY_NAME>>` and the other tokens. The skeleton ships with tokens present everywhere they belong, which is correct for a template — but a fork that's been partially customized may have inconsistencies.
+Adopters can forget to substitute {% raw %}`{{ COMPANY_NAME }}`{% endraw %} and the other tokens. The skeleton ships with tokens present everywhere they belong, which is correct for a template — but a fork that's been partially customized may have inconsistencies.
 
 **Suggested guard (not auto-installed):**
 
 Add a pre-commit hook running:
 
 ```bash
-<%raw%>! grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>
+! grep -rn "<<[A-Z_]*>>" . --include="*.md"
 ```
 
 After full substitution, this command should exit 0 (zero matches). Any match is the substitute-me signal.
@@ -134,7 +134,7 @@ When a consumer has edited a CORE file (one synced from upstream), `copier updat
 
 If you keep the upstream OPOS repo PRIVATE and want the opt-in `.github/workflows/sync-opos.yml` to run, the default `GITHUB_TOKEN` doesn't have access to the upstream. You need a `GH_PAT_OPOS_READ` secret (a PAT with read access to the upstream repo) added to your consumer repo's Actions secrets.
 
-**Mitigation:** Reference the secret in the workflow's `copier update` step via `env: GH_TOKEN: ${{ secrets.GH_PAT_OPOS_READ }}`. If the upstream is PUBLIC, this is unnecessary.
+**Mitigation:** Reference the secret in the workflow's `copier update` step via {% raw %}`env: GH_TOKEN: ${{ secrets.GH_PAT_OPOS_READ }}`{% endraw %}. If the upstream is PUBLIC, this is unnecessary.
 
 ## Risk 11 — Third-party Actions may be policy-blocked
 
@@ -183,7 +183,7 @@ Run this after substituting tokens for your company. All six steps should pass c
 4. **Dept-nested cascade.** Run `cd departments/engineering && claude`. Ask: *"What CLAUDE.md files are in scope?"* Expect root + dept charter. Then ask: *"List skills available here."* Expect both `design-process` (global) AND `deploy` (dept-nested).
 5. **Token substitution check.** From repo root:
    ```bash
-   <%raw%>grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>
+   grep -rn "<<[A-Z_]*>>" . --include="*.md"
    ```
    Non-zero matches on initial clone is the substitute-me signal. After full substitution: should return zero.
 6. **Owner binding-of-record check.** From repo root:
