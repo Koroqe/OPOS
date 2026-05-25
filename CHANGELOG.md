@@ -14,7 +14,7 @@ In `0.x.y` releases breaking changes are allowed.
 - 4 company-level agents: `ceo`, `coo`, `chief-of-staff`, `ops-manager`.
 - 6 framework skills: `design-process`, `task-register`, `task-update`, `task-complete`, `check-for-updates`, `sync-from-core`.
 - 2 starter departments: `engineering` (with `deploy` skill), `rnd`.
-- **Copier-based distribution**: `copier.yml` with `_envops` (custom Jinja delimiters `<<` `>>`), `_exclude` (runtime state), `_skip_if_exists` (starter content), and a single `COMPANY_NAME` question.
+- **Copier-based distribution**: `copier.yml` with `_envops` (custom Jinja delimiters <%raw%>`<<` `>>`<%endraw%>), `_exclude` (runtime state), `_skip_if_exists` (starter content), and a single `COMPANY_NAME` question.
 - **Agent-driven auto-update**: `check-for-updates` skill invoked as step 1 of `task-register`/`task-update`/`task-complete`; cached 6h; silent unless an update exists.
 - **Opt-in GitHub Actions auto-update workflow**: `.github/workflows/sync-opos.yml`, `workflow_dispatch` only by default; uncomment `schedule:` block to enable weekly background PRs.
 - `CHANGELOG.md` (this file) and semantic-versioning policy.
