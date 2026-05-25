@@ -1,0 +1,53 @@
+# OPT-IN auto-update workflow. By default this only runs on manual trigger
+# (workflow_dispatch). To enable weekly background PRs, uncomment the
+# `schedule:` block below.
+#
+# Permissions: the default GITHUB_TOKEN provides read+write on this repo and
+# is enough if the upstream OPOS repo is PUBLIC. If upstream is PRIVATE,
+# add a `GH_PAT_OPOS_READ` secret (a PAT with read access to upstream) and
+# reference it in the copier step via `env: GH_TOKEN: ${{ secrets.GH_PAT_OPOS_READ }}`.
+#
+# Third-party action note: this workflow uses `peter-evans/create-pull-request`
+# for PR creation. If your org's GitHub policy blocks third-party actions,
+# replace that step with a script that uses `gh pr create` directly (see
+# https://cli.github.com/manual/gh_pr_create).
+#
+# Branch-name convention: a FIXED branch name (`opos-core-update`) is used
+# so subsequent workflow runs reuse the same branch — peter-evans/create-pull-request
+# updates the existing PR instead of opening a new one each week. This differs
+# from the `sync-from-core` skill, which uses `opos-update-<tag>` (tag-specific)
+# for the interactive local flow.
+
+name: Sync from OPOS core
+on:
+  workflow_dispatch: {}
+  # Uncomment to enable weekly auto-PRs (Mon 3am UTC):
+  # schedule:
+  #   - cron: "0 3 * * 1"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install copier
+        run: pip install copier
+      - name: Run copier update
+        run: copier update --defaults --conflict rej
+      - name: Create or update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: opos-core-update
+          title: "chore: sync OPOS core"
+          body: |
+            Automated OPOS core sync via `copier update`.
+
+            Review `.rej` files for unresolved conflicts before merging.
+            See https://copier.readthedocs.io/ for `copier update` semantics.
+          commit-message: "chore: sync OPOS core via copier update"
