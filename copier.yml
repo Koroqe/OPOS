@@ -18,6 +18,21 @@ _exclude:
   - "**/history/202[0-9]-*.md"
   - copier.yml
 
+# Files shipped on initial scaffold only; never updated by `copier update`.
+# Consumers own these post-scaffold and may edit freely without losing edits.
+_skip_if_exists:
+  - .mcp.json
+  - .claude/settings.json
+  - .claude/task-tracking.config.json
+  - .claude/agents/engineering/**
+  - .claude/agents/rnd/**
+  - company/CLAUDE.md
+  - company/strategy/**
+  - company/policies/**
+  - company/knowledge-base/**
+  - company/backlog/**
+  - departments/**
+
 COMPANY_NAME:
   type: str
   help: Your company name (replaces <<COMPANY_NAME>> throughout)
