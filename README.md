@@ -2,9 +2,39 @@
 
 OPOS is an AI-native company operating system expressed as a GitHub repo of markdown and JSON. It encodes your company (mission, policies, knowledge), your departments (charters, data, processes), your roles (agents), and your work-in-flight (backlogs) using Claude Code's native cascading primitives. No runtime, no orchestration code — just templates and folder conventions you fork and adapt.
 
-## Quickstart
+OPOS is distributed as a **Copier template**: scaffold a new company instance with one command, then receive upstream updates via the agent-driven `sync-from-core` skill or the opt-in GitHub Actions workflow.
 
-1. Clone this repo (or fork it).
+## Scaffold a new company instance
+
+**Prerequisites:**
+- Python 3.10+
+- `copier` ≥9.0.0 — install via `pip install copier` (or `pipx install copier`)
+- `git`
+- `gh` CLI authenticated against your GitHub account (`gh auth login`)
+- A GitHub account with read access to `Koroqe/OPOS`
+
+**Scaffold:**
+```bash
+copier copy --vcs-ref v0.1.0 gh:Koroqe/OPOS my-company-os -d COMPANY_NAME="My Company"
+cd my-company-os
+git init && git add -A && git commit -m "chore: initial OPOS scaffold (v0.1.0)"
+gh repo create my-company-os --private --source=. --push
+```
+
+That gives you a fresh OPOS instance with all CORE files (agents, skills, templates) pre-installed and `<<COMPANY_NAME>>` substituted to your company name. The STARTER files (example departments, configs) ship once for you to customize — `copier update` will never overwrite them.
+
+## Updating from upstream
+
+Two ways to receive updates from `Koroqe/OPOS`:
+
+1. **Agent-driven (DEFAULT — no infrastructure).** `check-for-updates` is invoked automatically as step 1 of `task-register`, `task-update`, `task-complete`. When the upstream has a newer release, you see a one-line notice in the skill output. Run `/sync-from-core` when you're ready to apply.
+2. **Opt-in GitHub Actions (background PRs).** Edit `.github/workflows/sync-opos.yml` and uncomment the `schedule:` block to enable weekly auto-PRs (Mon 3am UTC). Runs on GitHub's servers; your laptop is uninvolved.
+
+See [`RISKS.md`](RISKS.md) Risks 9–13 for known limitations (manual conflict resolution, rollback, breaking-change migration).
+
+## Quickstart (legacy — no longer needed; Copier handles substitution)
+
+1. Clone this repo (or fork it). _Note: prefer `copier copy` above; this manual flow is for framework developers._
 2. Substitute the framework tokens for your company. List every remaining token with:
    ```bash
    <%raw%>grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>

@@ -116,6 +116,63 @@ If a designed process needs an agent role that doesn't exist (e.g. a "release-co
 
 Creating agents is its own design problem and could be addressed by a future `design-agent` skill. For v0, expanding the org chart is a conversation between the user, `coo`, and (where applicable) `ceo`.
 
+## Risk 9 — Copier conflict resolution is manual
+
+**Status:** MEDIUM impact; behavior is expected.
+
+When a consumer has edited a CORE file (one synced from upstream), `copier update` produces a `.rej` file recording the upstream change that couldn't apply cleanly. The consumer must resolve manually: open the original file, apply the upstream change, delete the `.rej` file.
+
+**Mitigation:**
+
+- Never edit CORE files. Anything you'd want to customize lives in STARTER files (with `_skip_if_exists` in `copier.yml`) — those are never overwritten on update.
+- If a CORE file's behavior genuinely needs customization, fork it INTO a sibling skill/agent (with a different name) and reference your fork instead.
+- The `sync-from-core` skill surfaces the `.rej` count prominently after every update so you can't miss conflicts.
+
+## Risk 10 — Private upstream + GitHub Actions requires a PAT
+
+**Status:** LOW impact; documented setup step.
+
+If you keep the upstream OPOS repo PRIVATE and want the opt-in `.github/workflows/sync-opos.yml` to run, the default `GITHUB_TOKEN` doesn't have access to the upstream. You need a `GH_PAT_OPOS_READ` secret (a PAT with read access to the upstream repo) added to your consumer repo's Actions secrets.
+
+**Mitigation:** Reference the secret in the workflow's `copier update` step via `env: GH_TOKEN: ${{ secrets.GH_PAT_OPOS_READ }}`. If the upstream is PUBLIC, this is unnecessary.
+
+## Risk 11 — Third-party Actions may be policy-blocked
+
+**Status:** LOW impact; alternate path documented.
+
+The opt-in workflow uses `peter-evans/create-pull-request@v6` for PR creation. Many GitHub organizations block third-party actions by default. If your org has this policy:
+
+- Replace the PR-creation step with a script using `gh pr create` directly (see https://cli.github.com/manual/gh_pr_create).
+- Or get the third-party action allowlisted by your org admins.
+
+## Risk 12 — No automated rollback
+
+**Status:** MEDIUM impact; manual procedure documented.
+
+If you sync to a new upstream version and want to roll back, there is no `rollback-from-core` skill in v0. The manual procedure:
+
+1. Edit `.copier-answers.yml` and change the `_commit:` field to the older tag (e.g. `v0.1.0`).
+2. Re-run `sync-from-core --target_version v0.1.0`.
+3. Resolve any `.rej` files (rollbacks behave the same as forward updates — only the direction differs).
+
+A future `rollback-from-core` skill could automate this.
+
+## Risk 13 — Breaking changes in 0.x releases require manual migration
+
+**Status:** MEDIUM impact; mitigated by CHANGELOG convention.
+
+Per semver, 0.x releases may contain breaking changes. When upgrading across a breaking-change release, you'll see `.rej` files indicating lost edits — these need manual resolution. Convention: every breaking-change release MUST include a `### Migration` subsection in its CHANGELOG entry describing the required manual steps.
+
+**Mitigation:**
+
+- Read the CHANGELOG before running `sync-from-core` to a new version.
+- Test the sync on a branch (which is how `sync-from-core` works by default) before merging to main.
+- Once v1.0 is cut, breaking changes are restricted to major-version bumps per semver.
+
+## Advisory note — upstream naming
+
+The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-template` or `opos-core`). Naming mirrors the consumer's experience: they scaffold from `Koroqe/OPOS` and receive updates from the same upstream. No renaming planned.
+
 ## Verification recipe (smoke test)
 
 Run this after substituting tokens for your company. All six steps should pass cleanly on a freshly-cloned, fully-substituted skeleton.
