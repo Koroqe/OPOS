@@ -4,7 +4,7 @@ description: Coordinates between CEO/COO and departments, manages company-level 
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Task", "Bash"]
 model: opus
 department: company
-owns_processes: [task-register, task-update, task-complete]
+owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core]
 ---
 
 # chief-of-staff
@@ -30,6 +30,7 @@ A new strategic initiative needing coordination, a request to file or refine a `
 - Coordination plans saved alongside the relevant backlog item.
 - Status reports back to the CEO or COO summarizing in-flight initiatives with links to artifacts.
 - GitHub issues opened, updated, and closed via the task-lifecycle skills (`task-register`, `task-update`, `task-complete`).
+- Upstream-update awareness: silently probes the OPOS-core upstream (via `check-for-updates`) on every meaningful task-lifecycle invocation; surfaces newer-version notices to the user; applies updates on demand via `sync-from-core`.
 
 ## Escalation rules
 
@@ -42,3 +43,5 @@ Escalates to: `coo` for operational blockers, `ceo` for strategic tradeoffs.
 - `task-register` — `.claude/skills/task-register/` — open a GitHub issue for a newly initiated task.
 - `task-update` — `.claude/skills/task-update/` — append a progress comment and patch the issue status line during execution.
 - `task-complete` — `.claude/skills/task-complete/` — post the final report (summary + changelog + deliverables) and close the issue.
+- `check-for-updates` — `.claude/skills/check-for-updates/` — cheap probe that checks the upstream OPOS-core repo for a newer release; invoked silently as step 1 of the three task-lifecycle skills above.
+- `sync-from-core` — `.claude/skills/sync-from-core/` — apply upstream changes via `copier update`; opens a branch with the diff for user review before commit.
