@@ -63,7 +63,7 @@ Adopters can forget to substitute `<<COMPANY_NAME>>` and the other tokens. The s
 Add a pre-commit hook running:
 
 ```bash
-! grep -rn "<<[A-Z_]*>>" . --include="*.md"
+<%raw%>! grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>
 ```
 
 After full substitution, this command should exit 0 (zero matches). Any match is the substitute-me signal.
@@ -126,7 +126,7 @@ Run this after substituting tokens for your company. All six steps should pass c
 4. **Dept-nested cascade.** Run `cd departments/engineering && claude`. Ask: *"What CLAUDE.md files are in scope?"* Expect root + dept charter. Then ask: *"List skills available here."* Expect both `design-process` (global) AND `deploy` (dept-nested).
 5. **Token substitution check.** From repo root:
    ```bash
-   grep -rn "<<[A-Z_]*>>" . --include="*.md"
+   <%raw%>grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>
    ```
    Non-zero matches on initial clone is the substitute-me signal. After full substitution: should return zero.
 6. **Owner binding-of-record check.** From repo root:

@@ -7,7 +7,7 @@ OPOS is an AI-native company operating system expressed as a GitHub repo of mark
 1. Clone this repo (or fork it).
 2. Substitute the framework tokens for your company. List every remaining token with:
    ```bash
-   grep -rn "<<[A-Z_]*>>" . --include="*.md"
+   <%raw%>grep -rn "<<[A-Z_]*>>" . --include="*.md"<%endraw%>
    ```
    The primary token is `<<COMPANY_NAME>>`. Once substituted, this command should return zero matches.
 3. Pick one department to start with. The `departments/engineering/` folder is a worked example — copy it to your first real department and rename.

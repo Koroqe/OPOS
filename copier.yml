@@ -1,0 +1,23 @@
+_envops:
+  block_start_string: "<%"
+  block_end_string: "%>"
+  variable_start_string: "<<"
+  variable_end_string: ">>"
+  comment_start_string: "<#"
+  comment_end_string: "#>"
+
+_templates_suffix: ""
+
+_min_copier_version: "9.0.0"
+
+_exclude:
+  - .git
+  - .claude/.current-task
+  - .claude/.last-update-check
+  - .claude/scratchpad.md
+  - "**/history/202[0-9]-*.md"
+  - copier.yml
+
+COMPANY_NAME:
+  type: str
+  help: Your company name (replaces <<COMPANY_NAME>> throughout)
