@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.3.1] - 2026-05-29
+
+### Fixed
+
+- `parse_skills()` in `ui/data.py` now discovers dept-nested skills under `departments/<dept>/.claude/skills/<name>/` in addition to root-level `.claude/skills/<name>/`. Surfaced during the v0.3.0 console UX walkthrough: `/skills/deploy` returned 404 even though the example `deploy` skill ships nested under `engineering/`. The `Skill` dataclass gains a `dept` field (empty for root, dept name for nested); on name collisions, root-level wins (matching the cascade convention).
+
+### Changed
+
+- `release-from-changelog` SKILL.md gains a new step 5 (`prerelease_scaffold_check_passed`) — runs `copier copy . /tmp/X --vcs-ref=HEAD` and asserts exit 0 BEFORE tagging. Catches Copier-side template-rendering breakage before the release is cut. Surfaced from v0.3.0's `.html.jinja` → `.html` rename incident which required a destructive delete-and-re-cut. The skill's `PROCESS.md` bumps to v0.2.0.
+- History entry schema (root `CLAUDE.md` Self-improvement log section) gains an optional `time: HH:MM` field. The console activity feed uses it as the secondary sort key (within a date) so multiple runs on the same day order chronologically. Backwards-compat: older entries without `time` continue to sort by `run_id` alphabetic.
+- Console dashboard: "Departments" tile renamed to "Scopes" with a "N depts + 1 company" breakdown sub-line; zero-count task tiles render as dimmed plain text (no link) so users don't click into empty filtered lists.
+- Dept detail page (`/departments/<name>`) now includes physically-nested skills (`skill.dept == name`) in addition to skills owned by dept members. Skill detail page surfaces a "Scope" row showing the dept badge or "root".
+- `task-register` SKILL.md step 9 (v0.3.0 fix exercised again): now `URL=$(gh issue create ...)` + `basename` — the bogus `--json` flag is gone.
+
+### Notes
+
+- Closes [#7](https://github.com/Koroqe/OPOS/issues/7) — "v0.3.1 patch — console UX fixes + v0.3.0 carryover".
+- No breaking changes. Pure patch — `copier update` flows cleanly for any v0.3.0 consumer; the new `time:` field is optional and existing history entries continue to render correctly.
+- Test coverage grows 30 → 34 unittest cases (test_includes_dept_nested, test_root_wins_on_name_collision, test_time_field_used_as_secondary_sort, test_missing_time_falls_back_to_run_id).
+
 ## [0.3.0] - 2026-05-28
 
 ### Added
@@ -109,6 +129,7 @@ In `0.x.y` releases breaking changes are allowed.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.3.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.1.1
