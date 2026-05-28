@@ -92,7 +92,12 @@ def route_department(request) -> tuple[int, str, str]:
     if not match:
         return (404, "text/html; charset=utf-8", f"<h1>404</h1><p>No department {name!r}.</p>")
     members = set(match.member_agents)
-    dept_skills = [s for s in parse_skills() if s.owner_agent in members]
+    # A skill counts as dept-scoped if it's physically nested under the dept
+    # folder (.dept == name) OR if its owner_agent is a member of this dept.
+    dept_skills = [s for s in parse_skills() if s.dept == name or s.owner_agent in members]
+    # Deduplicate while preserving order (a skill can match both criteria).
+    seen: set[str] = set()
+    dept_skills = [s for s in dept_skills if not (s.name in seen or seen.add(s.name))]
     body = render(
         "department.html",
         page_title=name,

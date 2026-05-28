@@ -45,6 +45,7 @@ class Skill:
     process_body: str
     history_count: int
     path: Path  # SKILL.md path
+    dept: str = ""  # empty for root-level skills; dept name for departments/<dept>/.claude/skills/<name>/
 
 
 @dataclass
@@ -139,39 +140,65 @@ def parse_agents(repo_root: Path = REPO_ROOT) -> list[Agent]:
     return out
 
 
+def _read_skill_dir(skill_dir: Path, dept: str) -> Skill | None:
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.is_file():
+        return None
+    skill_fm, skill_body = parse_frontmatter(skill_md)
+    process_md = skill_dir / "PROCESS.md"
+    if process_md.is_file():
+        process_fm, process_body = parse_frontmatter(process_md)
+    else:
+        process_fm, process_body = {}, ""
+    history_dir = skill_dir / "history"
+    history_count = sum(1 for _ in history_dir.glob("[0-9]*.md")) if history_dir.is_dir() else 0
+    return Skill(
+        name=str(skill_fm.get("name", skill_dir.name)),
+        description=str(skill_fm.get("description", "")),
+        owner_agent=str(skill_fm.get("owner_agent", "")),
+        tags=list(skill_fm.get("tags") or []),
+        version=str(skill_fm.get("version", "")),
+        skill_body=skill_body,
+        process_owner=str(process_fm.get("owner", "")),
+        process_body=process_body,
+        history_count=history_count,
+        path=skill_md,
+        dept=dept,
+    )
+
+
 def parse_skills(repo_root: Path = REPO_ROOT) -> list[Skill]:
+    """Returns root-level (.claude/skills/*) plus dept-nested
+    (departments/<dept>/.claude/skills/*) skills.
+
+    Root-level skills are returned first; dept-nested next. On name
+    collisions between scopes the root-level entry wins (first match),
+    matching the cascade convention where outer scope takes precedence.
+    """
     out: list[Skill] = []
-    skills_dir = repo_root / ".claude" / "skills"
-    if not skills_dir.is_dir():
-        return out
-    for skill_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
-        skill_md = skill_dir / "SKILL.md"
-        if not skill_md.is_file():
-            continue
-        skill_fm, skill_body = parse_frontmatter(skill_md)
-        process_md = skill_dir / "PROCESS.md"
-        if process_md.is_file():
-            process_fm, process_body = parse_frontmatter(process_md)
-        else:
-            process_fm, process_body = {}, ""
-        history_dir = skill_dir / "history"
-        history_count = (
-            sum(1 for _ in history_dir.glob("[0-9]*.md")) if history_dir.is_dir() else 0
-        )
-        out.append(
-            Skill(
-                name=str(skill_fm.get("name", skill_dir.name)),
-                description=str(skill_fm.get("description", "")),
-                owner_agent=str(skill_fm.get("owner_agent", "")),
-                tags=list(skill_fm.get("tags") or []),
-                version=str(skill_fm.get("version", "")),
-                skill_body=skill_body,
-                process_owner=str(process_fm.get("owner", "")),
-                process_body=process_body,
-                history_count=history_count,
-                path=skill_md,
-            )
-        )
+    seen: set[str] = set()
+
+    # Root-level skills.
+    root_dir = repo_root / ".claude" / "skills"
+    if root_dir.is_dir():
+        for skill_dir in sorted(p for p in root_dir.iterdir() if p.is_dir()):
+            s = _read_skill_dir(skill_dir, dept="")
+            if s is not None and s.name not in seen:
+                out.append(s)
+                seen.add(s.name)
+
+    # Dept-nested skills.
+    departments_dir = repo_root / "departments"
+    if departments_dir.is_dir():
+        for dept_dir in sorted(p for p in departments_dir.iterdir() if p.is_dir()):
+            nested_dir = dept_dir / ".claude" / "skills"
+            if not nested_dir.is_dir():
+                continue
+            for skill_dir in sorted(p for p in nested_dir.iterdir() if p.is_dir()):
+                s = _read_skill_dir(skill_dir, dept=dept_dir.name)
+                if s is not None and s.name not in seen:
+                    out.append(s)
+                    seen.add(s.name)
     return out
 
 

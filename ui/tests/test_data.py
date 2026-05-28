@@ -54,11 +54,42 @@ class TestParseAgents(unittest.TestCase):
 class TestParseSkills(unittest.TestCase):
     def test_finds_at_least_ten(self):
         skills = parse_skills()
-        # 10 skills at Slice 1 time; will become 11 after Slice 7.
+        # >=10 root-level skills; v0.3.1 adds dept-nested discovery (deploy).
         self.assertGreaterEqual(len(skills), 10)
         names = {s.name for s in skills}
         self.assertIn("task-register", names)
         self.assertIn("design-process", names)
+
+    def test_includes_dept_nested(self):
+        # departments/engineering/.claude/skills/deploy/ should be discovered.
+        skills = parse_skills()
+        deploy = next((s for s in skills if s.name == "deploy"), None)
+        self.assertIsNotNone(deploy, "dept-nested 'deploy' skill not found")
+        self.assertEqual(deploy.dept, "engineering")
+        # Root-level skills have an empty dept.
+        task_register = next((s for s in skills if s.name == "task-register"), None)
+        self.assertIsNotNone(task_register)
+        self.assertEqual(task_register.dept, "")
+
+    def test_root_wins_on_name_collision(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            # Root-level "foo" skill.
+            (root / ".claude" / "skills" / "foo").mkdir(parents=True)
+            (root / ".claude" / "skills" / "foo" / "SKILL.md").write_text(
+                "---\nname: foo\ndescription: root-level\n---\nBody\n", encoding="utf-8"
+            )
+            # Dept-nested "foo" skill in engineering.
+            (root / "departments" / "engineering" / ".claude" / "skills" / "foo").mkdir(parents=True)
+            (root / "departments" / "engineering" / ".claude" / "skills" / "foo" / "SKILL.md").write_text(
+                "---\nname: foo\ndescription: dept-nested\n---\nBody\n", encoding="utf-8"
+            )
+            skills = parse_skills(repo_root=root)
+            foos = [s for s in skills if s.name == "foo"]
+            self.assertEqual(len(foos), 1)
+            self.assertEqual(foos[0].description, "root-level")
+            self.assertEqual(foos[0].dept, "")
 
 
 class TestParseTasksStateInference(unittest.TestCase):

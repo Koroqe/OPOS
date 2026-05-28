@@ -9,6 +9,7 @@
     <h3>Frontmatter</h3>
     <dl class="kv">
       <dt>Owner</dt><dd>{% if skill.owner_agent %}<a href="/agents/company/{{ skill.owner_agent }}">{{ skill.owner_agent }}</a>{% else %}<span class="muted">— none —</span>{% endif %}</dd>
+      <dt>Scope</dt><dd>{% if skill.dept %}<span class="dept" data-dept="{{ skill.dept }}">{{ skill.dept }}</span> <span class="muted">(dept-nested)</span>{% else %}<span class="muted">root</span>{% endif %}</dd>
       <dt>Version</dt><dd><code>{{ skill.version }}</code></dd>
       <dt>Tags</dt><dd>{% for t in skill.tags %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd>
       <dt>Source</dt><dd><code>{{ skill.path }}</code></dd>
