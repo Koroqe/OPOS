@@ -71,7 +71,7 @@ def install(path_pattern: str, handler) -> None:
 
 # --- Wave-2 slice registrations (each slice uncomments its own line) ---
 # Slice 3 (dashboard + activity):
-# from . import dashboard as _dashboard, activity as _activity  # noqa: F401
+from . import dashboard as _dashboard, activity as _activity  # noqa: F401, E402
 # Slice 4 (agents + departments):
 # from . import agents as _agents  # noqa: F401
 # Slice 5 (skills + tasks):

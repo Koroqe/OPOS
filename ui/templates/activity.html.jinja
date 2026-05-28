@@ -1,0 +1,54 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<h1>Activity</h1>
+
+<form class="filter-form" method="get" action="/activity">
+  <label>Skill:
+    <select name="skill">
+      <option value="">— all —</option>
+      {% for s in all_skills %}
+      <option value="{{ s }}"{% if filters.skill == s %} selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Outcome:
+    <select name="outcome">
+      <option value="">— all —</option>
+      <option value="success"{% if filters.outcome == "success" %} selected{% endif %}>success</option>
+      <option value="partial"{% if filters.outcome == "partial" %} selected{% endif %}>partial</option>
+      <option value="failure"{% if filters.outcome == "failure" %} selected{% endif %}>failure</option>
+    </select>
+  </label>
+  <label>Since (YYYY-MM-DD):
+    <input type="text" name="since" value="{{ filters.since or '' }}" placeholder="2026-01-01">
+  </label>
+  <button type="submit">Filter</button>
+  <a href="/activity">Reset</a>
+</form>
+
+<p class="muted">Showing {{ entries|length }} of {{ total }} entries.</p>
+
+{% if entries %}
+{% for e in entries %}
+<article class="history-entry">
+  <div class="meta">
+    <strong>{{ e.date }}</strong>
+    <a href="/skills/{{ e.skill }}">{{ e.skill }}</a>
+    · actor: {{ e.actor or 'unknown' }}
+    · <span class="badge {{ e.outcome }}">{{ e.outcome }}</span>
+    {% if e.duration_min is not none %}· {{ e.duration_min }}m{% endif %}
+    {% if e.status %}· status: {{ e.status }}{% endif %}
+    · run: <code>{{ e.run_id }}</code>
+  </div>
+  {% if e.proposed_delta %}
+  <div class="delta">
+    <strong>Proposed delta:</strong>
+    {{ e.proposed_delta[:300] }}{% if e.proposed_delta|length > 300 %}…{% endif %}
+  </div>
+  {% endif %}
+</article>
+{% endfor %}
+{% else %}
+<p class="muted">No entries match the current filters.</p>
+{% endif %}
+{% endblock %}

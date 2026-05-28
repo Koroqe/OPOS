@@ -1,0 +1,48 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<section class="tiles">
+  <div class="tile">
+    <div class="label">Tasks — active</div>
+    <div class="value"><a href="/tasks?state=active">{{ counts.tasks_active }}</a></div>
+  </div>
+  <div class="tile">
+    <div class="label">Tasks — paused</div>
+    <div class="value"><a href="/tasks?state=paused">{{ counts.tasks_paused }}</a></div>
+  </div>
+  <div class="tile">
+    <div class="label">Tasks — completed</div>
+    <div class="value"><a href="/tasks?state=completed">{{ counts.tasks_completed }}</a></div>
+  </div>
+  <div class="tile">
+    <div class="label">Agents</div>
+    <div class="value"><a href="/agents">{{ counts.agents }}</a></div>
+  </div>
+  <div class="tile">
+    <div class="label">Skills</div>
+    <div class="value"><a href="/skills">{{ counts.skills }}</a></div>
+  </div>
+  <div class="tile">
+    <div class="label">Departments</div>
+    <div class="value"><a href="/departments">{{ counts.departments }}</a></div>
+  </div>
+</section>
+
+<h2>Recent activity</h2>
+{% if recent_activity %}
+<ul class="bare">
+  {% for e in recent_activity %}
+  <li>
+    <span class="muted">{{ e.date }}</span>
+    <a href="/skills/{{ e.skill }}">{{ e.skill }}</a>
+    — <span class="badge {{ e.outcome }}">{{ e.outcome }}</span>
+    {% if e.proposed_delta %}<span class="muted">— {{ e.proposed_delta[:120] }}{% if e.proposed_delta|length > 120 %}…{% endif %}</span>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+<p><a href="/activity">All activity →</a></p>
+{% else %}
+<p class="muted">No activity recorded yet.</p>
+{% endif %}
+{% endblock %}
