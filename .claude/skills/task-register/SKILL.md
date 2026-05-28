@@ -12,12 +12,15 @@ owner_agent: chief-of-staff
 
 At the start of a NEW task — NOT a fix or continuation of in-flight work. The user explicitly invokes `/task-register "<title>" --depts <comma-list> [--plan-file <path>] [--goal "<text>"]`. If a task is already in flight (the repo-root `.claude/.current-task` exists), this skill refuses to start and asks the user to complete or abandon first.
 
+**Inputs may be gathered conversationally** over multiple AskUserQuestion turns before the GitHub call — the skill doesn't require them all in one CLI invocation. In practice, the calling agent (chief-of-staff) often clarifies title, depts, and goal interactively before making the actual `gh issue create` call.
+
 ## Inputs
 
 - `title` — short title for the GitHub issue (required).
 - `depts` — comma-separated department names; lowercased for label normalization (required).
 - `plan_file` — optional path to a plan file (e.g. under `~/.claude/plans/`).
 - `goal` — optional one-paragraph goal. Default: prompt user inline.
+- `quiet_label_creation` — optional bool, default false. When true, suppress per-label warnings from steps 6-7 and emit a single summary line at the end instead ("Auto-created N labels: dept:engineering, dept:company, task").
 
 ## Steps
 
@@ -26,13 +29,13 @@ At the start of a NEW task — NOT a fix or continuation of in-flight work. The 
 3. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo` is non-empty.
 4. Refuse if `$REPO_ROOT/.claude/.current-task` already exists; print the existing issue number and instructions to `task-complete` or manually clear the file (no `task-abandon` skill in v0).
 5. `gh repo view <repo> --json visibility` — if visibility is `public`, print a WARNING to stdout (do not block).
-6. Normalize each `--depts` value: trim whitespace and `tr A-Z a-z` (lowercase). For each normalized dept name, ensure label `dept:<name>` exists; create with `gh label create dept:<name> --description "Auto-created by task-register"` if missing — print a warning to stdout naming the created label AND record the label-creation event in the history-entry body.
-7. Ensure flat label `task` exists; create if missing (same warning convention).
+6. Normalize each `--depts` value: trim whitespace and `tr A-Z a-z` (lowercase). For each normalized dept name, ensure label `dept:<name>` exists; create with `gh label create dept:<name> --description "Auto-created by task-register"` if missing. **Warning behavior depends on `quiet_label_creation`**: when false (default), print one warning line per created label AND record each in the history-entry body. When true, accumulate the created labels in a list and defer the announcement to step 11's summary; still record in the history-entry body.
+7. Ensure flat label `task` exists; create if missing (same warning behavior — per `quiet_label_creation`).
 8. Render the issue body from `shared/templates/task-issue.md.tmpl`, substituting `{{TITLE}}`, `{{DEPARTMENTS}}` (joined human-friendly list), `{{INITIATED_BY}}` (= `chief-of-staff` + ISO date), `{{PLAN_LINK}}`, `{{GOAL}}`. Leave the `<!-- progress-log -->` marker intact (it serves as an anchor for the optional v1 body-insertion approach; v0 uses comments).
-9. `gh issue create --repo <repo> --title "<title>" --body "<rendered>" --label task --label dept:<each> --json url,number` — capture the returned issue number and URL.
+9. Create the issue and capture its URL/number explicitly from JSON output: `gh issue create --repo <repo> --title "<title>" --body "<rendered>" --label task --label dept:<each> --json url,number --jq '.url'`. The `--jq '.url'` extracts just the URL to stdout (issue number is parseable from the URL's last path segment, e.g. `/issues/4` → `4`); alternatively call again with `--jq '.number'` if a separate capture is desired. Do NOT rely on the bare `gh issue create` stdout-URL format — different gh versions print slightly different formats, but `--json` output is stable.
 10. Write the issue number (digits only) to `$REPO_ROOT/.claude/.current-task`.
-11. Print a one-line summary: `Tracked: #<number> (<url>) — depts: <list>`.
-12. **Write history entry** to `$REPO_ROOT/.claude/skills/task-register/history/<YYYY-MM-DD>-<short-run-id>.md` per the root `CLAUDE.md` schema. Include in body: the issue URL, depts, plan_file, and any label-creation warnings from steps 6-7.
+11. Print a one-line summary: `Tracked: #<number> (<url>) — depts: <list>`. **If `quiet_label_creation` was true and labels were created**, append: ` — auto-created N labels: <comma-separated list>`.
+12. **Write history entry** to `$REPO_ROOT/.claude/skills/task-register/history/<YYYY-MM-DD>-<short-run-id>.md` per the root `CLAUDE.md` schema. Include in body: the issue URL, depts, plan_file, and the full list of label-creation events from steps 6-7 (regardless of `quiet_label_creation` — the history-entry body always records them for audit).
 
 ## Outputs
 
