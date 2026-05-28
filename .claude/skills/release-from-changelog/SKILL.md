@@ -38,7 +38,16 @@ When cutting a new version release. Replaces the multi-step manual workflow (ext
    fi
    ```
 
-5. **Cut the release.** Auto-derive the title from the CHANGELOG section's first **non-reserved** `### ` subheading. Reserved names are the Keep-a-Changelog section labels (`Added`, `Changed`, `Removed`, `Deprecated`, `Fixed`, `Security`, `Notes`, `Migration`) — these are structural headers, not titles, and were the cause of the v0.2.0 title bug surfaced as a `proposed_delta` (auto-derivation produced `v0.2.0 — Added`). If no non-reserved subheading exists, fall back to the bare `$VERSION` as the title:
+5. **Pre-release scaffold check (added v0.3.1).** Before tagging, verify the working tree scaffolds cleanly via Copier:
+   ```bash
+   rm -rf /tmp/opos-prerelease-check
+   python3 -m copier copy . /tmp/opos-prerelease-check \
+     -d COMPANY_NAME=PreReleaseCheck --defaults --vcs-ref=HEAD
+   rm -rf /tmp/opos-prerelease-check
+   ```
+   Assert exit 0. This catches Copier-side breakage (renamed templates, missing `_skip_if_exists`, stray `.jinja` files that shouldn't be templated, etc.) BEFORE the release is tagged. If this fails, ABORT — fix the scaffolding issue and re-run; do NOT proceed. **Rationale:** v0.3.0's first cut shipped broken templates because `ui/templates/*.html.jinja` files were being rendered by Copier instead of shipped verbatim, requiring a destructive delete-and-re-cut. This step would have caught it.
+
+6. **Cut the release.** Auto-derive the title from the CHANGELOG section's first **non-reserved** `### ` subheading. Reserved names are the Keep-a-Changelog section labels (`Added`, `Changed`, `Removed`, `Deprecated`, `Fixed`, `Security`, `Notes`, `Migration`) — these are structural headers, not titles, and were the cause of the v0.2.0 title bug surfaced as a `proposed_delta` (auto-derivation produced `v0.2.0 — Added`). If no non-reserved subheading exists, fall back to the bare `$VERSION` as the title:
    ```bash
    TITLE=$(awk '
      /^### / {
@@ -60,9 +69,9 @@ When cutting a new version release. Replaces the multi-step manual workflow (ext
    ```
    Note: tag creation is a side-effect of `gh release create` against the target branch; no separate `git tag` needed. The heuristic is unit-tested in `ui/tests/test_title_heuristic.sh` against three fixtures (Added-only, Notes-only, Notes-then-arbitrary).
 
-6. **Verify creation.** `gh release view "$VERSION" --repo "$REPO" --json tagName --jq '.tagName'` must return `"$VERSION"`. Else ABORT (release creation silently failed — unusual).
+7. **Verify creation.** `gh release view "$VERSION" --repo "$REPO" --json tagName --jq '.tagName'` must return `"$VERSION"`. Else ABORT (release creation silently failed — unusual).
 
-7. **Write history entry** to `./history/<YYYY-MM-DD>-<version>.md`. Include: version, target branch, repo, extracted-notes line count, derived title, release URL.
+8. **Write history entry** to `./history/<YYYY-MM-DD>-<version>.md`. Include: version, target branch, repo, extracted-notes line count, derived title, release URL.
 
 ## Outputs
 
