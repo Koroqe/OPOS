@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OPOS Console — {{ company_name }}{% if page_title %} — {{ page_title }}{% endif %}</title>
+<link rel="stylesheet" href="/static/console.css">
+{% if auto_refresh %}<meta http-equiv="refresh" content="{{ auto_refresh }}">{% endif %}
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <a href="/"><strong>OPOS Console</strong></a>
+    <span class="company">{{ company_name }}</span>
+  </div>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/tasks">Tasks</a>
+    <a href="/agents">Agents</a>
+    <a href="/skills">Skills</a>
+    <a href="/departments">Departments</a>
+    <a href="/activity">Activity</a>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <small>Read-only console over <code>{{ repo_root }}</code> — write actions stay in Claude Code.</small>
+</footer>
+</body>
+</html>
