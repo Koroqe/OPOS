@@ -3,17 +3,17 @@
 <h1>Dashboard</h1>
 
 <section class="tiles">
-  <div class="tile">
+  <div class="tile{% if not counts.tasks_active %} zero{% endif %}">
     <div class="label">Tasks — active</div>
-    <div class="value"><a href="/tasks?state=active">{{ counts.tasks_active }}</a></div>
+    <div class="value">{% if counts.tasks_active %}<a href="/tasks?state=active">{{ counts.tasks_active }}</a>{% else %}<span class="zero-value">0</span>{% endif %}</div>
   </div>
-  <div class="tile">
+  <div class="tile{% if not counts.tasks_paused %} zero{% endif %}">
     <div class="label">Tasks — paused</div>
-    <div class="value"><a href="/tasks?state=paused">{{ counts.tasks_paused }}</a></div>
+    <div class="value">{% if counts.tasks_paused %}<a href="/tasks?state=paused">{{ counts.tasks_paused }}</a>{% else %}<span class="zero-value">0</span>{% endif %}</div>
   </div>
-  <div class="tile">
+  <div class="tile{% if not counts.tasks_completed %} zero{% endif %}">
     <div class="label">Tasks — completed</div>
-    <div class="value"><a href="/tasks?state=completed">{{ counts.tasks_completed }}</a></div>
+    <div class="value">{% if counts.tasks_completed %}<a href="/tasks?state=completed">{{ counts.tasks_completed }}</a>{% else %}<span class="zero-value">0</span>{% endif %}</div>
   </div>
   <div class="tile">
     <div class="label">Agents</div>
@@ -24,8 +24,9 @@
     <div class="value"><a href="/skills">{{ counts.skills }}</a></div>
   </div>
   <div class="tile">
-    <div class="label">Departments</div>
-    <div class="value"><a href="/departments">{{ counts.departments }}</a></div>
+    <div class="label">Scopes</div>
+    <div class="value"><a href="/departments">{{ counts.scopes_total }}</a></div>
+    <div class="muted" style="font-size: 0.85em; margin-top: 0.25em;">{{ counts.scopes_dept }} dept{{ 's' if counts.scopes_dept != 1 else '' }} + 1 company</div>
   </div>
 </section>
 

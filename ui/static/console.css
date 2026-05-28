@@ -88,6 +88,8 @@ h3 { font-size: 1.05em; }
 .tile .label { color: var(--fg-dim); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
 .tile .value { font-size: 1.8em; font-weight: 600; margin-top: 0.25em; }
 .tile a { color: inherit; }
+.tile.zero .value { color: var(--fg-dim); }
+.tile.zero .zero-value { color: var(--fg-dim); font-weight: 600; }
 .split {
   display: grid;
   grid-template-columns: 1fr 2fr;
