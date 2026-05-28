@@ -38,16 +38,27 @@ When cutting a new version release. Replaces the multi-step manual workflow (ext
    fi
    ```
 
-5. **Cut the release.** Auto-derive the title from the CHANGELOG section's first `### ` subheading if present; otherwise default to the bare `$VERSION`:
+5. **Cut the release.** Auto-derive the title from the CHANGELOG section's first **non-reserved** `### ` subheading. Reserved names are the Keep-a-Changelog section labels (`Added`, `Changed`, `Removed`, `Deprecated`, `Fixed`, `Security`, `Notes`, `Migration`) — these are structural headers, not titles, and were the cause of the v0.2.0 title bug surfaced as a `proposed_delta` (auto-derivation produced `v0.2.0 — Added`). If no non-reserved subheading exists, fall back to the bare `$VERSION` as the title:
    ```bash
-   TITLE=$(awk '/^### /{print; exit}' /tmp/release-notes-"$VERSION".md | sed 's/^### //')
-   TITLE="${TITLE:-$VERSION}"
+   TITLE=$(awk '
+     /^### / {
+       name = substr($0, 5)
+       if (name !~ /^(Added|Changed|Removed|Deprecated|Fixed|Security|Notes|Migration)$/) {
+         print name
+         exit
+       }
+     }' /tmp/release-notes-"$VERSION".md)
+   if [ -n "$TITLE" ]; then
+     FULL_TITLE="$VERSION — $TITLE"
+   else
+     FULL_TITLE="$VERSION"
+   fi
    gh release create "$VERSION" --repo "$REPO" \
-     --title "$VERSION — $TITLE" \
+     --title "$FULL_TITLE" \
      --notes-file /tmp/release-notes-"$VERSION".md \
      --target "$TARGET_BRANCH"
    ```
-   Note: tag creation is a side-effect of `gh release create` against the target branch; no separate `git tag` needed.
+   Note: tag creation is a side-effect of `gh release create` against the target branch; no separate `git tag` needed. The heuristic is unit-tested in `ui/tests/test_title_heuristic.sh` against three fixtures (Added-only, Notes-only, Notes-then-arbitrary).
 
 6. **Verify creation.** `gh release view "$VERSION" --repo "$REPO" --json tagName --jq '.tagName'` must return `"$VERSION"`. Else ABORT (release creation silently failed — unusual).
 
