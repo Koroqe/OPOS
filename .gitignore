@@ -1,3 +1,4 @@
 .claude/.current-task
+.claude/.paused-tasks
 .claude/.last-update-check
 .claude/scratchpad.md
