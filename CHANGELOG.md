@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.4.0] - 2026-05-29
+
+### Added
+
+- `design-agent` skill (owner: `ops-manager`) — mirrors `design-process` for creating new agent files. 12-step interactive procedure with `consult-agent`-based dept-lead/escalation-target/delegation-target consultations, least-privilege tools allow-list ladder, AGENT.md.tmpl token validation, delegation-cycle check, slug-regex validation (`^[a-z][a-z0-9-]{1,62}$` — same as `ui/validate.py:safe_slug`), TOCTOU re-check at file-write time, and history-entry-with-skipped-consultations record. PROCESS.md retrofits `state_schema:` from start (LangGraph pattern from v0.2.0): `discovering → consulting → drafting → presenting → iterating → committing`.
+- Console agent ergonomics: `/agents` page footer hint pointing at `/design-agent` invocation; `/agents/<dept>/<name>` detail page prepends a `/consult-agent` callout with the agent's name substituted (Jinja2 autoescape protects against HTML injection in malformed names).
+- `.cli-hint` CSS class in `ui/static/console.css` (matches `.warn` / `.panel` aesthetic).
+- 3 new template-render tests in `ui/tests/test_templates.py` (consult-hint substitution, autoescape defense, agents-list hint). Test count: 34 → 37.
+
+### Changed
+
+- `design-process` SKILL.md Failure modes "New agent role required" — now invokes `design-agent` inline (both owned by ops-manager) instead of escalating to `coo` as the first action. `coo` escalation preserved as fallback when the user explicitly rejects the agent design. The new-DEPARTMENT-charter case still escalates to `coo` (no `design-department` skill yet — likely v0.5.0+).
+- `ops-manager` agent: `owns_processes:` grows from `[design-process]` to `[design-process, design-agent]`. Role + Delegation + Escalation sections updated to reflect the v0.4.0 hand-off pattern.
+- RISKS.md Risk 8 status: `LOW impact; documented escalation` → `CLOSED in v0.4.0` (with pointer to `.claude/skills/design-agent/` + the remaining new-department-charter gap noted).
+
+### Notes
+
+- Closes [#8](https://github.com/Koroqe/OPOS/issues/8) — "v0.4.0 — design-agent skill + agent ergonomics".
+- No breaking changes for v0.3.x consumers. `copier update` flows cleanly: the new `design-agent/` directory is a CORE addition; `ui/templates/agents.html` + `ui/templates/agent.html` are CORE updates (consumers who hand-edited them will see `.rej` per Risk 9, same as any CORE update).
+- `release-from-changelog` SKILL.md was NOT modified in this release — its v0.3.1 8-step procedure (with the pre-release scaffold check at step 5) is exercised cleanly on this release.
+- All 8 GitHub issues to date (#1–#8) will be CLOSED after this release ships.
+
 ## [0.3.1] - 2026-05-29
 
 ### Fixed
@@ -129,6 +151,7 @@ In `0.x.y` releases breaking changes are allowed.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.4.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.4.0
 [0.3.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.2.0
