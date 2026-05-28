@@ -4,5 +4,10 @@
   "department_label_prefix": "dept:",
   "body_template_path": "shared/templates/task-issue.md.tmpl",
   "comment_template_path": "shared/templates/task-update.md.tmpl",
-  "link_commits": true
+  "link_commits": true,
+  "_label_palette": {
+    "task": "0E8A16",
+    "status:done": "0E8A16",
+    "dept_cycle": ["1D76DB", "FBCA04", "5319E7", "D93F0B", "B60205", "0052CC"]
+  }
 }
