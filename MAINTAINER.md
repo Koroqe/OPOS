@@ -48,9 +48,9 @@ To add a new runtime-state path:
    ```bash
    gh release create vX.Y.Z --repo Koroqe/OPOS \
      --title "vX.Y.Z — short summary" \
-     --notes "$(awk '/^## \[X.Y.Z\]/,/^## \[/' CHANGELOG.md | sed '$d')"
+     --notes "$(awk '/^## \[X.Y.Z\]/{p=1;print;next} /^## \[/{p=0} /^\[[0-9]/{p=0} p' CHANGELOG.md)"
    ```
-   The `awk` extract pulls just the relevant CHANGELOG section as release notes (avoids dumping the whole file).
+   The `awk` extract pulls just the relevant CHANGELOG section as release notes (avoids dumping the whole file). The pattern uses an explicit `p` flag with three stop conditions: the next `## [` heading (next version's entry), AND a `[X.Y.Z]:` link-reference line (the link-references at the bottom of CHANGELOG). This handles both the single-entry case (where the version is the only `## [` entry) and the link-reference-leak case. **Fix history:** previously used `awk '/^## \[X.Y.Z\]/,/^## \[/' | sed '$d'` which silently produced empty output for single-entry files (the range pattern matched the same line for start and end).
 6. Verify the release appears at `https://github.com/Koroqe/OPOS/releases/tag/vX.Y.Z`.
 7. Run the post-release sanity check: `copier copy --vcs-ref vX.Y.Z gh:Koroqe/OPOS /tmp/postrelease -d COMPANY_NAME=Sanity --defaults`.
 
