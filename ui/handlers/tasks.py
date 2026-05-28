@@ -88,7 +88,7 @@ def route_tasks(request) -> tuple[int, str, str]:
     all_owners = sorted({t.owner for t in all_tasks if t.owner})
 
     body = render(
-        "tasks.html.jinja",
+        "tasks.html",
         page_title="Tasks",
         tasks=tasks,
         total=len(all_tasks),
@@ -114,7 +114,7 @@ def route_task(request) -> tuple[int, str, str]:
                 if ref_n != n:
                     refs_to.add(ref_n)
     body = render(
-        "task.html.jinja",
+        "task.html",
         page_title=f"#{n}",
         task=match,
         gh_data=gh_data,

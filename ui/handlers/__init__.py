@@ -29,10 +29,10 @@ def _stub_handler(request) -> tuple[int, str, str]:
     if "name" in pp:
         safe_slug(pp["name"])
     body = render(
-        "base.html.jinja",
+        "base.html",
         page_title="Stub",
         # Inline content block via a tiny ad-hoc template extension:
-        # base.html.jinja's {% block content %} default renders nothing,
+        # base.html's {% block content %} default renders nothing,
         # so we wrap a minimal stub HTML through the base by using a
         # one-off inline render.
     )

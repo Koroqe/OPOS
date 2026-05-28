@@ -34,7 +34,7 @@ def route_activity(request) -> tuple[int, str, str]:
     all_skills = sorted({s.name for s in parse_skills()})
 
     body = render(
-        "activity.html.jinja",
+        "activity.html",
         page_title="Activity",
         entries=entries,
         total=total,

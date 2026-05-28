@@ -51,7 +51,7 @@ def route_agents(request) -> tuple[int, str, str]:
         key=lambda kv: _dept_key(kv[0]),
     )
     body = render(
-        "agents.html.jinja",
+        "agents.html",
         page_title="Agents",
         depts=depts_sorted,
         total=len(agents),
@@ -71,7 +71,7 @@ def route_agent(request) -> tuple[int, str, str]:
     if _AGENTS_ROOT not in resolved.parents:
         raise BadRequest("path traversal blocked")
     body = render(
-        "agent.html.jinja",
+        "agent.html",
         page_title=name,
         agent=match,
         called_by=_called_by(name, all_agents),
@@ -81,7 +81,7 @@ def route_agent(request) -> tuple[int, str, str]:
 
 def route_departments(request) -> tuple[int, str, str]:
     depts = parse_departments()
-    body = render("departments.html.jinja", page_title="Departments", depts=depts)
+    body = render("departments.html", page_title="Departments", depts=depts)
     return (200, "text/html; charset=utf-8", body)
 
 
@@ -94,7 +94,7 @@ def route_department(request) -> tuple[int, str, str]:
     members = set(match.member_agents)
     dept_skills = [s for s in parse_skills() if s.owner_agent in members]
     body = render(
-        "department.html.jinja",
+        "department.html",
         page_title=name,
         dept=match,
         dept_skills=dept_skills,

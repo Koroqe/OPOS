@@ -17,7 +17,7 @@ def route_dashboard(request) -> tuple[int, str, str]:
     }
     recent_activity = parse_history()[:5]
     body = render(
-        "dashboard.html.jinja",
+        "dashboard.html",
         page_title="Dashboard",
         counts=counts,
         recent_activity=recent_activity,

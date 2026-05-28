@@ -38,7 +38,7 @@ def route_skills(request) -> tuple[int, str, str]:
     )
 
     body = render(
-        "skills.html.jinja",
+        "skills.html",
         page_title="Skills",
         groups=groups,
         total=len(skills),
@@ -56,7 +56,7 @@ def route_skill(request) -> tuple[int, str, str]:
     if not match:
         return (404, "text/html; charset=utf-8", f"<h1>404</h1><p>No skill {name!r}.</p>")
     history = [e for e in parse_history() if e.skill == name][:10]
-    body = render("skill.html.jinja", page_title=name, skill=match, history=history)
+    body = render("skill.html", page_title=name, skill=match, history=history)
     return (200, "text/html; charset=utf-8", body)
 
 
