@@ -42,9 +42,10 @@ When `--since_sha` is not passed, resolve in this order:
 10. `gh issue comment <number> --repo <repo> --body "<final>"`.
 11. Ensure label `status:done` exists; create with `gh label create status:done --color <hex>` if missing (warn on creation). The color SHOULD come from `.claude/task-tracking.config.json`'s `_label_palette["status:done"]` field (defaults to green `0E8A16` in the shipped config); v0.1.1 documents the palette as the source of truth, but the config-read mechanic is currently still manual (the skill body picks the color; future v0.2.0 work will wire the read into the skill itself). Apply it: `gh issue edit <number> --add-label status:done`.
 12. `gh issue close <number> --repo <repo> --reason completed`.
-13. Delete `$REPO_ROOT/.claude/.current-task`.
-14. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
-15. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
+13. **Archive the task file to `tasks/closed/`** (new in v0.2.0). Ensure the directory exists via `mkdir -p "$REPO_ROOT/tasks/closed/"` (idempotent — first task-complete after v0.2.0 creates it; subsequent calls no-op). Then move the task file: `mv "$REPO_ROOT/tasks/<number>.md" "$REPO_ROOT/tasks/closed/<number>.md"`. **Backwards-compat**: if `tasks/<number>.md` doesn't exist (e.g. task was opened pre-v0.2.0 before the `tasks/` convention), skip silently — the task-complete still proceeds and the GitHub issue still closes correctly.
+14. Delete `$REPO_ROOT/.claude/.current-task`.
+15. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
+16. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
 
 ## Outputs
 

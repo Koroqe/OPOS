@@ -9,9 +9,12 @@ _min_copier_version: "9.0.0"
 _exclude:
   - .git
   - .claude/.current-task
+  - .claude/.paused-tasks
   - .claude/.last-update-check
   - .claude/scratchpad.md
   - "**/history/202[0-9]-*.md"
+  - "tasks/[0-9]*.md"       # framework's own dogfooded task files; consumers get empty tasks/ via .gitkeep
+  - "tasks/closed/**"        # same as above for completed tasks
   - copier.yml
   - MAINTAINER.md   # framework-developer guide; not for consumers
 

@@ -1,0 +1,46 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<ISSUE_NUMBER>>      — GitHub issue number (e.g. "5")
+  <<TITLE>>             — issue title (matches the GitHub issue title)
+  <<OWNER_AGENT>>       — agent name owning this task (e.g. "chief-of-staff")
+  <<DEPARTMENTS>>       — comma-separated dept list (e.g. "engineering, company")
+  <<STATE>>             — one of: active | paused | completed | dropped
+  <<CREATED_DATE>>      — ISO date task was opened (YYYY-MM-DD)
+  <<COMPLETED_DATE>>    — ISO date task was closed, or blank if still active
+  <<SUCCESS_CRITERIA>>  — bulleted list of acceptance criteria (parsed from issue body if structured)
+  <<DEADLINE>>          — optional ISO date, or blank
+  <<RELATED_SKILLS>>    — bracketed list of skill names this task exercises (e.g. "[design-process, task-register]")
+-->
+
+---
+issue_number: <<ISSUE_NUMBER>>
+title: <<TITLE>>
+owner: <<OWNER_AGENT>>
+depts: [<<DEPARTMENTS>>]
+state: <<STATE>>
+created: <<CREATED_DATE>>
+completed: <<COMPLETED_DATE>>
+success_criteria: <<SUCCESS_CRITERIA>>
+deadline: <<DEADLINE>>
+related_skills: <<RELATED_SKILLS>>
+---
+
+# <<TITLE>>
+
+## Goal
+
+(Copied from the GitHub issue body's "Goal" section, or summarized if no structured Goal exists.)
+
+## Acceptance criteria
+
+(Copied from the GitHub issue body's "Acceptance criteria" section.)
+
+## Progress log
+
+(Appended by `task-update` invocations. Each entry: timestamp + status change + one-line summary. Mirrors the GitHub comments but is locally-grep-able.)
+
+## Final outcome
+
+(Written by `task-complete` at task close. Captures: what shipped, deviations from acceptance criteria, links to artifacts.)
