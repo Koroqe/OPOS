@@ -108,13 +108,15 @@ The skill's step 3 ("Identify involved departments") consults only departments t
 
 ## Risk 8 — `design-process` cannot create new agent roles
 
-**Status:** LOW impact; documented escalation.
+**Status:** **CLOSED in v0.4.0** — see [`.claude/skills/design-agent/`](.claude/skills/design-agent/).
 
-If a designed process needs an agent role that doesn't exist (e.g. a "release-coordinator" with no matching `name:` in `.claude/agents/`), `design-process` escalates to `coo` and stops. The skill does not create new agents.
+**Original concern (historical, pre-v0.4.0):** If a designed process needed an agent role that didn't exist (e.g. a "release-coordinator" with no matching `name:` in `.claude/agents/`), `design-process` would escalate to `coo` and stop. The skill did not create new agents.
 
-**Forward path:**
+**Resolution (v0.4.0):**
 
-Creating agents is its own design problem and could be addressed by a future `design-agent` skill. For v0, expanding the org chart is a conversation between the user, `coo`, and (where applicable) `ceo`.
+The `design-agent` skill (owned by `ops-manager`, same as `design-process`) mirrors `design-process`'s interactive structure for agent files. When `design-process` hits the "new agent role required" failure mode, it now invokes `design-agent` inline instead of escalating. `coo` escalation is preserved as a fallback when the user rejects the agent design. See `design-process/SKILL.md` Failure modes and `.claude/agents/company/ops-manager.md` for the updated escalation path.
+
+**Remaining gap (separate concern):** new DEPARTMENT charters still require manual creation. A future `design-department` skill (v0.5.0+ candidate) would close that loop.
 
 ## Risk 9 — Copier conflict resolution is manual
 
