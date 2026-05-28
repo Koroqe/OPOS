@@ -73,6 +73,6 @@ def install(path_pattern: str, handler) -> None:
 # Slice 3 (dashboard + activity):
 from . import dashboard as _dashboard, activity as _activity  # noqa: F401, E402
 # Slice 4 (agents + departments):
-# from . import agents as _agents  # noqa: F401
+from . import agents as _agents  # noqa: F401, E402
 # Slice 5 (skills + tasks):
 # from . import skills as _skills, tasks as _tasks  # noqa: F401

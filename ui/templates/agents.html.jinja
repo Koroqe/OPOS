@@ -1,0 +1,27 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<h1>Agents</h1>
+<p class="muted">{{ total }} agents across {{ depts|length }} scopes.</p>
+
+<div class="sections">
+{% for dept, members in depts %}
+<section data-dept="{{ dept }}">
+  <h2><span class="dept" data-dept="{{ dept }}">{{ dept }}</span> — {{ members|length }} agent{{ 's' if members|length != 1 else '' }}</h2>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Description</th><th>Owns</th></tr>
+    </thead>
+    <tbody>
+      {% for a in members %}
+      <tr>
+        <td><a href="/agents/{{ dept }}/{{ a.name }}">{{ a.name }}</a></td>
+        <td>{{ a.description }}</td>
+        <td>{{ a.owns_processes|length }} skill{{ 's' if a.owns_processes|length != 1 else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+</div>
+{% endblock %}

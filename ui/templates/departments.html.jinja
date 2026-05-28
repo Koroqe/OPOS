@@ -1,0 +1,20 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<h1>Departments</h1>
+<p class="muted">{{ depts|length }} departments (including the synthetic <code>company</code> scope).</p>
+
+<table>
+  <thead>
+    <tr><th>Department</th><th>Members</th><th>Charter source</th></tr>
+  </thead>
+  <tbody>
+    {% for d in depts %}
+    <tr>
+      <td><a href="/departments/{{ d.name }}"><span class="dept" data-dept="{{ d.name }}">{{ d.name }}</span></a></td>
+      <td>{{ d.member_agents|length }}</td>
+      <td>{% if d.path %}<code>{{ d.path }}</code>{% else %}<span class="muted">— none —</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

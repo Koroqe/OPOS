@@ -1,0 +1,41 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<p><a href="/departments">← Departments</a></p>
+<h1><span class="dept" data-dept="{{ dept.name }}">{{ dept.name }}</span></h1>
+
+<div class="split">
+  <aside class="panel">
+    <h3>Member agents</h3>
+    {% if dept.member_agents %}
+    <ul class="bare">
+      {% for name in dept.member_agents %}
+      <li><a href="/agents/{{ dept.name }}/{{ name }}">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No agents in this department.</p>
+    {% endif %}
+
+    <h3>Skills owned by dept agents</h3>
+    {% if dept_skills %}
+    <ul class="bare">
+      {% for s in dept_skills %}
+      <li><a href="/skills/{{ s.name }}">{{ s.name }}</a> <span class="muted">— {{ s.owner_agent }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No skills owned by dept members.</p>
+    {% endif %}
+
+    {% if dept.path %}<p class="muted"><small>Charter: <code>{{ dept.path }}</code></small></p>{% endif %}
+  </aside>
+  <article class="panel">
+    <h3>Charter</h3>
+    {% if dept.charter_body %}
+    {{ dept.charter_body | md | safe }}
+    {% else %}
+    <p class="muted">No charter file.</p>
+    {% endif %}
+  </article>
+</div>
+{% endblock %}

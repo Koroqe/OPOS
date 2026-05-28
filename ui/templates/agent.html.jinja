@@ -1,0 +1,38 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<p><a href="/agents">← Agents</a></p>
+<h1>{{ agent.name }}</h1>
+<p class="muted">{{ agent.description }}</p>
+
+<div class="split">
+  <aside class="panel">
+    <h3>Frontmatter</h3>
+    <dl class="kv">
+      <dt>Department</dt><dd><span class="dept" data-dept="{{ agent.department }}">{{ agent.department }}</span></dd>
+      <dt>Tools</dt><dd>{% for t in agent.tools %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+      <dt>Owns</dt><dd>
+        {% if agent.owns_processes %}
+        <ul class="bare">
+          {% for s in agent.owns_processes %}
+          <li><a href="/skills/{{ s }}">{{ s }}</a></li>
+          {% endfor %}
+        </ul>
+        {% else %}<span class="muted">— none —</span>{% endif %}
+      </dd>
+      {% if called_by %}
+      <dt>Called by</dt><dd>
+        <ul class="bare">
+          {% for c in called_by %}
+          <li><a href="/agents/{{ c.department }}/{{ c.name }}">{{ c.name }}</a></li>
+          {% endfor %}
+        </ul>
+      </dd>
+      {% endif %}
+      <dt>Source</dt><dd><code>{{ agent.path }}</code></dd>
+    </dl>
+  </aside>
+  <article class="panel">
+    {{ agent.body | md | safe }}
+  </article>
+</div>
+{% endblock %}
