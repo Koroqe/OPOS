@@ -4,7 +4,7 @@ description: Coordinates between CEO/COO and departments, manages company-level 
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Task", "Bash"]
 model: opus
 department: company
-owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core]
+owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core, consult-agent, release-from-changelog, task-pause, task-resume]
 ---
 
 # chief-of-staff
@@ -45,3 +45,7 @@ Escalates to: `coo` for operational blockers, `ceo` for strategic tradeoffs.
 - `task-complete` — `.claude/skills/task-complete/` — post the final report (summary + changelog + deliverables) and close the issue.
 - `check-for-updates` — `.claude/skills/check-for-updates/` — cheap probe that checks the upstream OPOS-core repo for a newer release; invoked silently as step 1 of the three task-lifecycle skills above.
 - `sync-from-core` — `.claude/skills/sync-from-core/` — apply upstream changes via `copier update`; opens a branch with the diff for user review before commit.
+- `consult-agent` — `.claude/skills/consult-agent/` (NEW in v0.2.0) — consult another agent by spawning its definition as a subagent via the Task tool; returns the simulated agent's response. Canonicalizes the eng-lead/rnd-lead simulation pattern.
+- `release-from-changelog` — `.claude/skills/release-from-changelog/` (NEW in v0.2.0) — cut a GitHub release from a CHANGELOG.md version entry; extracts notes via the canonical awk pattern.
+- `task-pause` — `.claude/skills/task-pause/` (NEW in v0.2.0) — pause the current task (move from `.current-task` to `.paused-tasks` list); preserves the GitHub issue for later resume.
+- `task-resume` — `.claude/skills/task-resume/` (NEW in v0.2.0) — resume a previously-paused task (move from `.paused-tasks` back to `.current-task`).
