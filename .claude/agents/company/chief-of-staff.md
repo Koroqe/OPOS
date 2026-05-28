@@ -4,7 +4,7 @@ description: Coordinates between CEO/COO and departments, manages company-level 
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Task", "Bash"]
 model: opus
 department: company
-owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core, consult-agent, release-from-changelog, task-pause, task-resume]
+owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core, consult-agent, release-from-changelog, task-pause, task-resume, serve-console]
 ---
 
 # chief-of-staff
@@ -49,3 +49,4 @@ Escalates to: `coo` for operational blockers, `ceo` for strategic tradeoffs.
 - `release-from-changelog` — `.claude/skills/release-from-changelog/` (NEW in v0.2.0) — cut a GitHub release from a CHANGELOG.md version entry; extracts notes via the canonical awk pattern.
 - `task-pause` — `.claude/skills/task-pause/` (NEW in v0.2.0) — pause the current task (move from `.current-task` to `.paused-tasks` list); preserves the GitHub issue for later resume.
 - `task-resume` — `.claude/skills/task-resume/` (NEW in v0.2.0) — resume a previously-paused task (move from `.paused-tasks` back to `.current-task`).
+- `serve-console` — `.claude/skills/serve-console/` (NEW in v0.3.0) — start the local-host read-only console UI under `ui/` (browse tasks, agents, skills, departments, activity feed).

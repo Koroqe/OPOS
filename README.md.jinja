@@ -110,6 +110,19 @@ Three sibling skills track each new task as a GitHub issue, owned by [`chief-of-
 
 The target GitHub repo is configured in [`.claude/task-tracking.config.json`](.claude/task-tracking.config.json). All five skills shell out to the `gh` CLI via Bash; the `gh` CLI must be authenticated on the machine. Department labels follow the `dept:<name>` convention (lowercased; auto-created if missing — color from `_label_palette` in the config).
 
+## Console (read-only browser)
+
+Run `python3 ui/console.py` (or invoke the [`serve-console`](.claude/skills/serve-console/) skill) to start a local-host read-only web UI over the framework files. Defaults to `http://127.0.0.1:8765/`. Five pages plus four detail variants:
+
+- **Dashboard** — counts (tasks active/paused/completed, agents, skills, departments) + the 5 most recent activity entries.
+- **Tasks** — CRM-style table with state / dept / owner filters; per-task detail renders `tasks/<n>.md` plus the GitHub issue body and comments (fetched via `gh issue view`; 30s in-process cache; degrades gracefully if `gh` is unauthenticated).
+- **Agents** — grouped by department; per-agent detail shows frontmatter, markdown body, owned-skill backlinks, and a "called by" reverse lookup.
+- **Skills** — grouped by owner agent; per-skill detail renders SKILL.md + PROCESS.md + a "Recent runs" link list pointing into the activity feed.
+- **Departments** — list + per-dept detail (charter, member agents, dept-scoped skills).
+- **Activity** — chronological history-entry feed across all skills with skill / outcome / since filters.
+
+Prereqs: Python 3.10+, `jinja2` (already a Copier transitive dep), `markdown` (`pip install markdown` or `pipx inject copier markdown`). See [`ui/README.md`](ui/README.md) for full install + run details and [`RISKS.md`](RISKS.md) Risk 16 for the localhost-binding caveat.
+
 ## Self-improvement log schema
 
 Every process records each run in its own `history/` folder. Files are named `YYYY-MM-DD-<run-id>.md` with frontmatter:
@@ -146,6 +159,7 @@ The smoke-test recipe (run after substituting tokens for your company) lives in 
 - [`departments/`](departments/) — one folder per department; ship with `engineering/` as a worked example
 - [`shared/`](shared/) — templates and cross-company resources
 - [`tasks/`](tasks/) — per-task markdown files (one per GitHub issue tracked by `task-register`)
+- [`ui/`](ui/) — local-host read-only console (Python + Jinja2; see "Console (read-only browser)" above)
 - [`.claude/`](.claude/) — agents (by dept subfolder), global skills, settings
 
 ## Key reference docs

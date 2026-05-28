@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.3.0] - 2026-05-28
+
+### Added
+
+- `ui/` directory — a local-host **read-only console** that renders the framework's markdown + JSON as a CRM-style web UI. Boot with `python3 ui/console.py` (or via the new `serve-console` skill). Five pages plus four detail variants: dashboard, tasks (with state/dept/owner filters), agents (grouped by dept), skills (grouped by owner agent), departments, activity feed (chronological history-entry stream). Reads files on every request — always fresh. Defaults to `127.0.0.1:8765`; `--host 0.0.0.0` exposes on the LAN (warned in `serve-console` SKILL.md).
+- `serve-console` skill (owner: `chief-of-staff`) — one-command launch of the console with dependency checks (Python 3.10+, `jinja2`, `markdown`) and a clear install hint when `markdown` is missing. Long-running foreground process; abnormal-exit history entries only.
+- `ui/handlers/` package — per-resource handler modules (`dashboard`, `activity`, `agents`, `skills`, `tasks`) that register themselves via `install(pattern, handler)` at import time, populating a master `ROUTES` list consumed by the dispatcher in `ui/console.py`.
+- `ui/data.py` — pure-Python markdown frontmatter parsers (`parse_agents`, `parse_skills`, `parse_tasks`, `parse_history`, `parse_departments`, `paused_task_numbers`). `parse_departments` synthesizes a `company` department from `company/CLAUDE.md[.jinja]`, literal-substituting `{{ COMPANY_NAME }}` (no full Jinja engine in the data layer).
+- `ui/validate.py` — `safe_slug` / `safe_int` / `safe_date` / `safe_choice` + `BadRequest` exception. Path-traversal defense at the validator (slug regex rules out `..`, `/`, NUL, capitals; length capped at 64). Dispatcher maps `BadRequest` to 400.
+- `ui/render.py` — Jinja2 environment + markdown filter for rendering body panels.
+- `ui/smoke.sh` — scripted integration smoke test (boots server on a free port, curls 12 routes + 3 validation-rejection URLs, asserts statuses + no leftover stub markers).
+- `ui/tests/test_data.py`, `ui/tests/test_validate.py`, `ui/tests/test_title_heuristic.sh` — unittest + bash test coverage. 30 unittest cases all pass; the title-heuristic test PRE-validates the v0.3.0 `release-from-changelog` fix before the live release uses it.
+- `markdown` library — new optional Python dep used for body rendering. Pure-Python, ~150KB installed. Required-but-missing produces an install hint from `serve-console` step 4; no auto-install.
+- RISKS.md Risk 16 — localhost-binding rationale + restricted-folder caveat for the console.
+
+### Changed
+
+- `release-from-changelog` SKILL.md step 5 — title-derivation heuristic now skips the 8 reserved Keep-a-Changelog section names (`Added`, `Changed`, `Removed`, `Deprecated`, `Fixed`, `Security`, `Notes`, `Migration`) when picking the first `### ` subheading. Falls back to bare `$VERSION` when only reserved names exist. Fixes the v0.2.0 `v0.2.0 — Added` bug surfaced as a `proposed_delta`.
+- `task-register` SKILL.md step 9 — replace the bogus `gh issue create --json url,number --jq '.url'` snippet (the flag is not supported by `gh issue create`) with the working pattern `URL=$(gh issue create ...); ISSUE_NUM=$(basename "$URL")`. Bug surfaced when running `task-register` for issue #6.
+- `chief-of-staff` agent — `owns_processes:` grows from 9 to 10 (adds `serve-console`); body's "Owned processes" section gains one bullet.
+- `copier.yml _exclude` adds `ui/tests/` and `ui/smoke.sh` — framework-dogfooded test fixtures + smoke script that assert on the framework's specific agent/skill counts; not applicable to consumer scaffolds. The runnable console (`ui/console.py`, `ui/data.py`, `ui/handlers/`, `ui/templates/`, `ui/static/`, `ui/render.py`, `ui/validate.py`, `ui/README.md`) ships to consumers as CORE.
+- `.gitignore` adds `__pycache__/` and `*.pyc`.
+- `README.md` adds a "Console (read-only browser)" section after the task-tracking loop; adds `ui/` to the Subscopes list.
+
+### Notes
+
+- Closes [#6](https://github.com/Koroqe/OPOS/issues/6) — "Ship v0.3.0 — local-host read-only console UI".
+- No breaking changes for v0.2.x consumers. `copier update` flows cleanly: the new `ui/` directory is a CORE addition; `serve-console` skill is a new file; `chief-of-staff.md` is a CORE file (consumers who hand-edited it will see a `.rej` per Risk 9 — same as any CORE update).
+- **One new optional Python dep:** `markdown` (~150KB installed, pure-Python). Install with `pip install markdown` or `pipx inject copier markdown`. Required by the console; not by any other skill.
+- `release-from-changelog` self-tested by being used to cut this very release — the title heuristic is PRE-validated by `ui/tests/test_title_heuristic.sh` and known-good against three synthetic fixtures (Added-only, Notes-only, Notes-then-arbitrary) before the live invocation.
+
 ## [0.2.0] - 2026-05-28
 
 ### Added
@@ -78,6 +109,7 @@ In `0.x.y` releases breaking changes are allowed.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.3.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.1.0

@@ -2,3 +2,5 @@
 .claude/.paused-tasks
 .claude/.last-update-check
 .claude/scratchpad.md
+__pycache__/
+*.pyc

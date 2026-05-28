@@ -192,6 +192,24 @@ The `.claude/.current-task` and `.claude/.paused-tasks` state files are both git
 
 **Mitigation:** documented. Future v0.3.0 could move the state to tracked files (`tasks/<n>.md`'s frontmatter `state:` field is the natural place; the `.current-task` pointer could move to a tracked `tasks/.active` file). For v0.2.0, the per-machine model is accepted as a known limitation.
 
+## Risk 16 — Console exposes filesystem reads on localhost
+
+**Status:** LOW impact for the default loopback bind; MEDIUM if `--host 0.0.0.0` is chosen.
+
+The `ui/console.py` read-only web UI (added in v0.3.0; launched via the `serve-console` skill) binds `127.0.0.1` by default — loopback only, not reachable from other machines on the LAN. Users who pass `--host 0.0.0.0` to expose the console on their LAN MUST understand that anyone on that LAN can then read every markdown file in this repo, including restricted folders (`company/strategy/` per Risk 1). The `serve-console` SKILL.md flags this explicitly when 0.0.0.0 is chosen.
+
+Input validation (`safe_slug`, `safe_int`, `safe_date` in `ui/validate.py`) blocks path-traversal URLs (`/agents/eng/..%2Fpasswd` returns 400, not a leaked `/etc/passwd`). The dispatcher maps every `BadRequest` to a 400 HTML page — no 500 stacktrace leaks ever.
+
+**Mitigations in v0:**
+
+- Default bind is `127.0.0.1`; LAN exposure requires an explicit flag.
+- All URL path/query components flow through validators that reject `..`, `/`, NUL, capital letters, and over-length input.
+- Handlers additionally use `Path.resolve()` + a parent-directory containment check before reading any file — belt-and-suspenders.
+
+**Hardening paths (NOT implemented):**
+
+The console honors the same convention-only restricted-folder rule as the rest of the framework. Adopters who use the MCP-based hardening path from Risk 1 (path allow-lists) must additionally gate the console-side reads — v0.3.0 reads any markdown the host filesystem allows. A future console-side `restricted:` honor-list could enforce dropping the file content from rendered pages even when the file is on disk.
+
 ## Advisory note — upstream naming
 
 The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-template` or `opos-core`). Naming mirrors the consumer's experience: they scaffold from `Koroqe/OPOS` and receive updates from the same upstream. No renaming planned.
