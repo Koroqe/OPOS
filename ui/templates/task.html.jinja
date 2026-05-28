@@ -1,0 +1,76 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<p><a href="/tasks">← Tasks</a></p>
+<h1>#{{ task.issue_number }} — {{ task.title }}</h1>
+
+<div class="split">
+  <aside class="panel">
+    <h3>Frontmatter</h3>
+    <dl class="kv">
+      <dt>State</dt><dd><span class="badge {{ task.state }}">{{ task.state }}</span></dd>
+      <dt>Owner</dt><dd>{{ task.owner }}</dd>
+      <dt>Depts</dt><dd>{% for d in task.depts %}<span class="dept" data-dept="{{ d }}">{{ d }}</span>{% if not loop.last %} {% endif %}{% endfor %}</dd>
+      <dt>Created</dt><dd>{{ task.created }}</dd>
+      <dt>Completed</dt><dd>{{ task.completed or '—' }}</dd>
+      <dt>Source</dt><dd><code>{{ task.path }}</code></dd>
+    </dl>
+
+    {% if task.related_skills %}
+    <h3>Related skills</h3>
+    <ul class="bare">
+      {% for s in task.related_skills %}
+      <li><a href="/skills/{{ s }}">{{ s }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if task.success_criteria %}
+    <h3>Acceptance criteria</h3>
+    <ul>
+      {% for c in task.success_criteria %}
+      <li>{{ c }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </aside>
+  <article class="panel">
+    <h3>Task body</h3>
+    {{ task.body | md | safe }}
+
+    {% if gh_warning %}
+    <div class="warn"><strong>gh issue fetch failed:</strong> {{ gh_warning }}</div>
+    {% endif %}
+
+    {% if gh_data %}
+    <hr>
+    <h3>GitHub issue (#{{ task.issue_number }})</h3>
+    <p class="muted">State: <strong>{{ gh_data.state }}</strong>
+      {% if gh_data.labels %}· Labels:
+        {% for l in gh_data.labels %}<code>{{ l }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      {% endif %}
+    </p>
+    {% if gh_data.body %}
+    <h4>Issue body</h4>
+    {{ gh_data.body | md | safe }}
+    {% endif %}
+    {% if gh_data.comments %}
+    <h4>Comments ({{ gh_data.comments|length }})</h4>
+    {% for c in gh_data.comments %}
+    <article style="margin: 0.5em 0; padding: 0.5em; border-left: 3px solid var(--border);">
+      <p class="muted"><small>{{ c.createdAt }} — {{ c.author.login }}</small></p>
+      {{ c.body | md | safe }}
+    </article>
+    {% endfor %}
+    {% endif %}
+    {% if refs_to %}
+    <h4>References</h4>
+    <ul class="bare">
+      {% for n in refs_to %}
+      <li><a href="/tasks/{{ n }}">#{{ n }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endif %}
+  </article>
+</div>
+{% endblock %}

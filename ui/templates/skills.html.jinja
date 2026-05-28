@@ -1,0 +1,49 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<h1>Skills</h1>
+<p class="muted">{{ total }} skills grouped by owner agent.</p>
+
+<form class="filter-form" method="get" action="/skills">
+  <label>Owner:
+    <select name="owner">
+      <option value="">— all —</option>
+      {% for o in owners %}
+      <option value="{{ o }}"{% if filters.owner == o %} selected{% endif %}>{{ o }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Tag:
+    <select name="tag">
+      <option value="">— all —</option>
+      {% for t in tags %}
+      <option value="{{ t }}"{% if filters.tag == t %} selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Filter</button>
+  <a href="/skills">Reset</a>
+</form>
+
+<div class="sections">
+{% for owner, members in groups %}
+<section data-owner="{{ owner }}">
+  <h2>{{ owner or '(no owner)' }} — {{ members|length }} skill{{ 's' if members|length != 1 else '' }}</h2>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Version</th><th>Description</th><th>Runs</th></tr>
+    </thead>
+    <tbody>
+      {% for s in members %}
+      <tr>
+        <td><a href="/skills/{{ s.name }}">{{ s.name }}</a></td>
+        <td><code>{{ s.version }}</code></td>
+        <td>{{ s.description }}</td>
+        <td>{{ s.history_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+</div>
+{% endblock %}

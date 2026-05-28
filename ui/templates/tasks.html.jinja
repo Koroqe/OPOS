@@ -1,0 +1,57 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<h1>Tasks</h1>
+<p class="muted">{{ tasks|length }} of {{ total }} tasks match filters.</p>
+
+<form class="filter-form" method="get" action="/tasks">
+  <label>State:
+    <select name="state">
+      <option value="">— all —</option>
+      <option value="active"{% if filters.state == "active" %} selected{% endif %}>active</option>
+      <option value="paused"{% if filters.state == "paused" %} selected{% endif %}>paused</option>
+      <option value="completed"{% if filters.state == "completed" %} selected{% endif %}>completed</option>
+      <option value="dropped"{% if filters.state == "dropped" %} selected{% endif %}>dropped</option>
+    </select>
+  </label>
+  <label>Dept:
+    <select name="dept">
+      <option value="">— all —</option>
+      {% for d in all_depts %}
+      <option value="{{ d }}"{% if filters.dept == d %} selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Owner:
+    <select name="owner">
+      <option value="">— all —</option>
+      {% for o in all_owners %}
+      <option value="{{ o }}"{% if filters.owner == o %} selected{% endif %}>{{ o }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Filter</button>
+  <a href="/tasks">Reset</a>
+</form>
+
+{% if tasks %}
+<table>
+  <thead>
+    <tr><th>#</th><th>Title</th><th>Depts</th><th>State</th><th>Created</th><th>Owner</th></tr>
+  </thead>
+  <tbody>
+    {% for t in tasks %}
+    <tr>
+      <td><a href="/tasks/{{ t.issue_number }}">#{{ t.issue_number }}</a></td>
+      <td>{{ t.title }}</td>
+      <td>{% for d in t.depts %}<span class="dept" data-dept="{{ d }}">{{ d }}</span>{% if not loop.last %} {% endif %}{% endfor %}</td>
+      <td><span class="badge {{ t.state }}">{{ t.state }}</span></td>
+      <td>{{ t.created }}</td>
+      <td>{{ t.owner }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No tasks match the current filters.</p>
+{% endif %}
+{% endblock %}

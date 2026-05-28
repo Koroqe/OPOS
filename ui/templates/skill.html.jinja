@@ -1,0 +1,39 @@
+{% extends "base.html.jinja" %}
+{% block content %}
+<p><a href="/skills">← Skills</a></p>
+<h1>{{ skill.name }}</h1>
+<p class="muted">{{ skill.description }}</p>
+
+<div class="split">
+  <aside class="panel">
+    <h3>Frontmatter</h3>
+    <dl class="kv">
+      <dt>Owner</dt><dd>{% if skill.owner_agent %}<a href="/agents/company/{{ skill.owner_agent }}">{{ skill.owner_agent }}</a>{% else %}<span class="muted">— none —</span>{% endif %}</dd>
+      <dt>Version</dt><dd><code>{{ skill.version }}</code></dd>
+      <dt>Tags</dt><dd>{% for t in skill.tags %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+      <dt>Source</dt><dd><code>{{ skill.path }}</code></dd>
+    </dl>
+
+    <h3>Recent runs</h3>
+    {% if history %}
+    <ul class="bare">
+      {% for e in history %}
+      <li><span class="muted">{{ e.date }}</span> · <a href="/activity?skill={{ skill.name }}">{{ e.run_id }}</a> · <span class="badge {{ e.outcome }}">{{ e.outcome }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No runs recorded.</p>
+    {% endif %}
+  </aside>
+  <article class="panel">
+    <h3>SKILL.md</h3>
+    {{ skill.skill_body | md | safe }}
+    {% if skill.process_body %}
+    <hr>
+    <h3>PROCESS.md</h3>
+    {% if skill.process_owner %}<p class="muted">Owner of record: <strong>{{ skill.process_owner }}</strong></p>{% endif %}
+    {{ skill.process_body | md | safe }}
+    {% endif %}
+  </article>
+</div>
+{% endblock %}
