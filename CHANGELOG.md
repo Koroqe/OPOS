@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.2.0] - 2026-05-28
+
+### Added
+
+- `consult-agent` skill (owner: `chief-of-staff`) — consult another agent by spawning its definition as a subagent via the Task tool; canonicalizes the eng-lead/rnd-lead simulation pattern previously hand-crafted in `design-process` step 4 and the R&D framework survey.
+- `release-from-changelog` skill (owner: `chief-of-staff`) — cut a GitHub release from a CHANGELOG.md version entry; extracts notes via the canonical awk pattern from MAINTAINER.md and handles the inverted-exit-code `gh release view` check correctly.
+- `task-pause` + `task-resume` skills (owner: `chief-of-staff`) — multi-task support. `task-pause` moves the active task from `.claude/.current-task` to a new `.claude/.paused-tasks` list (gitignored); `task-resume <issue>` brings it back. Closes the manual-override pattern that fired 4× across prior releases.
+- `shared/templates/TASK.md.tmpl` — first-class task abstraction (research recommendation #1 from the R&D framework survey, CrewAI pattern). Frontmatter: issue_number, title, owner, depts, state, created, completed, success_criteria, deadline, related_skills. Body: Goal, Acceptance criteria, Progress log, Final outcome.
+- `tasks/` folder convention — `task-register` creates `tasks/<issue-number>.md` on each invocation; `task-complete` moves it to `tasks/closed/<issue-number>.md`. The framework dogfoods its own task tracking against `Koroqe/OPOS#5` and beyond; consumer scaffolds get an empty `tasks/.gitkeep` (per-task files are excluded from the Copier template via `tasks/[0-9]*.md` + `tasks/closed/**` patterns).
+- Optional `state_schema:` frontmatter in `shared/templates/PROCESS.md.tmpl` + optional `## State transitions` body section (research recommendation #2, LangGraph pattern). Documentation-only in v0.2.0; no runtime enforcement.
+- `company/knowledge-base/claude-code-mapping.md` — explains OPOS-as-convention-layer ↔ Claude-Code-as-runtime-layer stack (research recommendation #3). 7-row file mapping table; "what OPOS does NOT replace" + "what Claude Code does NOT provide" sections to nail the positioning.
+
+### Changed
+
+- `design-process` SKILL.md step 4 — invokes `consult-agent --agent <dept-lead> --question "..."` instead of hand-crafting a Task call. Reduces boilerplate; concentrates the simulation pattern in one skill.
+- `design-process/PROCESS.md` — retrofitted with `state_schema:` (6 named states: `discovering → consulting → drafting → presenting → iterating → committing`) and a `## State transitions` body section explaining the loop/termination conventions.
+- `task-register` SKILL.md — refuse-message in step 4 now recommends `task-pause` as the canonical alternative to `task-complete` (or manual `rm`). New step 11 creates `tasks/<issue-number>.md` from TASK.md.tmpl; total step count 12 → 13.
+- `task-complete` SKILL.md — new step 13 archives `tasks/<n>.md` to `tasks/closed/` via `mkdir -p` + `mv` (with backwards-compat skip for pre-v0.2.0 task files); subsequent steps renumbered.
+- `chief-of-staff` agent — `owns_processes:` grows from 5 to 9 (adds 4 new skills); body's "Owned processes" section adds 4 new bullets.
+- `copier.yml` `_exclude` adds `.claude/.paused-tasks`, `tasks/[0-9]*.md`, `tasks/closed/**` (prevents framework dogfooding from leaking to consumer scaffolds).
+- `.gitignore` adds `.claude/.paused-tasks`.
+- `README.md` adds "Key reference docs" section linking the two `company/knowledge-base/` research artifacts; adds `tasks/` to the Subscopes list.
+
+### Notes
+
+- Closes [#5](https://github.com/Koroqe/OPOS/issues/5) — "Ship v0.2.0 — new skills + research-derived improvements."
+- No breaking changes for v0.1.x consumers. `copier update` flows cleanly: the new skills are CORE additions (auto-synced); the new `tasks/.gitkeep` is added; `.claude/task-tracking.config.json`'s `_label_palette` from v0.1.1 persists unchanged.
+- All 5 v0.1.0 deferred items (consult-agent, release-from-changelog, task-pause, since_sha-fallback-exercise, privacy-warning-path) are addressed — the latter two by being NOT-actionable-without-real-world-usage and graduating from "deferred" to "validated in v0.3.0 if real-world runs surface them."
+- All 3 research recommendations from the AI-OS framework survey (CrewAI, LangGraph, Claude Code positioning) are landed.
+- `release-from-changelog` self-tested by being used to cut this very release.
+
 ## [0.1.1] - 2026-05-28
 
 ### Changed
@@ -47,5 +78,6 @@ In `0.x.y` releases breaking changes are allowed.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.2.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.1.0

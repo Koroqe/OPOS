@@ -169,6 +169,29 @@ Per semver, 0.x releases may contain breaking changes. When upgrading across a b
 - Test the sync on a branch (which is how `sync-from-core` works by default) before merging to main.
 - Once v1.0 is cut, breaking changes are restricted to major-version bumps per semver.
 
+## Risk 14 — consult-agent simulation fidelity
+
+**Status:** MEDIUM impact; documented limitation.
+
+The `consult-agent` skill (added in v0.2.0) spawns an Explore/general-purpose subagent and frames it as the named agent by including the agent's definition file as system-prompt context. The subagent reads the agent's `.md` file and tries to stay in character — but it is NOT actually the registered agent. Claude Code doesn't currently support invoking project-level agents (in `.claude/agents/<dept>/<role>.md`) by name via the Task tool's `subagent_type` field.
+
+**What you get:** "the subagent stays in character based on the definition." Sufficient for most consultation use cases (asking another agent's perspective, getting cross-functional input).
+
+**What you don't get:** the actual agent's tool allow-list at runtime, persistent agent state, or the agent's actual prompt-tuning if any. For cases that need real agent runtime, `consult-agent` is not the right tool.
+
+**Mitigation:** the skill body documents this honestly. A future Claude Code feature that registers project-level agents as runnable subagent_types would close the gap.
+
+## Risk 15 — task-pause/task-resume state is per-machine
+
+**Status:** LOW impact for solo / single-machine setups; MEDIUM impact for teams or multi-machine usage.
+
+The `.claude/.current-task` and `.claude/.paused-tasks` state files are both gitignored — they live on each developer's machine, not in the repo. For a solo developer working from one machine, this works. For teams or multi-machine setups (laptop + desktop, pair-working), the state isn't shared:
+
+- Pausing a task on machine A doesn't show up on machine B.
+- `task-register` refusing because of an active task on machine A won't refuse on machine B.
+
+**Mitigation:** documented. Future v0.3.0 could move the state to tracked files (`tasks/<n>.md`'s frontmatter `state:` field is the natural place; the `.current-task` pointer could move to a tracked `tasks/.active` file). For v0.2.0, the per-machine model is accepted as a known limitation.
+
 ## Advisory note — upstream naming
 
 The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-template` or `opos-core`). Naming mirrors the consumer's experience: they scaffold from `Koroqe/OPOS` and receive updates from the same upstream. No renaming planned.
