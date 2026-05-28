@@ -68,7 +68,7 @@ Three patterns from the surveyed frameworks that OPOS doesn't yet have:
 
 **Why:** Claude Code (sub-agents, Skills, MCP) is the runtime layer that OPOS markdown files would actually execute through. Without explicit positioning, adopters may see OPOS as redundant. With explicit positioning, OPOS becomes the convention layer Claude Code's runtime needs.
 
-**What:** Publish a `docs/claude-code-mapping.md` (or extend README) showing:
+**What:** **Shipped in v0.2.0** as [`claude-code-mapping.md`](./claude-code-mapping.md) (this folder). The doc shows:
 
 - `.claude/agents/<dept>/<role>.md` → Claude Code sub-agent prompt
 - `.claude/skills/<name>/SKILL.md` → Anthropic Agent Skill (already aligned)

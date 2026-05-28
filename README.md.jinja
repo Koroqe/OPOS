@@ -142,4 +142,10 @@ The smoke-test recipe (run after substituting tokens for your company) lives in 
 - [`company/`](company/) — strategy, policies, knowledge-base, cross-cutting backlog
 - [`departments/`](departments/) — one folder per department; ship with `engineering/` as a worked example
 - [`shared/`](shared/) — templates and cross-company resources
+- [`tasks/`](tasks/) — per-task markdown files (one per GitHub issue tracked by `task-register`)
 - [`.claude/`](.claude/) — agents (by dept subfolder), global skills, settings
+
+## Key reference docs
+
+- [`company/knowledge-base/competitive-landscape.md`](company/knowledge-base/competitive-landscape.md) — landscape survey of AI-agent OS frameworks (CrewAI, LangGraph, AutoGen, MetaGPT, Claude Code, OpenHands) + 3 implications for OPOS.
+- [`company/knowledge-base/claude-code-mapping.md`](company/knowledge-base/claude-code-mapping.md) — how OPOS conventions map onto Claude Code primitives (sub-agents, skills, MCP). OPOS sits ABOVE Claude Code as the convention/governance layer.
