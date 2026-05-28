@@ -32,7 +32,7 @@
 {% for e in entries %}
 <article class="history-entry">
   <div class="meta">
-    <strong>{{ e.date }}</strong>
+    <strong>{{ e.date }}{% if e.time %} {{ e.time }}{% endif %}</strong>
     <a href="/skills/{{ e.skill }}">{{ e.skill }}</a>
     · actor: {{ e.actor or 'unknown' }}
     · <span class="badge {{ e.outcome }}">{{ e.outcome }}</span>

@@ -66,6 +66,7 @@ class Task:
 @dataclass
 class HistoryEntry:
     date: str  # YYYY-MM-DD string (sortable as-is)
+    time: str  # HH:MM string (optional; empty if missing). Sort key after date.
     run_id: str
     skill: str
     actor: str
@@ -284,6 +285,7 @@ def parse_history(repo_root: Path = REPO_ROOT) -> list[HistoryEntry]:
             out.append(
                 HistoryEntry(
                     date=d,
+                    time=str(fm.get("time", "")),
                     run_id=str(fm.get("run_id", "")),
                     skill=str(fm.get("skill", skill_dir.name)),
                     actor=str(fm.get("actor", "")),
@@ -295,7 +297,11 @@ def parse_history(repo_root: Path = REPO_ROOT) -> list[HistoryEntry]:
                     path=md,
                 )
             )
-    out.sort(key=lambda e: (e.date, e.run_id), reverse=True)
+    # Sort newest first: (date, time, run_id) descending. Missing time
+    # ("") sorts before any "HH:MM" lexically, which on a desc sort puts
+    # timed entries above untimed ones for the same date — backwards-compat
+    # for older entries while letting timed entries take priority.
+    out.sort(key=lambda e: (e.date, e.time, e.run_id), reverse=True)
     return out
 
 

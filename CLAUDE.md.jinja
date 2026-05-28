@@ -33,6 +33,7 @@ This is the root CLAUDE.md for {{ COMPANY_NAME }}. Anything written here is auto
 Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
 
 - `date`: YYYY-MM-DD
+- `time`: HH:MM (24-hour, local) — OPTIONAL, added in v0.3.1; secondary sort key in the console activity feed so multiple runs on the same date order chronologically. New entries SHOULD include it; older entries without `time` fall back to `run_id` alphabetic.
 - `run_id`: short identifier
 - `skill`: skill name
 - `actor`: agent name or "human"

@@ -34,7 +34,7 @@
 <ul class="bare">
   {% for e in recent_activity %}
   <li>
-    <span class="muted">{{ e.date }}</span>
+    <span class="muted">{{ e.date }}{% if e.time %} {{ e.time }}{% endif %}</span>
     <a href="/skills/{{ e.skill }}">{{ e.skill }}</a>
     — <span class="badge {{ e.outcome }}">{{ e.outcome }}</span>
     {% if e.proposed_delta %}<span class="muted">— {{ e.proposed_delta[:120] }}{% if e.proposed_delta|length > 120 %}…{% endif %}</span>{% endif %}

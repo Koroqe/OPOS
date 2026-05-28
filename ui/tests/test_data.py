@@ -151,6 +151,44 @@ class TestParseHistory(unittest.TestCase):
         for i in range(len(entries) - 1):
             self.assertGreaterEqual(entries[i].date, entries[i + 1].date)
 
+    def test_time_field_used_as_secondary_sort(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            hist = root / ".claude" / "skills" / "foo" / "history"
+            hist.mkdir(parents=True)
+            # Same date, different times — verify chronological desc.
+            (hist / "2026-05-29-early.md").write_text(
+                "---\ndate: 2026-05-29\ntime: \"09:00\"\nrun_id: early\nskill: foo\noutcome: success\n---\n",
+                encoding="utf-8",
+            )
+            (hist / "2026-05-29-late.md").write_text(
+                "---\ndate: 2026-05-29\ntime: \"17:30\"\nrun_id: late\nskill: foo\noutcome: success\n---\n",
+                encoding="utf-8",
+            )
+            entries = parse_history(repo_root=root)
+            self.assertEqual([e.run_id for e in entries], ["late", "early"])
+            self.assertEqual(entries[0].time, "17:30")
+
+    def test_missing_time_falls_back_to_run_id(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            hist = root / ".claude" / "skills" / "foo" / "history"
+            hist.mkdir(parents=True)
+            # Same date, no times — order falls back to run_id desc.
+            (hist / "2026-05-29-aaaa.md").write_text(
+                "---\ndate: 2026-05-29\nrun_id: aaaa\nskill: foo\noutcome: success\n---\n",
+                encoding="utf-8",
+            )
+            (hist / "2026-05-29-zzzz.md").write_text(
+                "---\ndate: 2026-05-29\nrun_id: zzzz\nskill: foo\noutcome: success\n---\n",
+                encoding="utf-8",
+            )
+            entries = parse_history(repo_root=root)
+            self.assertEqual([e.run_id for e in entries], ["zzzz", "aaaa"])
+            self.assertEqual(entries[0].time, "")
+
 
 class TestParseDepartments(unittest.TestCase):
     def test_includes_company_synthetic(self):
