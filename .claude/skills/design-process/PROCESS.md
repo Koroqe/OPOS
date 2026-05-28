@@ -6,6 +6,13 @@ inputs: [job_description, backlog_item_path]
 success_criteria: [skill_folder_exists, process_md_has_owner, files_written_only_on_user_approval, advisory_backlinks_updated, design_process_run_recorded_in_own_history]
 slo: "1 working session (interactive)"
 version: 0.1.0
+state_schema:
+  - discovering: framework + job + departments read (SKILL.md steps 1-3)
+  - consulting: dept leads queried via consult-agent (step 4)
+  - drafting: SKILL.md + PROCESS.md filled from templates (steps 5-6)
+  - presenting: proposal surfaced to user with summary + open questions (step 7)
+  - iterating: revising based on user feedback until explicit approval (step 8)
+  - committing: files written, advisory backlinks updated, own-history entry recorded (steps 9-11)
 ---
 
 # design-process
@@ -47,6 +54,10 @@ The skill's SKILL.md body documents the full 11-step flow. Summary here:
 - `design_process_run_recorded_in_own_history` — a new file exists under `./history/` for this invocation, with schema-conformant frontmatter.
 
 All five criteria must hold for a `success` run. If the user did NOT approve, criteria 1, 2, 4 cannot be satisfied — the run is recorded as `partial` instead.
+
+## State transitions
+
+Strict forward order: `discovering → consulting → drafting → presenting → iterating → committing`, with `iterating ↔ presenting` allowed to loop until the user gives explicit approval. A session can terminate at `presenting` (user rejects outright) or `iterating` (user abandons mid-revision); both cases write a `partial` outcome to history with the session's last completed state recorded. The terminal `committing` state is the only one that writes the new skill's SKILL.md + PROCESS.md to disk — everything before is in-memory proposal work.
 
 ## Rollback
 

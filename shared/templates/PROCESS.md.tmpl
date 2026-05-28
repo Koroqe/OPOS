@@ -16,6 +16,10 @@ inputs: []
 success_criteria: []
 slo: <<SLO>>
 version: 0.1.0
+# state_schema (OPTIONAL — list the named states this process transitions through; documentation only, no runtime enforcement in v0.2.0; pairs with the `## State transitions` body section below):
+# state_schema:
+#   - <state-name>: <one-line description>
+#   - <next-state-name>: <one-line description>
 ---
 
 # <<PROCESS_NAME>>
@@ -38,6 +42,10 @@ What must be true before the process can start.
 
 - Success criterion 1
 - Success criterion 2
+
+## State transitions
+
+(OPTIONAL — fill in if the process has `state_schema:` in frontmatter. Describe the order of state transitions, allowed loops, and termination conditions. For simple linear processes, omit this section.)
 
 ## Rollback
 
