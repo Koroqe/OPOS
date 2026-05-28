@@ -48,7 +48,12 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
    - `slo` — primary dept lead's stated estimate (or "TBD" if unclear).
    - Body sections (When to use, Steps, Outputs, Failure modes) — synthesized from the consultations.
 
-7. **Present to the user.** Output the proposed SKILL.md and PROCESS.md as inline code blocks in chat. Follow with a summary paragraph: which departments were consulted, what each said (one sentence each), why the placement was chosen, and a bulleted list of open questions or trade-offs the user should review.
+7. **Present to the user.** Output the proposed SKILL.md and PROCESS.md as inline code blocks in chat. Follow with a summary paragraph: which departments were consulted, what each said (one sentence each), why the placement was chosen, and a bulleted list of open questions or trade-offs the user should review. **Always explicitly enumerate the trigger-mechanism options as one of the open questions** — even if the job description seems to imply one. The three options to surface:
+   - **Manual slash-command** (default): user explicitly invokes `/skill-name` when they want it to run. Predictable but relies on user remembering.
+   - **Hook-driven**: Claude Code hook (e.g. UserPromptSubmit) auto-invokes on matching patterns. Truest to "every time X happens" framings, but requires `.claude/settings.json` editing.
+   - **Hybrid**: ship as manual by default; document the hook recipe as an opt-in upgrade.
+
+   Other open-question candidates: owner agent if unclear, multi-skill split if the job is unusually broad, retention policy for the new skill's `history/` if high-volume.
 
 8. **Iterate.** The user proposes edits. Revise the proposal and re-present. Loop until the user gives an unambiguous approval phrase ("write it," "approve," "ship it," "ok do it"). Phrases like "I'd like to approve this but…" do NOT count — those are still iteration requests.
 
@@ -71,6 +76,8 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 
     Body: which depts were consulted, what was decided, where the new skill landed, and which backlog item (if any) was tied off.
 
+    **Timing:** this entry is written AFTER user approval — when the design session is truly complete (files written or user rejected). It is NOT written during the proposal phase (step 7) or during iteration (step 8). If a session ends without approval, write the entry with `outcome: partial` recording the design context for future reference; the design session is still "complete" in the sense that further work would start over.
+
 ## Outputs
 
 - New skill folder at the chosen path with `SKILL.md`, `PROCESS.md`, and an empty `history/.gitkeep`.
@@ -83,9 +90,22 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 
 - **Conflicting skill name** — a folder already exists at the target path. Recovery: ask the user for a different name; if they don't have one, suggest a variant based on the dept name + verb. Do not overwrite.
 - **No primary owner identifiable** — consultation surfaces equal primary ownership across multiple departments. Recovery: escalate to `coo` via the `Task` tool with the consultation transcript; `coo` arbitrates.
-- **New agent role required** — the design needs an agent role that doesn't exist. Recovery: escalate to `coo` — the ops-manager cannot create agents; expanding the org chart is its own design problem (potentially a future `design-agent` skill).
+- **New agent role required** — the design needs an agent role that doesn't exist. Recovery: escalate to `coo` — the ops-manager cannot create agents; expanding the org chart is its own design problem (potentially a future `design-agent` skill). **This may also surface a need for a new department charter** (e.g. the new role doesn't fit in any existing `departments/<dept>/`). Department creation is similarly out of scope for `design-process`; both escalate to `coo` together when they co-occur.
 - **Department charter missing or malformed** — `departments/<dept>/CLAUDE.md` is absent or has no readable mission/scope. Recovery: report the gap to the user in step 3's output; no consultation possible for that department; offer to proceed with the others.
 - **User does not approve** — files are NOT written. Step 11 still runs (a `partial` history entry is recorded so the session is auditable).
+
+## Multi-skill design sessions
+
+One invocation of `design-process` can legitimately produce MULTIPLE sibling skills in a single session. The skill design isn't constrained to "one job → one skill" — when the user's framing implies a natural decomposition (e.g. a task-lifecycle that splits into register / update / complete), the consultation in step 4 surfaces it and step 5 + step 6 handle the bundle.
+
+Worked example: the task-tracking design session (recorded in `./history/2026-05-22-test-task-tracking.md`) produced three sibling skills (`task-register`, `task-update`, `task-complete`) under a single owner (`chief-of-staff`), with shared templates and config. The placement decision (step 5) treats the bundle as a unit; the file-write step (step 9) iterates over all skills in the bundle on a single approval.
+
+Indicators that a bundle is appropriate:
+- The job has distinct phases that happen at different times (open, mid-execution, close).
+- The phases share state (a config file, a `.current-task` marker, a templates folder).
+- The owner agent is the same across all phases.
+
+If a bundle is NOT appropriate (one job → one skill is cleaner), the session produces a single skill. The user's review at step 7 should make the bundle-or-single call obvious; if unclear, surface it as an explicit open question.
 
 ## Related
 
