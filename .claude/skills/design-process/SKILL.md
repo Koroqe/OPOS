@@ -30,11 +30,11 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 
 3. **Identify involved departments.** Enumerate `departments/*/CLAUDE.md` via filesystem glob. Read each charter; identify which departments the job touches based on their stated mission and scope. Default to ALL departments whose charters mention the job's domain. If only one department exists in the repo (the v0 skeleton ships with just `engineering`), this loop has one entry — that's expected, not a failure.
 
-4. **Consult involved dept leads.** For each involved department, spawn the dept lead (e.g. `eng-lead`) as a subagent via the `Task` tool. Question template:
+4. **Consult involved dept leads via `consult-agent`.** For each involved department, invoke `consult-agent --agent <dept-lead> --question "<consultation>"`. Question template:
 
    > "We're designing a new process for [job description]. What is your department's role in this work? What inputs does your team need from upstream? What outputs do you produce? What are your success criteria for this kind of work? What failure modes have you seen for similar work?"
 
-   Capture each response and record which dept lead said what — both go into the proposal summary.
+   `consult-agent` handles the Task-tool subagent spawn, the agent-definition + charter loading, and the simulated-response capture. Record each dept lead's response and attribute it explicitly — both go into the proposal summary at step 7. (Pre-v0.2.0 sessions used a hand-crafted Task invocation here; `consult-agent` replaces the boilerplate.)
 
 5. **Decide placement.** If one department is the clear primary owner, place the new skill at `departments/<dept>/.claude/skills/<name>/`. Otherwise (multi-dept or company-level scope), place it at `.claude/skills/<name>/`. The PROCESS.md `owner:` is the primary department's lead (or `coo` for company-level processes).
 
