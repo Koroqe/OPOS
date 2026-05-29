@@ -32,18 +32,17 @@ Owned by `coo` because operational setup of a new instance is the cleanest examp
 
 ## Steps
 
-Mirrors the 10-step procedure in SKILL.md:
+Mirrors the 9-step procedure in SKILL.md (was 10 in v0.5.0; v0.5.1 merged the engineering + rnd separate decisions into a single 6-dept loop):
 
 1. Verify fresh scaffold + git-initialized.
 2. Greet + explain flow.
 3. Mission (1 question → Edit CLAUDE.md Mission line).
 4. Values (1 question, 3-5 lines → Edit CLAUDE.md Values placeholders, remove excess).
 5. Strategic priorities (1 question, 1-5 lines → Write company/strategy/priorities.md).
-6. Engineering dept decision (keep/customize).
-7. R&D dept decision (keep/customize).
-8. Initial policies (0-3, with slug-regex + existing-file + framework-reserved-exact-match validation).
-9. Greppable smoke check (token/owner-binding/git-status).
-10. Write history entry.
+6. Department decisions — 6-dept loop (rnd umbrella + finance + people + legal + commercial + pr; keep/customize each).
+7. Initial policies (0-3, with slug-regex + existing-file + framework-reserved-exact-match validation).
+8. Greppable smoke check (token/owner-binding/git-status).
+9. Write history entry.
 
 ## Done when
 
@@ -52,7 +51,7 @@ Mirrors the 10-step procedure in SKILL.md:
 - `mission_written` — root CLAUDE.md Mission line replaced.
 - `values_written` — root CLAUDE.md Values placeholders replaced (with dangling lines removed if count < 5).
 - `priorities_written` — `company/strategy/priorities.md` created.
-- `dept_decisions_applied` — engineering + R&D charters either kept or customized; no removals.
+- `dept_decisions_applied` — all 6 default depts (rnd, finance, people, legal, commercial, pr) either kept or customized; no removals.
 - `policies_seeded` — 0-3 files written under `company/policies/<slug>.md`; comment header stripped from each.
 - `smoke_greppable_passed` — token-substitution check returned 0 matches; owner-binding check listed every PROCESS.md.
 - `history_entry_written` — file exists under `./history/`.

@@ -21,7 +21,7 @@ None. All data is gathered conversationally.
 
 ## Path convention
 
-The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` suffixes have already been stripped. All paths below are the rendered `.md` paths (e.g., `CLAUDE.md`, `departments/engineering/CLAUDE.md` — NOT `.jinja` sources).
+The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` suffixes have already been stripped. All paths below are the rendered `.md` paths (e.g., `CLAUDE.md`, `departments/rnd/CLAUDE.md` — NOT `.jinja` sources).
 
 ## Steps
 
@@ -53,15 +53,21 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
    ```
    Do NOT invent a `restricted: true` field — the folder-level convention is enforced by `company/strategy/CLAUDE.md`'s frontmatter; individual files inherit by location.
 
-6. **Engineering dept decision (1 question).** Ask: "The starter `engineering` department mission is: `Ship reliable software. Keep production healthy. Improve the system every week.` Type **keep** or **customize**." Two sub-paths:
-   - **keep:** no edit; print "engineering kept as-is."
-   - **customize:** ask "Provide a new 1-3 sentence mission for engineering:" → use `Edit` to rewrite the Mission line(s) in `departments/engineering/CLAUDE.md` (rendered path).
+6. **Department decisions (6-dept loop).** As of v0.5.1, the framework ships 6 default departments (`rnd` umbrella for engineering + 5 new). For EACH dept in this order, ask `keep` or `customize`:
+   - **`rnd`** (R&D umbrella — building function; eng-lead + eng-reviewer report up to rnd-lead) — starter mission: `Reduce uncertainty about external state AND execute the company's building work — research, engineering, production, product/service delivery.`
+   - **`finance`** — starter: `Owns cashflow, budgeting, expense categorization, revenue forecasting, pricing analysis. Drafts monthly reports, projects new-agent operating costs as design-agent input.`
+   - **`people`** — starter: `Owns capability gap → resource allocation via allocate-resource (the AI-first kernel). Every gap is first evaluated for AI-agent suitability; human hire is the fallback only for tasks requiring lived experience, physical action, or legal accountability.`
+   - **`legal`** — starter: `Owns contract review, compliance tracking (GDPR/SOC2/etc.), and IP protection. LLM-scale review for routine matters; external counsel for high-stakes signoff.`
+   - **`commercial`** (marketing + sales unified at v0) — starter: `Owns revenue end-to-end — demand generation, marketing content, sales pipeline, customer success. LLM drafts content; human approves public-facing copy.`
+   - **`pr`** — starter: `Owns external communications — press releases, brand voice, social presence, crisis comms. Drafts press materials; human signoff on all public-facing copy.`
 
-   **"remove" is NOT supported in v0.5.0.** If the founder types "remove" or similar, print the dept-removal guidance from Failure modes and continue with "keep" by default. Removal is a manual post-setup operation.
+   For each:
+   - **keep:** no edit; print "<dept> kept as-is."
+   - **customize:** ask "Provide a new 1-3 sentence mission for <dept>:" → use `Edit` to rewrite the Mission line(s) in `departments/<dept>/CLAUDE.md` (rendered path).
 
-7. **R&D dept decision (1 question).** Same two sub-paths as step 6 (**keep** or **customize**) for `departments/rnd/CLAUDE.md`. Starter mission: `Reduce uncertainty about external state. R&D produces written, citable artifacts that other departments can act on.`
+   **"remove" is NOT supported.** If the founder types "remove" or similar for any dept, print the dept-removal guidance from Failure modes and continue with "keep" by default. Removal cascades into agent and dept-nested-skill removals — it's a manual post-setup operation with full awareness.
 
-8. **Initial policies (1 question per policy, 0-3 total).** Ask: "Do you want to seed any company-level policies right now? (yes/no) — if yes, I'll ask for up to 3." For each requested policy:
+7. **Initial policies (1 question per policy, 0-3 total).** Ask: "Do you want to seed any company-level policies right now? (yes/no) — if yes, I'll ask for up to 3." For each requested policy:
    - "Policy name (kebab-case slug, e.g. `client-data-handling`):" — validate per the rules below; REFUSE on conflict + ask for a different name (do NOT auto-coerce).
    - "Scope (one sentence — who/what this applies to):"
    - "Rule (one or two sentences — the actual policy):"
@@ -75,7 +81,7 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
    When refusing, print WHICH check fired + the relevant rule. Ask for a different name. Loop until valid or founder says "skip".
 
-9. **Smoke check (greppable subset only).** Run only the GREPPABLE steps of the RISKS.md verification recipe inline (`Bash` tool):
+8. **Smoke check (greppable subset only).** Run only the GREPPABLE steps of the RISKS.md verification recipe inline (`Bash` tool):
    ```bash
    # Token-substitution check (must return 0 matches)
    grep -rn "<<[A-Z_]*>>" . --include="*.md"
@@ -88,14 +94,14 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
    Print a final summary: "Setup complete. Files written/modified: <list>. Next: run `/serve-console` to browse your new OS at http://127.0.0.1:8765/. Then ask Claude `List available subagents` in a fresh session to complete the framework smoke test. Commit when ready: `git add -A && git commit -m 'chore: initial company-setup'`."
 
-10. **Write history entry** to `.claude/skills/company-setup/history/YYYY-MM-DD-<short-run-id>.md`. Convention: `<short-run-id>` = `setup-<COMPANY_NAME_lowercased>` (e.g., `setup-zipread`). Include `time: HH:MM` (v0.3.1 schema). Body captures every answer, every file written/modified, every policy-name conflict refusal (with which check fired), and every dept decision (keep/customize).
+9. **Write history entry** to `.claude/skills/company-setup/history/YYYY-MM-DD-<short-run-id>.md`. Convention: `<short-run-id>` = `setup-<COMPANY_NAME_lowercased>` (e.g., `setup-zipread`). Include `time: HH:MM` (v0.3.1 schema). Body captures every answer, every file written/modified, every policy-name conflict refusal (with which check fired), and every dept decision (keep/customize) across all 6 default depts.
 
 ## Outputs
 
 - Founder-populated root `CLAUDE.md` (Mission + Values).
 - `company/strategy/priorities.md` (top 3-5 strategic priorities).
 - 0-3 files under `company/policies/<slug>.md` (from POLICY.md.tmpl, comment header stripped).
-- Optionally-modified `departments/engineering/CLAUDE.md` and `departments/rnd/CLAUDE.md` (Mission sections).
+- Optionally-modified `departments/{rnd,finance,people,legal,commercial,pr}/CLAUDE.md` (Mission sections per the 6-dept loop).
 - A run entry in `.claude/skills/company-setup/history/`.
 - A one-line summary in chat with next-step instructions.
 
