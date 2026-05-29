@@ -61,11 +61,12 @@ class TestParseSkills(unittest.TestCase):
         self.assertIn("design-process", names)
 
     def test_includes_dept_nested(self):
-        # departments/engineering/.claude/skills/deploy/ should be discovered.
+        # departments/rnd/.claude/skills/deploy/ should be discovered.
+        # (deploy moved from engineering → rnd at v0.5.1; engineering folded into rnd umbrella.)
         skills = parse_skills()
         deploy = next((s for s in skills if s.name == "deploy"), None)
         self.assertIsNotNone(deploy, "dept-nested 'deploy' skill not found")
-        self.assertEqual(deploy.dept, "engineering")
+        self.assertEqual(deploy.dept, "rnd")
         # Root-level skills have an empty dept.
         task_register = next((s for s in skills if s.name == "task-register"), None)
         self.assertIsNotNone(task_register)
@@ -195,7 +196,16 @@ class TestParseDepartments(unittest.TestCase):
         depts = parse_departments()
         names = {d.name for d in depts}
         self.assertIn("company", names)
-        self.assertIn("engineering", names)
+        # As of v0.5.1: engineering folded into rnd (umbrella); 5 new depts added.
+        # Expected starter depts: company (synthetic), rnd, finance, people, legal, commercial, pr.
+        self.assertIn("rnd", names)
+        self.assertIn("finance", names)
+        self.assertIn("people", names)
+        self.assertIn("legal", names)
+        self.assertIn("commercial", names)
+        self.assertIn("pr", names)
+        # Engineering removed from top-level (now inside rnd).
+        self.assertNotIn("engineering", names)
         # Company dept's charter is rendered (no raw Jinja token left over).
         company = next(d for d in depts if d.name == "company")
         self.assertNotIn("{{ COMPANY_NAME }}", company.charter_body)

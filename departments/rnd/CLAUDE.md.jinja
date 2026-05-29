@@ -1,6 +1,6 @@
 # R&D — {{ COMPANY_NAME }}
 
-The research and analytics department: scans the external landscape, evaluates competing/adjacent frameworks, and brings back patterns and recommendations that inform {{ COMPANY_NAME }}'s direction.
+The R&D department: **the building function**. **As of v0.5.1**, R&D is the umbrella covering both research/landscape work (external scans, framework comparisons) AND engineering execution (deploys, technical decisions, production health, product/service delivery). Engineering was folded in as the building branch; `eng-lead` and `eng-reviewer` report up to `rnd-lead`.
 
 ## Inherits from
 
@@ -8,27 +8,41 @@ The research and analytics department: scans the external landscape, evaluates c
 
 ## Mission
 
-Reduce uncertainty about external state. R&D produces written, citable artifacts that other departments can act on — competitive landscapes, technology surveys, framework comparisons, prior-art reviews. R&D does NOT make product decisions (those belong to `coo` / `ceo`); R&D makes evidence available.
+Reduce uncertainty about external state AND execute the company's building work. R&D produces:
+- **Research**: written, citable artifacts (competitive landscapes, technology surveys, framework comparisons, prior-art reviews) — `rnd-lead` owns.
+- **Engineering**: deploys, technical decisions, production stability, product/service delivery — `eng-lead` owns (reports to `rnd-lead`).
+
+R&D does NOT make product or strategic decisions (those belong to `coo` / `ceo`). R&D surfaces evidence AND ships the building work; the strategic direction is set elsewhere.
+
+AI-first principle: every internal capability gap surfaced inside R&D goes through `allocate-resource` (owned by `people-lead`) before staffing — design an AI agent first, hire a human only when genuinely needed.
 
 ## Roles
 
-- `rnd-lead` — owns research execution. Defined at [`.claude/agents/rnd/rnd-lead.md`](../../.claude/agents/rnd/rnd-lead.md).
+- `rnd-lead` — umbrella lead, owns the building function end-to-end. Defined at [`.claude/agents/rnd/rnd-lead.md`](../../.claude/agents/rnd/rnd-lead.md).
+- `eng-lead` — engineering branch lead, owns engineering execution + deploys + technical decisions; reports up to `rnd-lead`. Defined at [`.claude/agents/rnd/eng-lead.md`](../../.claude/agents/rnd/eng-lead.md).
+- `eng-reviewer` — PR review against engineering standards; called by `eng-lead`. Defined at [`.claude/agents/rnd/eng-reviewer.md`](../../.claude/agents/rnd/eng-reviewer.md).
+
+(Future sub-roles can be designed via [`design-agent`](../../.claude/skills/design-agent/) when load justifies splitting — e.g., a dedicated `infra-lead` separate from `eng-lead`.)
 
 ## Escalation
 
-`rnd-lead` → `coo` → `ceo`. Escalates when a research finding has strategic implications worth surfacing immediately (e.g. a competitor shipped something that materially changes our positioning).
+`rnd-lead` → `coo` → `ceo`. `eng-lead` escalates to `rnd-lead` (v0.5.1 change — was `coo` pre-merger). Escalates when:
+- A research finding has strategic implications worth surfacing immediately.
+- An engineering incident has cross-dept blast radius.
+- Scope grows beyond R&D authority (hiring decisions, large procurement).
 
 ## Data scopes
 
-- `data/` — dept-internal: research outputs (catalogs, surveys, prior-art reviews), raw notes, source archives. Citable.
-- Cross-dept references live under `company/knowledge-base/`.
+- `data/` — dept-internal artifacts in BOTH research and engineering flavors. Research-flavored: landscapes, surveys, prior-art reviews, notes (citable). Engineering-flavored: ADRs, runbooks, postmortems, standards. See [`data/README.md`](./data/README.md) for full conventions.
+- Cross-dept references promoted to `company/knowledge-base/`.
 
 ## Processes-as-skills convention
 
-Dept processes live as skills in `.claude/skills/<process-name>/` (nested inside this dept folder). **There is no separate `processes/` folder** — same convention as `departments/engineering/`.
+Dept processes live as skills in `.claude/skills/<process-name>/` (nested inside this dept folder). The starter skill `deploy` was moved from `departments/engineering/` to `departments/rnd/.claude/skills/deploy/` at v0.5.1.
 
 ## Pointers
 
-- Dept skills: [`.claude/skills/`](./.claude/skills/) (empty in v0 — the first research process will be designed via `design-process` when one emerges)
-- Dept backlog: [`backlog/`](./backlog/)
-- Dept data: [`data/`](./data/)
+- Dept skills: [`.claude/skills/`](./.claude/skills/) — currently `deploy` (engineering-flavored example skill)
+- Dept backlog (research + engineering flavors): [`backlog/`](./backlog/) — see [`backlog/README.md`](./backlog/README.md)
+- Dept data (research + engineering flavors): [`data/`](./data/) — see [`data/README.md`](./data/README.md)
+- AI-first kernel: [`../../.claude/skills/allocate-resource/`](../../.claude/skills/allocate-resource/) (run by `people-lead` for any R&D capability gap)
