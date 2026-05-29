@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.5.0] - 2026-05-29
+
+### Added
+
+- `company-setup` skill (owner: `coo`) — first-run conversational founder onboarding. 10-step procedure that prompts for Mission, Values, top 3-5 strategic priorities, engineering + R&D dept missions (keep/customize), and 0-3 initial policies. Writes the answers to `CLAUDE.md` (Mission + Values), `company/strategy/priorities.md`, optionally-customized `departments/<dept>/CLAUDE.md`, and `company/policies/<slug>.md` files. Tools: `[Read, Edit, Write, Bash, Grep, Glob]` (least-privilege per the v0.4.0 design-agent ladder; explicit exclusions). Anchored abort check on the unique `<one short sentence>` placeholder token. Refuses naming conflicts with a hand-maintained 11-entry framework-reserved list (`secrets, restricted, risks, framework, audit, history, mission, values, charter, strategy, policies`) — exact whole-string match. Step 9 runs the greppable subset of the RISKS verification recipe inline; conversational steps (`List available subagents`) deferred to founder verification post-setup. History entry naming: `setup-<COMPANY_NAME_lowercased>`.
+- `shared/templates/POLICY.md.tmpl` — 7 substitution tokens (`TITLE`, `SLUG`, `OWNER`, `EFFECTIVE_DATE`, `SCOPE`, `RULE`, `REVIEW_CADENCE`). No `version:` field (no policy-versioning convention exists yet — would create an unsourced obligation). Comment-header-stripping convention: unlike other templates, the HTML comment block is REMOVED at render time by `company-setup` step 8 so the founder reads their own policy without seeing token instructions.
+- README "First steps after scaffold" section — 3-step founder workflow inserted between the scaffold code block and "Updating from upstream". Makes the post-scaffold flow obvious (`copier copy → /company-setup → /serve-console`).
+
+### Changed
+
+- `copier.yml`: root `CLAUDE.md` moved to `_skip_if_exists` (was: CORE / auto-updated). **Rationale:** v0.5.0 introduces the convention that founders own root `CLAUDE.md` after scaffold (Mission and Values are founder-content written by `/company-setup`). Without this change, every `copier update` would attempt to overwrite founder-written content, generating `.rej` files (the exact friction Risk 9 warns against). **Trade-off:** future framework changes to root `CLAUDE.md` (rare — last was v0.3.1's `time:` schema field) no longer auto-propagate to consumers; consumers must manually pull such changes. Documented inline in the YAML comment.
+- `coo` agent: `owns_processes: [] → [company-setup]`; `tools:` adds `Bash` (needed for step 9's `grep`/`find`/`git status`); `description:` updated to mention company-setup ownership (discoverability via consult-agent / design-agent). Body Role section gains a v0.5.0 narrative sentence; Owned processes section replaces the `(none directly)` placeholder with a bullet for company-setup.
+- README scaffold example: `--vcs-ref v0.1.0 → v0.5.0`; added a brief note that root `CLAUDE.md` is now consumer-owned post-scaffold.
+
+### Notes
+
+- Closes [#9](https://github.com/Koroqe/OPOS/issues/9) — "v0.5.0 — company-setup skill (founder onboarding)".
+- No breaking changes for v0.4.x consumers. The `copier.yml _skip_if_exists` addition for root `CLAUDE.md` is BACKWARD-COMPATIBLE for existing consumers (they already have a CLAUDE.md, so the skip rule just preserves it — same behavior as if they had hand-edited it before).
+- **First consumer-facing skill** (vs prior framework-internal additions like `design-agent`). The user's own `zipread` company is the inaugural founder use. The `proposed_delta` from that run will be the v0.5.1 signal source — mirror the v0.4.0 → kb-curator-dogfood → v0.4.1-candidates pattern.
+- Plan critic pass surfaced 28 findings (3 CRITICAL, 19 MAJOR, 6 MINOR) — all CRITICAL/MAJOR addressed in-plan. The CRITICAL fixes: rendered `.md` paths (not `.jinja`), `<one short sentence>` literal token anchor for abort check, and the `copier.yml` `_skip_if_exists` addition (the most important — would otherwise have caused every `copier update` to conflict).
+- kb-curator first-dogfood `proposed_delta` follow-ups (logged in `.claude/skills/design-agent/history/2026-05-29-kb-curator.md`) — "document conflict-resolution heuristic in design-agent" and "ship `.gitkeep` + README for new folder conventions" — deferred to v0.5.1 (not blocking founder onboarding).
+
 ## [0.4.0] - 2026-05-29
 
 ### Added
@@ -151,6 +173,7 @@ In `0.x.y` releases breaking changes are allowed.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.5.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.4.0
 [0.3.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.0
