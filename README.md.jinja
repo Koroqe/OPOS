@@ -15,13 +15,25 @@ OPOS is distributed as a **Copier template**: scaffold a new company instance wi
 
 **Scaffold:**
 ```bash
-copier copy --vcs-ref v0.1.0 gh:Koroqe/OPOS my-company-os -d COMPANY_NAME="My Company"
+copier copy --vcs-ref v0.5.0 gh:Koroqe/OPOS my-company-os -d COMPANY_NAME="My Company"
 cd my-company-os
-git init && git add -A && git commit -m "chore: initial OPOS scaffold (v0.1.0)"
+git init && git add -A && git commit -m "chore: initial OPOS scaffold (v0.5.0)"
 gh repo create my-company-os --private --source=. --push
 ```
 
-That gives you a fresh OPOS instance with all CORE files (agents, skills, templates) pre-installed and {% raw %}`{{ COMPANY_NAME }}`{% endraw %} substituted to your company name. The STARTER files (example departments, configs) ship once for you to customize — `copier update` will never overwrite them.
+That gives you a fresh OPOS instance with all CORE files (agents, skills, templates) pre-installed and {% raw %}`{{ COMPANY_NAME }}`{% endraw %} substituted to your company name. The STARTER files (example departments, configs) ship once for you to customize — `copier update` will never overwrite them. **As of v0.5.0**, root `CLAUDE.md` is also consumer-owned post-scaffold (so your edits to Mission and Values survive future `copier update` runs).
+
+## First steps after scaffold
+
+After `copier copy` finishes, your repo is structurally complete but content-blank in six places: Mission, Values, strategic priorities, dept missions (engineering / R&D), and the policies folder. Run the `company-setup` skill (owned by `coo`) to fill these in conversationally:
+
+1. Open the repo in your editor (VS Code recommended for the inline Claude Code session).
+2. Open a Claude Code session at the repo root.
+3. Invoke `/company-setup`. ~10 questions; ~15 minutes total. Progress is written to files as you go.
+
+When complete, browse your populated OS via `/serve-console` (opens `http://127.0.0.1:8765/`). The skill will print the exact next-step commands at the end.
+
+If you re-run `/company-setup` on a populated repo it will refuse — to re-do, restore the `<one short sentence>` placeholder in root `CLAUDE.md`'s Mission section first.
 
 ## Updating from upstream
 
