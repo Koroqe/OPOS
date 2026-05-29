@@ -23,6 +23,7 @@ _exclude:
 # Files shipped on initial scaffold only; never updated by `copier update`.
 # Consumers own these post-scaffold and may edit freely without losing edits.
 _skip_if_exists:
+  - CLAUDE.md      # v0.5.0: root constitution becomes consumer-owned (Mission and Values are founder-content written by /company-setup). Trade-off: framework changes to root CLAUDE.md no longer auto-propagate.
   - .mcp.json
   - .claude/settings.json
   - .claude/task-tracking.config.json

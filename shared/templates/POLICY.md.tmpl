@@ -1,0 +1,45 @@
+<!--
+TEMPLATE: substitute the tokens listed below; the `company-setup` skill
+STRIPS this comment header (lines 1 through the closing `-->`) before
+writing the final policy file. Unlike other templates in this folder,
+the comment block is NOT retained in rendered output — the founder reads
+their own policy without seeing token instructions.
+
+Substitution tokens:
+  <<TITLE>>           — short policy title (e.g. "Client data handling")
+  <<SLUG>>            — kebab-case identifier (matches filename without .md)
+  <<OWNER>>           — agent name (default: coo)
+  <<EFFECTIVE_DATE>>  — ISO date (YYYY-MM-DD) policy takes effect
+  <<SCOPE>>           — one sentence: who/what this applies to
+  <<RULE>>            — one or two sentences: the actual policy
+  <<REVIEW_CADENCE>>  — quarterly | annual | on-incident | other
+-->
+
+---
+title: <<TITLE>>
+slug: <<SLUG>>
+owner: <<OWNER>>
+effective_date: <<EFFECTIVE_DATE>>
+---
+
+# <<TITLE>>
+
+## Scope
+
+<<SCOPE>>
+
+## Rule
+
+<<RULE>>
+
+## Examples
+
+(Add concrete examples as the policy is exercised.)
+
+## Exceptions
+
+(Document case-by-case exceptions with approval source.)
+
+## Review cadence
+
+<<REVIEW_CADENCE>>
