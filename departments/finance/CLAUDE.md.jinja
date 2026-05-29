@@ -1,0 +1,33 @@
+# {{ COMPANY_NAME }} — Finance
+
+Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
+
+## Mission
+
+Owns cashflow, budgeting, expense categorization, revenue forecasting, and pricing analysis. AI-first: drafts monthly reports, projects new-agent operating costs (Opus tokens, MCP fees, infra) as input to every `design-agent` proposal so org-chart expansion has visible cost. Finance does NOT set company strategy; surfaces financial evidence the strategy-makers act on.
+
+## Roles
+
+- `finance-lead` — dept lead, owns end-to-end execution. Defined at [`.claude/agents/finance/finance-lead.md`](../../.claude/agents/finance/finance-lead.md).
+
+(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting.)
+
+## Escalation
+
+`finance-lead` → `coo` (for process matters) → `ceo` (for material spend authority).
+
+## Data scopes
+
+- `data/` (dept-internal): expense ledgers, monthly burn-rate reports, pricing analyses, budget projections. May contain redacted vendor data; full vendor PII goes in restricted MCP-gated stores per Risk 1.
+- Cross-dept references: `../../company/strategy/` (read for budget alignment — restricted-data convention applies) and `../../company/policies/` (read for spend-approval policies).
+
+## Processes-as-skills convention
+
+Dept-scoped skills live at `.claude/skills/<name>/` (nested within this dept folder). Cross-dept skills live at the repo root `.claude/skills/`. Owner-binding-of-record is `owner:` in each PROCESS.md.
+
+## Pointers
+
+- Dept lead: [`.claude/agents/finance/finance-lead.md`](../../.claude/agents/finance/finance-lead.md)
+- Dept-internal data: `data/` (this folder)
+- Dept-internal backlog: `backlog/` (this folder)
+- Cross-cutting backlog: `../../company/backlog/`

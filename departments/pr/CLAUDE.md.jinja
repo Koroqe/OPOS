@@ -1,0 +1,33 @@
+# {{ COMPANY_NAME }} — PR
+
+Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
+
+## Mission
+
+Owns external communications — press releases, brand voice consistency, social presence, crisis communications. AI-first: drafts press materials and monitors mentions; human signoff on all public-facing copy. PR does NOT make product or strategic decisions; expresses them externally with consistent voice.
+
+## Roles
+
+- `pr-lead` — dept lead, owns brand voice + media relations + comms templates. Defined at [`.claude/agents/pr/pr-lead.md`](../../.claude/agents/pr/pr-lead.md).
+
+(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting — e.g., a dedicated `social-media-curator`.)
+
+## Escalation
+
+`pr-lead` → `ceo` (for brand-direction calls and crisis-comms approvals) → coordinates with `legal-lead` (legally-sensitive comms) and `commercial-lead` (public-facing-messaging alignment).
+
+## Data scopes
+
+- `data/` (dept-internal): brand voice library, press-release archive, mention-monitoring logs (anonymized), crisis-comms playbook templates.
+- Cross-dept: `../../company/strategy/` (read for strategic context — restricted-data convention applies), `../../company/policies/` (read for any policies affecting external messaging).
+
+## Processes-as-skills convention
+
+Dept-scoped skills live at `.claude/skills/<name>/` (nested within this dept folder). Cross-dept skills live at the repo root `.claude/skills/`. Owner-binding-of-record is `owner:` in each PROCESS.md.
+
+## Pointers
+
+- Dept lead: [`.claude/agents/pr/pr-lead.md`](../../.claude/agents/pr/pr-lead.md)
+- Dept-internal data: `data/` (this folder)
+- Dept-internal backlog: `backlog/` (this folder)
+- Cross-cutting backlog: `../../company/backlog/`

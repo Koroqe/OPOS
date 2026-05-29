@@ -1,0 +1,33 @@
+# {{ COMPANY_NAME }} — Legal
+
+Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
+
+## Mission
+
+Owns contract review, compliance tracking (GDPR/SOC2/etc.), and IP protection. AI-first: LLM-scale contract review for routine matters; high-stakes matters routed to external counsel for human attorney signoff. Legal does NOT make business decisions; surfaces legal risk and constraints the business decides around.
+
+## Roles
+
+- `legal-lead` — dept lead, owns end-to-end execution including templates library + compliance registry. Defined at [`.claude/agents/legal/legal-lead.md`](../../.claude/agents/legal/legal-lead.md).
+
+(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting — e.g., a dedicated `compliance-officer` if the company hits scale.)
+
+## Escalation
+
+`legal-lead` → `ceo` (for risk-tolerance decisions and high-stakes signoff). External human counsel consulted for matters requiring licensed-attorney accountability (specific litigation, regulated filings, material acquisitions).
+
+## Data scopes
+
+- `data/` (dept-internal): contract templates, signed-contracts registry (paths only — actual signed PDFs in MCP-gated stores per Risk 1), compliance audit logs, IP/trademark registry.
+- Cross-dept: `../../company/strategy/` (read for legal risk context — restricted-data convention applies), `../../company/policies/` (read+write — legal often drafts company policies).
+
+## Processes-as-skills convention
+
+Dept-scoped skills live at `.claude/skills/<name>/` (nested within this dept folder). Cross-dept skills live at the repo root `.claude/skills/`. Owner-binding-of-record is `owner:` in each PROCESS.md.
+
+## Pointers
+
+- Dept lead: [`.claude/agents/legal/legal-lead.md`](../../.claude/agents/legal/legal-lead.md)
+- Dept-internal data: `data/` (this folder)
+- Dept-internal backlog: `backlog/` (this folder)
+- Company policies (often drafted here): `../../company/policies/`

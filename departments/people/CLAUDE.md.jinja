@@ -1,0 +1,34 @@
+# {{ COMPANY_NAME }} — People
+
+Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
+
+## Mission
+
+Owns capability gap → resource allocation. AI-first: every gap is first evaluated for AI-agent suitability via [`allocate-resource`](../../.claude/skills/allocate-resource/); human hire is the fallback only for tasks requiring lived human experience, physical-world action, or legally-mandated human accountability. People does NOT manage the org chart's authority structure — that's `ceo`'s domain; people surfaces evidence and proposed routes.
+
+## Roles
+
+- `people-lead` — dept lead, runs `allocate-resource` for every capability gap; maintains the resource registry of all agents + humans. Defined at [`.claude/agents/people/people-lead.md`](../../.claude/agents/people/people-lead.md).
+
+(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting.)
+
+## Escalation
+
+`people-lead` → `ceo` (for org-chart changes + hiring budget approval). Internal AI route delegates to `ops-manager` for `design-agent` invocation.
+
+## Data scopes
+
+- `data/` (dept-internal): the resource registry (CSV/markdown index of all agents + humans + their capabilities), AI-first decision-tree audit logs.
+- `../../company/hiring/`: human-route job specs (see [`company/hiring/README.md`](../../company/hiring/README.md) for the lifecycle).
+
+## Processes-as-skills convention
+
+Dept-scoped skills live at `.claude/skills/<name>/` (nested within this dept folder). Cross-dept skills live at the repo root `.claude/skills/`. `allocate-resource` (the AI-first kernel) lives at the ROOT `.claude/skills/` because it's invoked by/for every dept.
+
+## Pointers
+
+- Dept lead: [`.claude/agents/people/people-lead.md`](../../.claude/agents/people/people-lead.md)
+- AI-first kernel skill: [`.claude/skills/allocate-resource/`](../../.claude/skills/allocate-resource/)
+- Human-route output folder: [`company/hiring/`](../../company/hiring/)
+- Dept-internal data: `data/` (this folder)
+- Dept-internal backlog: `backlog/` (this folder)

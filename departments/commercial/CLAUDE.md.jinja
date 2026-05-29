@@ -1,0 +1,35 @@
+# {{ COMPANY_NAME }} — Commercial
+
+Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
+
+## Mission
+
+Owns revenue end-to-end — demand generation, marketing content, sales pipeline, customer success. AI-first: LLM drafts content, automated lead qualification, human approves public-facing copy. Commercial does NOT make product decisions; surfaces customer evidence (pipeline data, feedback, segments) the product-makers act on.
+
+Marketing and Sales are unified here for v0 — split into sub-leads (`marketing-lead`, `sales-lead`) via [`design-agent`](../../.claude/skills/design-agent/) when load justifies.
+
+## Roles
+
+- `commercial-lead` — dept lead, owns end-to-end revenue execution. Defined at [`.claude/agents/commercial/commercial-lead.md`](../../.claude/agents/commercial/commercial-lead.md).
+
+(Future split candidates: `marketing-lead`, `sales-lead`, `customer-success-lead` — design via `design-agent` when needed.)
+
+## Escalation
+
+`commercial-lead` → `ceo` (for pricing changes and major deals) → also coordinates with `finance-lead` (revenue forecasting consistency) and `pr-lead` (public-facing messaging alignment).
+
+## Data scopes
+
+- `data/` (dept-internal): pipeline data (anonymized; full CRM in MCP-gated store per Risk 1), marketing-content drafts, A/B test logs, customer segments, churn analyses.
+- Cross-dept: `../../company/strategy/` (read for product-market-fit context — restricted-data convention applies), `../../company/knowledge-base/` (write — competitive landscape contributions).
+
+## Processes-as-skills convention
+
+Dept-scoped skills live at `.claude/skills/<name>/` (nested within this dept folder). Cross-dept skills live at the repo root `.claude/skills/`. Owner-binding-of-record is `owner:` in each PROCESS.md.
+
+## Pointers
+
+- Dept lead: [`.claude/agents/commercial/commercial-lead.md`](../../.claude/agents/commercial/commercial-lead.md)
+- Dept-internal data: `data/` (this folder)
+- Dept-internal backlog: `backlog/` (this folder)
+- Cross-cutting backlog: `../../company/backlog/`
