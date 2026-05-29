@@ -1,0 +1,52 @@
+<!--
+TEMPLATE: substitute the tokens listed below; the `allocate-resource` skill
+STRIPS this comment header (lines 1 through the closing `-->` and trailing
+blank line) before writing the final hiring spec file. Same convention as
+POLICY.md.tmpl: rendered files don't show token instructions to the founder.
+
+Substitution tokens:
+  <<TITLE>>            — role title (e.g. "Customer Success Manager")
+  <<SLUG>>             — kebab-case identifier (matches filename without .md)
+  <<CREATED_DATE>>     — ISO date (YYYY-MM-DD)
+  <<WHY_NOT_AI>>       — which AI-first decision-tree question(s) failed (e.g. "Q2: requires physical-world action")
+  <<SCOPE>>            — one paragraph describing what this role owns
+  <<RESPONSIBILITIES>> — bulleted list (markdown)
+  <<QUALIFICATIONS>>   — bulleted list (markdown)
+  <<HOURS>>            — full-time | part-time | contract
+  <<ESCALATION>>       — who this role reports to (e.g. "people-lead → ceo")
+
+This is the human-route output of allocate-resource. The `state:` field follows
+the lifecycle: pending → approved (by ceo) → posted → filled. The `why_not_ai:`
+field records the AI-first decision-tree result for audit.
+-->
+
+---
+title: <<TITLE>>
+slug: <<SLUG>>
+owner: people-lead
+created: <<CREATED_DATE>>
+state: pending
+why_not_ai: <<WHY_NOT_AI>>
+---
+
+# <<TITLE>>
+
+## Scope
+
+<<SCOPE>>
+
+## Responsibilities
+
+<<RESPONSIBILITIES>>
+
+## Qualifications
+
+<<QUALIFICATIONS>>
+
+## Hours
+
+<<HOURS>>
+
+## Escalation
+
+<<ESCALATION>>

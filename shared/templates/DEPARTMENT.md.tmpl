@@ -1,0 +1,47 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<DEPT_NAME>>       — dept slug (matches folder name; e.g. "finance")
+  <<DEPT_TITLE>>      — display title (e.g. "Finance")
+  <<MISSION>>         — 1-3 sentences: what this dept owns; what it does NOT do
+  <<LEAD_NAME>>       — name of the dept lead agent (e.g. "finance-lead")
+  <<ESCALATION>>      — escalation rules (e.g. "<<LEAD_NAME>> → coo → ceo")
+  <<DATA_SCOPES>>     — what dept-internal vs cross-dept data lives here
+
+This is the template used by company-setup and (eventually) design-department to
+create new dept charters. Inherits from the company-scope charter via cascade.
+-->
+
+# {{ COMPANY_NAME }} — <<DEPT_TITLE>>
+
+Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
+
+## Mission
+
+<<MISSION>>
+
+## Roles
+
+- `<<LEAD_NAME>>` — dept lead, owns end-to-end execution. Defined at [`.claude/agents/<<DEPT_NAME>>/<<LEAD_NAME>>.md`](../../.claude/agents/<<DEPT_NAME>>/<<LEAD_NAME>>.md).
+
+(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting.)
+
+## Escalation
+
+<<ESCALATION>>
+
+## Data scopes
+
+<<DATA_SCOPES>>
+
+## Processes-as-skills convention
+
+Dept-scoped skills live at `.claude/skills/<name>/` (nested within this dept folder). Cross-dept skills live at the repo root `.claude/skills/`. Owner-binding-of-record is `owner:` in each PROCESS.md.
+
+## Pointers
+
+- Dept lead: [`.claude/agents/<<DEPT_NAME>>/<<LEAD_NAME>>.md`](../../.claude/agents/<<DEPT_NAME>>/<<LEAD_NAME>>.md)
+- Dept-internal data: `data/` (this folder)
+- Dept-internal backlog: `backlog/` (this folder)
+- Cross-cutting backlog: `../../company/backlog/`

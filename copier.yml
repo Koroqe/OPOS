@@ -34,6 +34,7 @@ _skip_if_exists:
   - company/policies/**
   - company/knowledge-base/**
   - company/backlog/**
+  - company/hiring/**     # v0.5.1: job specs written by allocate-resource (people-lead's human route); founder-owned post-scaffold
   - departments/**
 
 COMPANY_NAME:
