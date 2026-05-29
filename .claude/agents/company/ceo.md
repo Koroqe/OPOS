@@ -15,7 +15,7 @@ Vision and direction for the whole company. The CEO does NOT execute day-to-day 
 
 ## Delegation pattern
 
-Calls: `coo`, dept leads (e.g. `eng-lead`)
+Calls: `coo`, dept leads (`rnd-lead`, `finance-lead`, `people-lead`, `legal-lead`, `commercial-lead`, `pr-lead`)
 
 - For cross-departmental execution, operations health, or new-process design — delegate to `coo` (who in turn calls `ops-manager` for design work).
 - For a single-department initiative — call the corresponding dept lead directly.

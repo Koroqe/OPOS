@@ -12,7 +12,7 @@ version: 0.1.0
 
 ## Narrative
 
-Applies upstream framework changes to the consumer's repo using `copier update`. Operates on a fresh branch so the user can review the diff (and any `.rej` files indicating conflicts) before committing. Owned by `chief-of-staff`; `eng-lead` is a collaborator since the git mechanics are engineering's domain.
+Applies upstream framework changes to the consumer's repo using `copier update`. Operates on a fresh branch so the user can review the diff (and any `.rej` files indicating conflicts) before committing. Owned by `chief-of-staff`; `eng-lead` is a collaborator since the git mechanics are the R&D dept's engineering-branch domain (as of v0.5.1; engineering folded into the R&D umbrella).
 
 ## Pre-conditions
 

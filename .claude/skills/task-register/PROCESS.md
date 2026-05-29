@@ -12,7 +12,7 @@ version: 0.1.0
 
 ## Narrative
 
-Opens a GitHub issue for a newly initiated task. The first of three sibling skills in the task-tracking lifecycle (`task-register` → `task-update` → `task-complete`). Owned by `chief-of-staff`, with `eng-lead` listed as collaborator since the GitHub integration is engineering's domain (gh CLI conventions, label hygiene, the `Refs: #` linking convention used downstream by `task-complete`).
+Opens a GitHub issue for a newly initiated task. The first of three sibling skills in the task-tracking lifecycle (`task-register` → `task-update` → `task-complete`). Owned by `chief-of-staff`, with `eng-lead` listed as collaborator since the GitHub integration is the R&D dept's engineering-branch domain (gh CLI conventions, label hygiene, the `Refs: #` linking convention used downstream by `task-complete`; v0.5.1 folded engineering into R&D).
 
 ## Pre-conditions
 

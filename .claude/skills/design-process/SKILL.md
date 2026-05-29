@@ -24,11 +24,11 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 
 ## Steps
 
-1. **Understand the framework.** Read root `CLAUDE.md`, `shared/templates/SKILL.md.tmpl`, `shared/templates/PROCESS.md.tmpl`, and one existing skill (`departments/engineering/.claude/skills/deploy/`) as a reference example. Read `company/knowledge-base/glossary.md` for vocabulary.
+1. **Understand the framework.** Read root `CLAUDE.md`, `shared/templates/SKILL.md.tmpl`, `shared/templates/PROCESS.md.tmpl`, and one existing skill (`departments/rnd/.claude/skills/deploy/` — the engineering-flavored example moved under the R&D umbrella at v0.5.1) as a reference example. Read `company/knowledge-base/glossary.md` for vocabulary.
 
 2. **Understand the job.** Read `job_description` (and `backlog_item_path` if supplied). Identify: domain, repeatability rationale, frequency estimate, criticality, who consumes the output.
 
-3. **Identify involved departments.** Enumerate `departments/*/CLAUDE.md` via filesystem glob. Read each charter; identify which departments the job touches based on their stated mission and scope. Default to ALL departments whose charters mention the job's domain. If only one department exists in the repo (the v0 skeleton ships with just `engineering`), this loop has one entry — that's expected, not a failure.
+3. **Identify involved departments.** Enumerate `departments/*/CLAUDE.md` via filesystem glob. Read each charter; identify which departments the job touches based on their stated mission and scope. Default to ALL departments whose charters mention the job's domain. **As of v0.5.1**, the framework ships 6 starter departments (rnd, finance, people, legal, commercial, pr) with engineering folded into rnd as the building branch. Pre-v0.5.1 scaffolds may have just engineering+rnd as separate depts — both topologies work.
 
 4. **Consult involved dept leads via `consult-agent`.** For each involved department, invoke `consult-agent --agent <dept-lead> --question "<consultation>"`. Question template:
 

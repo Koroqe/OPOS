@@ -26,7 +26,7 @@ The skill is INTERACTIVE: it produces a proposal, iterates with the user, and on
 
 ## Steps
 
-1. **Understand the framework.** Read root `CLAUDE.md`, `shared/templates/AGENT.md.tmpl`, two reference agents to ground both placement conventions: a company-tier one (`.claude/agents/company/chief-of-staff.md`) AND a dept-tier one (`.claude/agents/engineering/eng-lead.md`). Read `company/knowledge-base/glossary.md` for vocabulary.
+1. **Understand the framework.** Read root `CLAUDE.md`, `shared/templates/AGENT.md.tmpl`, two reference agents to ground both placement conventions: a company-tier one (`.claude/agents/company/chief-of-staff.md`) AND a dept-tier one (`.claude/agents/rnd/eng-lead.md` — moved from `.claude/agents/engineering/` at v0.5.1 when engineering folded into the R&D umbrella). Read `company/knowledge-base/glossary.md` for vocabulary.
 
 2. **Understand the role.** Parse `role_description` (and `backlog_item_path` if supplied). Identify: scope (single dept vs cross-dept), authority (what can this agent decide alone? what must it escalate?), interface (what artifacts does it produce/consume?), trigger (when does the user invoke it?).
 
@@ -81,7 +81,7 @@ The skill is INTERACTIVE: it produces a proposal, iterates with the user, and on
     - **Re-check name collision** (same glob as step 4) — closes the TOCTOU window for single-machine. Cross-machine concurrency is per Risk 15 (state files are per-machine; multi-machine setups risk races between this step and another concurrent design-agent run on a different machine — uncommon but possible).
     - **Re-check slug regex** (same pattern as step 4) — defensive.
     - Write `.claude/agents/<dept>/<name>.md`.
-    - If a dept charter (`departments/<dept>/CLAUDE.md.jinja` for engineering/rnd; `company/CLAUDE.md.jinja` for company-tier) has a "Members" section, append the new agent's name to it. Otherwise note the skip in the step-12 history-entry body (do NOT silently lose the signal — auditable).
+    - If a dept charter (`departments/<dept>/CLAUDE.md.jinja` for any of the 6 v0.5.1 starter depts: rnd, finance, people, legal, commercial, pr; `company/CLAUDE.md.jinja` for company-tier) has a "Members" section, append the new agent's name to it. Otherwise note the skip in the step-12 history-entry body (do NOT silently lose the signal — auditable).
     - If a `backlog_item_path` was supplied, edit it: flip `state:` from `active` to `designed`, add `designed_as: <new-agent-path>`.
 
 12. **Write design-agent's own history entry.** Append to `.claude/skills/design-agent/history/YYYY-MM-DD-<short-run-id>.md` per the root `CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1):

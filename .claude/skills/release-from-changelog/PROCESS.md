@@ -12,7 +12,7 @@ version: 0.2.0
 
 ## Narrative
 
-Automates the release-cutting workflow that MAINTAINER.md previously prescribed as a manual sequence of awk + gh-create + verify steps. Reduces the cognitive cost (and silent-bug surface) of cutting each release. Owned by `chief-of-staff`; `eng-lead` listed as collaborator since the git/gh mechanics are engineering's domain.
+Automates the release-cutting workflow that MAINTAINER.md previously prescribed as a manual sequence of awk + gh-create + verify steps. Reduces the cognitive cost (and silent-bug surface) of cutting each release. Owned by `chief-of-staff`; `eng-lead` listed as collaborator since the git/gh mechanics are the R&D dept's engineering-branch domain (v0.5.1 folded engineering into R&D).
 
 ## Pre-conditions
 

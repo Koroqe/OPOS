@@ -221,9 +221,9 @@ The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-te
 Run this after substituting tokens for your company. All six steps should pass cleanly on a freshly-cloned, fully-substituted skeleton.
 
 1. **Cascade check.** From repo root, open `claude`. Ask: *"What CLAUDE.md files are in scope?"* Confirm the root constitution is loaded.
-2. **Subagent discovery.** Ask: *"List available subagents."* Expect at least 6: `ceo`, `coo`, `chief-of-staff`, `ops-manager`, `eng-lead`, `eng-reviewer`. More if you've added agents.
-3. **Global skills discovery.** Ask: *"List available skills."* Expect at least `design-process`.
-4. **Dept-nested cascade.** Run `cd departments/engineering && claude`. Ask: *"What CLAUDE.md files are in scope?"* Expect root + dept charter. Then ask: *"List skills available here."* Expect both `design-process` (global) AND `deploy` (dept-nested).
+2. **Subagent discovery.** Ask: *"List available subagents."* Expect at least 13 (as of v0.5.1): `ceo`, `coo`, `chief-of-staff`, `ops-manager`, `kb-curator`, `rnd-lead`, `eng-lead`, `eng-reviewer`, `finance-lead`, `people-lead`, `legal-lead`, `commercial-lead`, `pr-lead`. More if you've added agents.
+3. **Global skills discovery.** Ask: *"List available skills."* Expect at least `design-process` and `allocate-resource` (the AI-first kernel added in v0.5.1).
+4. **Dept-nested cascade.** Run `cd departments/rnd && claude` (as of v0.5.1; engineering folded into rnd). Ask: *"What CLAUDE.md files are in scope?"* Expect root + dept charter. Then ask: *"List skills available here."* Expect both `design-process` (global) AND `deploy` (dept-nested; moved under rnd at v0.5.1).
 5. **Token substitution check.** From repo root:
    ```bash
    grep -rn "<<[A-Z_]*>>" . --include="*.md"

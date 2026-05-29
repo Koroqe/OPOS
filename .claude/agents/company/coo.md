@@ -15,7 +15,7 @@ Cross-departmental execution and the health of the company's processes. The COO 
 
 ## Delegation pattern
 
-Calls: dept leads (e.g. `eng-lead`), `chief-of-staff`, `ops-manager`
+Calls: dept leads (`rnd-lead`, `finance-lead`, `people-lead`, `legal-lead`, `commercial-lead`, `pr-lead`), `chief-of-staff`, `ops-manager`
 
 - For execution within a single department — delegate to the dept lead.
 - For company-wide coordination work — delegate to `chief-of-staff`.

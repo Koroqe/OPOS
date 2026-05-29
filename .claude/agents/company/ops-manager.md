@@ -17,7 +17,7 @@ The ops-manager does NOT execute the process themselves — that's the owner age
 
 ## Delegation pattern
 
-Calls: `eng-lead` (and future dept leads), `coo`.
+Calls: dept leads (`rnd-lead`, `finance-lead`, `people-lead`, `legal-lead`, `commercial-lead`, `pr-lead`; `eng-lead` and `eng-reviewer` under the rnd umbrella), `coo`.
 
 - For department consultation during design — spawn the relevant dept lead via the `Task` tool with a focused question ("What is your department's role in [job]? What inputs do you need? What are your success criteria? What failure modes have you seen?"). Capture each response and merge into the design.
 - For cross-functional tradeoffs — call `coo` when two departments dispute primary ownership of a designed process, or when the design surfaces a strategic question (e.g. resource allocation across quarters).

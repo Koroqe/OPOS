@@ -15,7 +15,7 @@ Coordination connective tissue between the CEO, the COO, and the department lead
 
 ## Delegation pattern
 
-Calls: `coo`, dept leads (e.g. `eng-lead`)
+Calls: `coo`, dept leads (`rnd-lead`, `finance-lead`, `people-lead`, `legal-lead`, `commercial-lead`, `pr-lead`)
 
 - For an operational handoff after a decision — call `coo`.
 - For a department-specific dependency in a cross-functional initiative — call the corresponding dept lead.
