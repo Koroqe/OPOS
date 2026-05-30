@@ -39,9 +39,9 @@ The skill's SKILL.md body documents the full 11-step flow. Summary here:
 4. Consult each involved dept lead via the `Task` tool with a focused question.
 5. Decide placement (global vs dept-scoped) based on primary ownership.
 6. Draft the SKILL.md + PROCESS.md filling in template tokens.
-7. Present the proposal in chat with a summary of consultations and open questions.
-8. Iterate with the user until explicit approval.
-9. Write files to the final location on approval. Do NOT seed the new skill's history.
+7. Present the proposal in chat with a summary of consultations and open questions. **Trigger-mechanism options to enumerate:** manual / hook-driven / hybrid / scheduled (cron-driven via /schedule-process; NEW v0.6.0).
+8. Iterate with the user until explicit approval. **If user picks "scheduled" in step 7**, capture: schedule cron, authority list (default `[write_proposal]`), non_interactive confirmation.
+9. Write files to the final location on approval. Do NOT seed the new skill's history. **If scheduling fields populated**, also create `<skill-folder>/scheduled-runs/.gitkeep` (eager-creation; the lazy-creation path is `/schedule-process` step 5).
 10. Update advisory backlinks: owner agent's `owns_processes:` and (if applicable) the backlog item's `state` + new `designed_as:` field.
 11. Write a run entry to `./history/` recording this design session.
 

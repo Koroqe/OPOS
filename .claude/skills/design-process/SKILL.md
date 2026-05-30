@@ -47,11 +47,13 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
    - `success_criteria` — merged from dept consultations; deduplicate semantically.
    - `slo` — primary dept lead's stated estimate (or "TBD" if unclear).
    - Body sections (When to use, Steps, Outputs, Failure modes) — synthesized from the consultations.
+   - **If during step 8 the user picks "Scheduled" in response to the step-7 enumeration**, populate the 4 scheduling frontmatter fields when drafting PROCESS.md (`schedule:`, `runtime: claude-schedule`, `non_interactive: true`, `authority: [list]`). Default the authority list to `[write_proposal]` if unclear — it's the safest authority (produces a markdown file the user reviews later instead of mutating shared state). Validation will run via `ui/scheduling.py` once the file is written in step 9.
 
-7. **Present to the user.** Output the proposed SKILL.md and PROCESS.md as inline code blocks in chat. Follow with a summary paragraph: which departments were consulted, what each said (one sentence each), why the placement was chosen, and a bulleted list of open questions or trade-offs the user should review. **Always explicitly enumerate the trigger-mechanism options as one of the open questions** — even if the job description seems to imply one. The three options to surface:
-   - **Manual slash-command** (default): user explicitly invokes `/skill-name` when they want it to run. Predictable but relies on user remembering.
-   - **Hook-driven**: Claude Code hook (e.g. UserPromptSubmit) auto-invokes on matching patterns. Truest to "every time X happens" framings, but requires `.claude/settings.json` editing.
-   - **Hybrid**: ship as manual by default; document the hook recipe as an opt-in upgrade.
+7. **Present to the user.** Output the proposed SKILL.md and PROCESS.md as inline code blocks in chat. Follow with a summary paragraph: which departments were consulted, what each said (one sentence each), why the placement was chosen, and a bulleted list of open questions or trade-offs the user should review. **Always explicitly enumerate the trigger-mechanism options as one of the open questions** — even if the job description seems to imply one. The four options to surface:
+   1. **Manual slash-command** (default): user explicitly invokes `/skill-name` when they want it to run. Predictable but relies on user remembering.
+   2. **Hook-driven**: Claude Code hook (e.g. UserPromptSubmit) auto-invokes on matching patterns. Truest to "every time X happens" framings, but requires `.claude/settings.json` editing.
+   3. **Hybrid**: ship as manual by default; document the hook recipe as an opt-in upgrade.
+   4. **Scheduled (cron-driven)** *(NEW v0.6.0)*: process fires automatically on a cron schedule via Claude Code's built-in `CronCreate`, wrapped by OPOS's `/schedule-process`. Surface mandatory follow-up questions during step 8 (iterate): schedule expression (5-field cron), authority (the minimal action set the runner should take without human review — default `[write_proposal]` is safest), and a non-interactive confirmation (the SKILL body must not call AskUserQuestion or otherwise block on stdin during a scheduled run).
 
    Other open-question candidates: owner agent if unclear, multi-skill split if the job is unusually broad, retention policy for the new skill's `history/` if high-volume.
 
@@ -61,6 +63,7 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
    - Create the skill folder at the chosen path.
    - Write `SKILL.md` and `PROCESS.md` to it.
    - Create `history/.gitkeep` (empty).
+   - **If the design's PROCESS.md frontmatter includes the 4 scheduling fields (Scheduled trigger from step 7 option 4)**, also create `<skill-folder>/scheduled-runs/.gitkeep` (empty) alongside `history/.gitkeep`. This is the eager-creation path; existing skills that become scheduled after their initial design get the folder via `/schedule-process` step 5's lazy-creation path.
    - Do NOT seed a history entry for the new skill — the new skill has not yet been RUN, so it has no run history (the root `CLAUDE.md` rule applies to runs, not creations). Git history is the audit trail for the creation event itself.
 
 10. **Update advisory backlinks.**
