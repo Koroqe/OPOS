@@ -42,6 +42,7 @@ After `/company-setup`, open Claude Code at the repo root and **talk to your `ch
 - **"Let's ship a new feature for [thing]"** → steward proposes a slice plan, runs `task-register`, paces through commits, runs `release-from-changelog`, closes the issue.
 - **"Audit our company state"** → steward reads `.claude/.current-task`, recent history, open issues; reports a 1-page state summary.
 - **"We need a marketing analyst"** → steward routes through `people-lead` → `allocate-resource` → AI-first decision tree → either a `/design-agent` recommendation OR a job spec written to `company/hiring/`.
+- **"We need a customer-success department"** → steward routes through `ops-manager` → `design-department` (NEW v0.5.3) → consultations with `ceo` + `coo`, charter drafted from `DEPARTMENT.md.tmpl`, lead-agent designed in the same session via a `/design-agent` recommendation, files written under `departments/customer-success/`.
 - **"What's the deploy status?"** → steward consults `eng-lead` via `consult-agent` and summarizes.
 
 The steward executes autonomously by default for low-risk operations (reads, tests, drafts). It asks one-line confirmation for `git commit`, `gh issue close`, agent creation. It asks explicit approval for `git push`, release cutting, destructive operations. See [`.claude/agents/company/chief-of-staff.md`](.claude/agents/company/chief-of-staff.md) "Permission tiers" section for the full ladder (5 levels: Auto, Notice, Confirm, Explicit approval, Hard refuse).

@@ -106,17 +106,21 @@ The skill's step 3 ("Identify involved departments") consults only departments t
 - Git revert is the recovery path: every design session lands as a single commit, easy to back out.
 - Adopters who want a formal review queue can fork `design-process` to write to a `proposals/` staging folder first.
 
-## Risk 8 — `design-process` cannot create new agent roles
+## Risk 8 — `design-process` cannot create new agent roles or new dept charters
 
-**Status:** **CLOSED in v0.4.0** — see [`.claude/skills/design-agent/`](.claude/skills/design-agent/).
+**Status:** **FULLY CLOSED in v0.5.3** — see [`.claude/skills/design-agent/`](.claude/skills/design-agent/) (v0.4.0, new agents) and [`.claude/skills/design-department/`](.claude/skills/design-department/) (v0.5.3, new dept charters).
 
-**Original concern (historical, pre-v0.4.0):** If a designed process needed an agent role that didn't exist (e.g. a "release-coordinator" with no matching `name:` in `.claude/agents/`), `design-process` would escalate to `coo` and stop. The skill did not create new agents.
+**Original concern (historical, pre-v0.4.0):** If a designed process needed an agent role that didn't exist (e.g. a "release-coordinator" with no matching `name:` in `.claude/agents/`), `design-process` would escalate to `coo` and stop. The skill did not create new agents. The same gap existed for new department charters.
 
-**Resolution (v0.4.0):**
+**Resolution (v0.4.0 — new agents):**
 
-The `design-agent` skill (owned by `ops-manager`, same as `design-process`) mirrors `design-process`'s interactive structure for agent files. When `design-process` hits the "new agent role required" failure mode, it now invokes `design-agent` inline instead of escalating. `coo` escalation is preserved as a fallback when the user rejects the agent design. See `design-process/SKILL.md` Failure modes and `.claude/agents/company/ops-manager.md` for the updated escalation path.
+The `design-agent` skill (owned by `ops-manager`, same as `design-process`) mirrors `design-process`'s interactive structure for agent files. When `design-process` hits the "new agent role required" failure mode, it now invokes `design-agent` inline instead of escalating. `coo` escalation is preserved as a fallback when the user rejects the agent design.
 
-**Remaining gap (separate concern):** new DEPARTMENT charters still require manual creation. A future `design-department` skill (v0.5.0+ candidate) would close that loop.
+**Resolution (v0.5.3 — new dept charters):**
+
+The `design-department` skill (owned by `ops-manager`, completing the design-* trio) closes the remaining new-dept-charter gap. 12-step procedure mirroring `design-agent`: consultations with `ceo` + `coo` (always) plus one optional specific dept-lead/sub-lead, draft from `shared/templates/DEPARTMENT.md.tmpl`, approval gate, write the dept charter only (no auto-scaffold of `data/` or `backlog/` subdirs — matches 5 of 6 v0.5.1 starters' minimal pattern). Context-detected charter suffix (`.md.jinja` in the framework repo; `.md` in a consumer's already-rendered repo). Step 5 emits a `/design-agent` recommendation when the user wants the dept's lead designed in the same session — does NOT auto-invoke per the v0.5.1 `allocate-resource` anti-pattern. Framework-reserved exact-match list blocks adding a parallel `engineering/` dept (the v0.5.1 merge folded engineering under `rnd`). Sub-depts (`A` under `B`) are NOT supported in v0.5.3 — a future `design-subdept` skill would close that final org-chart-shape gap.
+
+See `design-process/SKILL.md` Failure modes and `.claude/agents/company/ops-manager.md` for the updated escalation path (now: `design-agent` inline for new agents; `design-department` inline for new dept charters; `coo` only on user rejection of either design).
 
 ## Risk 9 — Copier conflict resolution is manual
 
