@@ -4,7 +4,7 @@ description: Designs new processes by reading the OS, consulting involved depart
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Task"]
 model: opus
 department: company
-owns_processes: [design-process, design-agent, design-department]
+owns_processes: [design-process, design-agent, design-department, schedule-process]
 ---
 
 # ops-manager
