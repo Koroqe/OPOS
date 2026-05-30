@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.5.3] - 2026-05-30
+
+### Added
+
+- **`design-department` skill** — third member of the `design-*` family (after `design-process` v0.1.0 and `design-agent` v0.4.0). Closes the final org-chart-expansion gap; RISKS Risk 8 is now **FULLY CLOSED**. Owned by `ops-manager`. Top-level depts only; sub-depts deferred to a future `design-subdept` skill.
+  - **12-step procedure** mirroring `design-agent`'s structure: framework read → dept-intent parse → name + slug + reserved-list validate → top-level placement → lead-agent decision → `consult-agent` calls (ceo + coo always; one optional dept-lead/sub-lead) → artifact-type capture → draft from `DEPARTMENT.md.tmpl` → present → iterate → approval gate → write the charter (ONLY the charter — no auto-scaffold of `data/` or `backlog/` subdirs, matching 5 of 6 v0.5.1 starters) → history entry.
+  - **Context-detected charter suffix.** 2-stat check: `copier.yml` at repo root AND root `CLAUDE.md.jinja` present → framework context (write `.md.jinja`); otherwise consumer context (write `.md`).
+  - **Verbatim slug regex** `^[a-z][a-z0-9-]{0,63}$` (matches `ui/validate.py:_SLUG_RE` line 15 exactly). Earlier design-* skills' `{1,62}` documentation drift acknowledged but not retroactively corrected (out of v0.5.3 scope).
+  - **Framework-reserved dept-name list** `{rnd, finance, people, legal, commercial, pr, engineering, company}` blocks adding a parallel `engineering/` dept (the v0.5.1 merge folded engineering under `rnd`). Exact whole-string equality; sub-tokens like `customer-success` are allowed.
+  - **Lead-agent step 5** asks the user (default yes); the skill EMITS a `/design-agent` recommendation at step 11 for the user to invoke in the next turn — does NOT auto-invoke per the v0.5.1 `allocate-resource` anti-pattern (the `Task` tool spawns subagents but cannot execute slash commands).
+  - **Sub-dept ABORT** at step 4 with a pointer to `/design-agent` for sub-lead patterns under existing depts.
+
+### Changed
+
+- `ops-manager.md` `owns_processes:` extended `[design-process, design-agent]` → `[design-process, design-agent, design-department]`. Body Role narrative adds the "As of v0.5.3, ops-manager owns the FULL design family" sentence. New delegation-pattern bullet for new-department gaps. Escalation rules case (a) reworded from "department creation out of scope" to "user rejects a `design-department` proposal" — the tooling gap is gone; escalation now fires only on user rejection.
+- `RISKS.md` Risk 8 — status flipped from `**CLOSED in v0.4.0**` to `**FULLY CLOSED in v0.5.3**`. Risk title widened from "cannot create new agent roles" to "cannot create new agent roles or new dept charters". New v0.5.3 Resolution paragraph mirrors the v0.4.0 one with full implementation detail (12 steps, context-detection, reserved list, emit-not-invoke pattern). Sub-dept gap explicitly noted as the future `design-subdept` candidate.
+- `design-process/SKILL.md` Failure modes — "new agent role required" branch's dept-charter sub-clause now invokes `design-department` inline instead of escalating to `coo`. `coo` escalation preserved as fallback when the user rejects the dept design.
+- `README.md.jinja` "How to use OPOS day-to-day" — added a 5th example user prompt ("We need a customer-success department" → ops-manager → design-department → consultations → charter + lead-agent same-session) between the marketing-analyst and deploy-status examples.
+- `chief-of-staff.md` Framework expertise bullet — skill count `15 v0.5.1` → `16 v0.5.3`; `design-department (NEW v0.5.3)` highlighted in the listing.
+
+### Notes
+
+Closes Koroqe/OPOS#12. **The full design family is now operational** — `ops-manager` can generate any framework primitive (skill via `design-process`, agent via `design-agent`, dept via `design-department`) from natural-language input. The framework's self-extension loop is fully closed at the org-chart level. Plan critic load-bearing for 5 consecutive releases (v0.4.0 + v0.5.0 + v0.5.1 + v0.5.2 + v0.5.3): 13 findings this round (0 critical, 5 major, 8 minor); all CRITICAL/MAJOR addressed in-plan before execution. No breaking changes (patch); `.claude/skills/` is NOT in `_skip_if_exists` so existing v0.5.0/v0.5.1/v0.5.2 consumers receive `design-department` automatically via `copier update`.
+
 ## [0.5.2] - 2026-05-30
 
 ### Added
@@ -296,6 +320,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.5.3]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.3
 [0.5.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.2
 [0.5.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.0
