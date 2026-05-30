@@ -20,6 +20,15 @@ version: 0.1.0
 # state_schema:
 #   - <state-name>: <one-line description>
 #   - <next-state-name>: <one-line description>
+#
+# scheduling (OPTIONAL — added v0.6.0; omit ALL FOUR to keep the process manual-only.
+# If you set any, you MUST set all four. Validated by ui/scheduling.py; activated by /schedule-process):
+# schedule: "0 9 * * 1"        # 5-field POSIX cron; honored by Claude Code's CronCreate. Rejects '* * * * *' (every-minute).
+# runtime: claude-schedule     # v1: only `claude-schedule` allowed. v2 may add `gha` or `launchd`.
+# non_interactive: true        # MUST be literal boolean true (no quotes). The runtime has no human to answer prompts.
+# authority:                   # Allow-list documenting what the scheduled runner is expected to do.
+#   - write_proposal           # Allowed values: commit, push, open_pr, file_issue, comment_issue, write_proposal, read_only.
+                               # read_only is mutually exclusive with all other values.
 ---
 
 # <<PROCESS_NAME>>
