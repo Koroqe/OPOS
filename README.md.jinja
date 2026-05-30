@@ -51,6 +51,49 @@ When you open Claude Code at the repo root, the steward greets you with current 
 
 You don't memorize skill names. You don't know template paths. You state intent — the steward maps it to capability.
 
+## Scheduling processes
+
+*(NEW v0.6.0)* Any process can fire on a cron schedule via Claude Code's built-in cron tools (`CronCreate` / `CronList` / `CronDelete`), wrapped by OPOS's three scheduling skills (`/schedule-process`, `/unschedule-process`, `/list-scheduled-processes`). This is what turns OPOS from request-driven to autonomous-capable: weekly metrics reports, daily standup nudges, monthly financial summaries — they run without your laptop being open.
+
+**Prerequisite:** you must be logged into Claude Code (`claude login`). The built-in cron tools authenticate against your Claude Code subscription. No additional OPOS setup is required.
+
+### Opt-in via four PROCESS.md frontmatter fields
+
+Add these to any `PROCESS.md` to make the process schedulable. All four are required together (validator rejects partial sets):
+
+```yaml
+schedule: "0 9 * * 1"        # 5-field POSIX cron. Rejects '* * * * *' (every-minute).
+runtime: claude-schedule     # v1: only `claude-schedule` allowed. v2 may add gha / launchd.
+non_interactive: true        # Literal boolean true. Scheduled runs have no human to answer prompts.
+authority:                   # Allow-list of actions the runner may take without human review.
+  - write_proposal           # Allowed: commit, push, open_pr, file_issue, comment_issue, write_proposal, read_only.
+                             # read_only is mutually exclusive with all other values.
+```
+
+### Three skills
+
+| Skill | Wraps | What it does |
+|---|---|---|
+| `/schedule-process <name>` | `CronCreate` | Reads PROCESS.md, validates frontmatter, composes a routine prompt with an authority prelude, registers the routine, caches the routine id locally. Idempotent (no-op on re-run with no diff; confirms on cron change). |
+| `/unschedule-process <name>` | `CronDelete` | Cancels the live routine. Leaves PROCESS.md frontmatter untouched so you can re-activate without re-editing. Idempotent (no-op if not scheduled). |
+| `/list-scheduled-processes` | `CronList` | Read-only drift detection. Classifies each row as OK / MISSING / ORPHAN / DRIFT / INVALID_INTENT. CronList is authoritative — safe on fresh machines. Warns on overlapping cron times (conflict risk if processes mutate shared files). |
+
+### Design-time integration
+
+When you run `/design-process`, the steward presents 4 trigger-mechanism options (was 3 before v0.6.0): manual / hook-driven / hybrid / **scheduled**. Picking "scheduled" populates the four frontmatter fields above and eager-creates the `scheduled-runs/` folder.
+
+### Authority is a declared contract, NOT a runtime sandbox
+
+v1 enforces `authority:` by prompt injection + in-band self-check: the scheduled routine's prompt begins with a prelude reading *"You are running as a scheduled routine. Your declared authority is [...]. Before taking any action, verify it is in this list; refuse and write the refusal to the scheduled-runs/ entry if not."* A misbehaving prompt body could in principle take actions beyond the declared list — there is no post-run sandbox guard in v1 (that's a v2 work item; see RISKS Risk 18). Mitigation: every `scheduled-runs/` entry starts as `verification_state: unverified` until a human reviews the output and marks it `verified`.
+
+### Run records live in `scheduled-runs/`, not `history/`
+
+Scheduled invocations write to `<skill>/scheduled-runs/` (sibling to history/, never mixed). Manual interactive invocations of the same process still write to history/. Split keeps daily-cron noise from drowning out the rare manual process-improvement signal. The SKILL body distinguishes by checking the invoking prompt for the prelude string `"You are running as a scheduled routine"`.
+
+### Example narrative (10 use cases condensed)
+
+A typical user journey: (1) design a weekly metrics rollup via `/design-process`, pick "scheduled" trigger at step 7, cron `0 9 * * 1`, authority `[write_proposal]`. (2) `/schedule-process weekly-metrics-rollup` registers the routine; (3) Monday at 09:00 the runtime fires, the process writes a markdown proposal under `scheduled-runs/`; (4) you review it Monday morning and mark `verification_state: verified`. Other journeys: typo in cron `"every monday"` → validator rejects with format spec; missing one of the 4 fields → validator rejects with the missing list; cron registration succeeds but cache write fails → wrapper auto-rolls-back via `CronDelete` (or surfaces the orphan id for manual cleanup); two processes declared at same cron `0 9 * * 1` → `/list-scheduled-processes` warns about file-conflict risk; fresh machine joins the project → `/list-scheduled-processes` correctly reports all live routines as OK (cache is a hint, not authoritative); routine cron drifts (edited via Claude Code's native UI) → `/list-scheduled-processes` reports DRIFT, re-`/schedule-process` reconciles.
+
 ## Updating from upstream
 
 Two ways to receive updates from `Koroqe/OPOS`:

@@ -29,7 +29,7 @@ To add a STARTER file:
 
 ## Adding runtime state
 
-Runtime state is consumer-local: never in the template, never tracked in git. Examples: `.claude/.current-task`, `.claude/.last-update-check`, `.claude/scratchpad.md`, skill `history/*.md` files.
+Runtime state is consumer-local: never in the template, never tracked in git. Examples: `.claude/.current-task`, `.claude/.last-update-check`, `.claude/scratchpad.md`, skill `history/*.md` files, and (v0.6.0+) `**/scheduled-runs/202[0-9]-*.md` + `.claude/scheduled-processes.json`.
 
 To add a new runtime-state path:
 
@@ -37,6 +37,17 @@ To add a new runtime-state path:
 2. Add the path to `.gitignore` — prevents accidental tracking in the framework repo.
 3. Document the path in the relevant skill's SKILL.md (which skill writes it and when).
 4. Mention in CHANGELOG if the path convention is new.
+
+### v0.6.0 additions
+
+Two new runtime-state paths shipped with the scheduling family:
+
+- `**/scheduled-runs/202[0-9]-*.md` — per-scheduled-run records, one file per cron-fired invocation. Sibling to `history/`; never mixed. Written by the scheduled process body when it detects the prelude string `"You are running as a scheduled routine"` (injected by `/schedule-process`). The `scheduled-runs/.gitkeep` marker files (one per scheduling-capable skill folder) DO ship via Copier — they preserve the folder convention so consumers see the structure. Only the dated entries are excluded.
+- `.claude/scheduled-processes.json` — per-machine cache mapping `process_name` → `routine_id` (the id returned by `CronCreate`). NOT authoritative — `/list-scheduled-processes` reconciles against `CronList` directly so a missing cache row on a fresh machine doesn't falsely classify live routines as ORPHAN.
+
+### Dependency on Claude Code internal tool names
+
+The three v0.6.0 wrappers reference `CronCreate` / `CronList` / `CronDelete` by exact name (in skill `tools:` allow-lists and in SKILL.md step bodies). These names were verified against https://code.claude.com/docs/en/routines.md at v0.6.0 release. If Anthropic renames these tools, the rename is a coordinated 3-file sed across `.claude/skills/schedule-process/SKILL.md`, `.claude/skills/unschedule-process/SKILL.md`, `.claude/skills/list-scheduled-processes/SKILL.md` (plus their `tools:` frontmatter). See RISKS Risk 26.
 
 ## Releasing a new version
 

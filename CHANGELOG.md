@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.6.0] - 2026-05-30
+
+### Added
+
+- **Scheduling mechanism** — three new `ops-manager`-owned skills that turn OPOS from request-driven to autonomous-capable. Any process with the 4 optional scheduling frontmatter fields (`schedule`, `runtime`, `non_interactive`, `authority`) can fire on a cron schedule via Claude Code's built-in cron tools:
+  - `/schedule-process <name>` — wraps `CronCreate`. Validates frontmatter, composes a routine prompt with an authority prelude (declared-contract enforcement via prompt injection + in-band self-check), registers the routine, caches the routine id locally. Idempotent (no-op on re-run with no diff; confirm-on-diff for updates). Partial-failure rollback: if local cache write fails after live `CronCreate` succeeds, attempts `CronDelete` automatically; if that fails, prints orphan routine id for manual cleanup.
+  - `/unschedule-process <name>` — wraps `CronDelete`. Cache fast-path with `CronList` fallback for fresh-machine bootstrap. Leaves source PROCESS.md frontmatter untouched (re-activate via `/schedule-process` without re-editing). Idempotent (no-op if not scheduled).
+  - `/list-scheduled-processes` — wraps `CronList`. Read-only drift detection: classifies each row as OK / MISSING / ORPHAN / DRIFT / INVALID_INTENT. CronList is authoritative — fresh-machine safe. Warns on overlapping cron times (file-conflict risk).
+- **`ui/scheduling.py`** — new Python module (sibling to `ui/validate.py`). Exposes `validate_frontmatter(process_md_path) -> (ok, errors)` enforcing 5 rules: all-or-nothing (4 fields must move together), 5-field POSIX cron format + reject every-minute, runtime allow-list (`claude-schedule` only in v1), `non_interactive` literal boolean (not string), `authority` non-empty list with allow-list members and `read_only` mutex.
+- **`shared/templates/scheduled-run.md.tmpl`** — new per-run record template. 11-field schema (superset of history): `date`, `run_id`, `skill`, `triggered_by: schedule`, `outcome`, `duration_min`, `authority_declared`, `authority_used`, `verification_state` (unverified | verified — human marks verified after first review), `proposed_delta`, `status`.
+- **`scheduled-runs/` folder convention** — sibling to `history/`, never mixed. Scheduled invocations write to `scheduled-runs/`; manual invocations continue writing to `history/`. Split keeps daily-cron noise from drowning out rare manual process-improvement signal.
+- **Design-time integration** — `/design-process` step 7 now enumerates 4 trigger-mechanism options (was 3): manual / hook-driven / hybrid / **scheduled (cron-driven)**. Picking "scheduled" populates the 4 frontmatter fields and eager-creates `scheduled-runs/.gitkeep`.
+- **`ui/tests/test_scheduling.py`** — 11 unittest fixtures (manual-only valid + 10 validation cases).
+- **`ui/tests/test_scheduled_run_schema.py`** — 5 unittest fixtures asserting template schema parses + all 11 fields present + `triggered_by` literal `schedule`.
+
+### Changed
+
+- `shared/templates/PROCESS.md.tmpl` — 4 commented-out scheduling frontmatter fields added under `state_schema`; new "Scheduled runs" body section documenting the 11-field per-run schema and the prelude-string convention for distinguishing scheduled vs manual at run time.
+- `.claude/agents/company/ops-manager.md` — `owns_processes:` extended from 3 (`[design-process, design-agent, design-department]`) to 6 (adds `schedule-process`, `unschedule-process`, `list-scheduled-processes`). Role narrative + delegation pattern + Owned processes section all updated. ops-manager now owns BOTH meta-design family AND meta-scheduling family.
+- `.claude/skills/design-process/SKILL.md` — steps 6 + 7 + 9 updated for the new "scheduled" trigger option (populate 4 fields; eager-create `scheduled-runs/.gitkeep`). PROCESS.md step summary mirrors.
+- `CLAUDE.md.jinja` — addendum to "Self-improvement log schema" documenting `scheduled-runs/` folder convention.
+- `copier.yml` — `_exclude` adds `**/scheduled-runs/202[0-9]-*.md` (runtime entries, never shipped) + `.claude/scheduled-processes.json` (per-machine cache).
+- `.gitignore` — same patterns.
+- `MAINTAINER.md` — "Adding runtime state" section gains v0.6.0 subsection documenting the new paths + the Claude Code internal-tool-name dependency.
+- `README.md.jinja` — new "Scheduling processes" section between "How to use OPOS day-to-day" and "Updating from upstream"; documents the 4 frontmatter fields with copy-paste example, the 3 skills, the design-time integration, the declared-contract semantics of `authority:`, the `scheduled-runs/` vs `history/` split, and a 10-use-case condensed narrative.
+- `RISKS.md.jinja` — 9 new risks (18-26): Authority is declared contract (HIGH, documented limitation); Subscription quota burn; Silent cloud failures; Manual-vs-scheduled behavior divergence; Concurrent-run collisions; Live registrations per-machine; Drift between PROCESS.md and live; Partial-failure during schedule-process; Tool-name dependency on Claude Code internals.
+
+### Notes
+
+Closes Koroqe/OPOS#13. **OPOS becomes autonomous-capable.** This is the first release where the framework can run unattended — weekly metrics reports, monthly summaries, scheduled audits all fire without an open Claude Code session. Architecturally significant: ops-manager now owns 6 skills (3 meta-design + 3 meta-scheduling) and is the single owner of the framework's two self-extension axes (what processes exist; when they run). Plan critic load-bearing for 6 consecutive releases (v0.4.0 + v0.5.0 + v0.5.1 + v0.5.2 + v0.5.3 + v0.6.0); pre-execution tool-name validation (new convention this release) caught a critical brainstorm-plan naming error (`create_scheduled_task` → `CronCreate`) before any wrapper SKILL.md was written — saving 3 wrapper files from being wrong. `authority:` v1 enforcement is a declared contract (prompt injection + in-band self-check), NOT a runtime sandbox; post-run guard deferred to v2. No breaking changes (all 4 scheduling frontmatter fields are optional collectively); existing v0.5.x consumers receive the new skills + template + ui/scheduling.py + design-process update automatically via `copier update` (`.claude/skills/`, `shared/templates/`, `ui/` are NOT in `_skip_if_exists`).
+
 ## [0.5.3] - 2026-05-30
 
 ### Added
@@ -320,6 +351,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.6.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.0
 [0.5.3]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.3
 [0.5.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.2
 [0.5.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.1

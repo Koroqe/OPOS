@@ -255,6 +255,114 @@ rm -rf departments/engineering/
 
 **Mitigation:** none beyond documentation. Per Risk 9 (Copier conflict resolution), `_skip_if_exists` protects consumer-customized files from auto-overwrite — but the trade-off is that framework-removed starter content (engineering) stays orphaned. The migration is one-time per v0.5.0 consumer. The framework's CHANGELOG `### Migration` section in v0.5.1 captures the same steps in shippable form.
 
+## Risk 18 — Authority is a declared contract, not a runtime sandbox (v0.6.0)
+
+**Status:** HIGH impact for scheduled processes; documented v1 limitation.
+
+The `authority:` frontmatter field declares the action set a scheduled routine is *expected* to honor. v1 enforces this via prompt injection (the prelude added by `/schedule-process` step 6 says "refuse any action not in the list and record the refusal") + in-band self-check (the SKILL body checks `authority:` from its own PROCESS.md before each significant action). A misbehaving prompt body could in principle take actions beyond the declared list.
+
+**Mitigations:**
+
+- Explicit doc — `authority:` is the **declared contract**, not a sandbox.
+- Every `scheduled-runs/` entry starts as `verification_state: unverified` and includes both `authority_declared:` (copied verbatim from PROCESS.md at run time) and `authority_used:` (best-effort observed actions). A human reviewer marks the entry `verified` after confirming the run honored the declaration. v1 backstop is this human review pass.
+- `/list-scheduled-processes` can be extended (v2 candidate) to surface processes whose latest scheduled run is still `verification_state: unverified` for >N days.
+
+**v2 work item:** post-run guard that statically scans the executed action log against the declared authority list and files an issue if drift is detected.
+
+## Risk 19 — Subscription quota burn from over-frequent schedules
+
+**Status:** MEDIUM impact; behavior is expected; mitigated by validator rejecting `* * * * *` and by documentation.
+
+A scheduled process firing hourly consumes 24 Claude Code subscription invocations per day; one firing every 5 minutes consumes 288. For long-running processes (multi-minute), this can meaningfully eat subscription budget.
+
+**Mitigations:**
+
+- `ui/scheduling.py` rejects `schedule: "* * * * *"` (every-minute cron) categorically.
+- README's "Scheduling processes" section recommends cadence ranges (no shorter than 1h for production processes).
+- `/list-scheduled-processes` could surface estimated runs/day per process as a v2 enhancement.
+
+## Risk 20 — Silent failures in cloud execution
+
+**Status:** MEDIUM impact; documented; v2 work item.
+
+Claude Code's built-in cron runtime may fail to fire a scheduled routine (network, runtime crash, subscription expiry) without surfacing the failure to the user in real time.
+
+**Mitigations:**
+
+- Documented in README.
+- `/list-scheduled-processes` shows live registrations — running it periodically reveals "the registration is there but `scheduled-runs/` shows no recent entries" patterns.
+- **v2 work item:** a `health-check` skill that compares last-expected-run-time (computed from cron) against most-recent `scheduled-runs/` entry timestamp, files an issue if delta exceeds a threshold. This itself could be a scheduled process — meta.
+
+## Risk 21 — Behavior divergence: manual vs scheduled invocation
+
+**Status:** MEDIUM impact; addressed by `verification_state` workflow.
+
+A process that works correctly in an interactive Claude Code session may behave differently when invoked by the cron runtime (different environment, no TTY, no IDE selection context, no human to answer mid-stream prompts).
+
+**Mitigations:**
+
+- The `non_interactive: true` frontmatter field is required for scheduling — the SKILL body MUST NOT call `AskUserQuestion` or otherwise block on stdin during a scheduled run.
+- Each scheduled run records `verification_state: unverified` until a human reviews the output and marks `verified`. The first few scheduled runs of any new process are the highest-risk; verification is the v1 backstop.
+- `/list-scheduled-processes` could (v2) surface "process with N consecutive unverified scheduled runs" as a divergence-likelihood signal.
+
+## Risk 22 — Concurrent-run collisions
+
+**Status:** MEDIUM impact; partially mitigated.
+
+A process scheduled `*/5 * * * *` whose prior run takes more than 5 minutes has overlapping invocations. Both runs may write `scheduled-runs/` entries with colliding `run_id`s OR mutate the same files outside the repo (issue comments, external APIs).
+
+**Mitigations:**
+
+- `run_id` generation convention (documented in `shared/templates/scheduled-run.md.tmpl`) includes a UUID suffix to prevent filename collisions even for simultaneous writes.
+- The cron runtime's own concurrency semantics (Claude Code's `CronCreate`) handle the live runtime — OPOS does not implement a lock above it.
+- **v2 work item:** in-process lock-file convention (e.g., `<skill-folder>/.run.lock`) to skip a fire if a prior run is still in-flight.
+
+## Risk 23 — Live registrations are per-machine
+
+**Status:** MEDIUM impact for multi-machine teams; documented.
+
+Claude Code's cron tools (`CronCreate` / `CronList` / `CronDelete`) operate against the user's Claude Code account, not the repo. Two founders running the same OPOS company from different machines would each have to run `/schedule-process <name>` on their own machine for the same process to fire from both accounts (double-firing) — or coordinate to run it from exactly one machine (single-firing).
+
+**Mitigations:**
+
+- `.claude/scheduled-processes.json` is gitignored AND copier-excluded — explicitly per-machine.
+- `/list-scheduled-processes` is the reconciliation tool when joining a new machine (and correctly treats `CronList` as authoritative, never the cache — so an empty cache on a fresh machine does NOT falsely classify live routines as ORPHAN).
+- **v2 work item:** a `tasks/<n>.md`-frontmatter-based or `shared-registration.yaml`-based cross-machine coordination mechanism (or move scheduling to GitHub Actions via `runtime: gha`, also a v2 work item).
+
+## Risk 24 — Drift between PROCESS.md and live registration
+
+**Status:** LOW impact (drift IS the signal); fully addressed by `/list-scheduled-processes`.
+
+A user could edit the live routine directly via Claude Code's native UI, bypassing `/schedule-process`. The PROCESS.md `schedule:` field then disagrees with what's actually firing.
+
+**Mitigations:**
+
+- `/list-scheduled-processes` detects DRIFT (cron mismatch) and ORPHAN (live with no backing PROCESS.md) cases.
+- Re-running `/schedule-process <name>` is the documented reconciliation path: it detects the diff at step 7, confirms with the user, then overwrites the live routine to match the in-repo declaration.
+
+## Risk 25 — Partial failure during `/schedule-process` registration
+
+**Status:** MEDIUM impact; addressed by Slice 3 rollback strategy.
+
+`/schedule-process` modifies external state (the live `CronCreate` routine) before local state (`.claude/scheduled-processes.json` cache write). If the cache write fails (disk full, permissions), an orphan routine exists in the cloud with no local cache pointing at it.
+
+**Mitigations:**
+
+- The SKILL.md rollback strategy: on step-9a cache-write failure, attempt `CronDelete` against the just-created routine. If the delete also fails, print the routine id prominently with "manual cleanup needed" + write a `partial`-outcome history entry naming the orphan.
+- The user's recovery path: either re-run `/schedule-process` (which detects the orphan via step 7's idempotency check and reconciles) OR run `/unschedule-process` with the orphan id.
+
+## Risk 26 — Tool-name dependency on Claude Code internals (v0.6.0)
+
+**Status:** HIGH impact, LOW likelihood; documented; rename is a 3-file sed.
+
+The three v0.6.0 wrappers (`schedule-process` / `unschedule-process` / `list-scheduled-processes`) call `CronCreate` / `CronDelete` / `CronList` by name. These are Claude Code-internal tool names verified against official docs at https://code.claude.com/docs/en/routines.md as of v0.6.0 release. If Anthropic renames these tools in a future Claude Code release, all three wrapper skills will fail at first invocation.
+
+**Mitigations:**
+
+- The wrapper SKILL.md files reference each tool name from a single sentence per skill ("wraps `CronCreate`" etc.) — a future rename is a coordinated 3-file edit.
+- `MAINTAINER.md` documents this as a known dependency.
+- The brainstorm plan originally specified WRONG tool names (`create_scheduled_task` etc.); pre-execution validation via the `claude-code-guide` agent against official docs caught it before any wrapper was written. Documented as a convention: any future framework release that depends on external (Claude Code, MCP, etc.) tool/API names should run a pre-execution validation pass.
+
 ## Advisory note — upstream naming
 
 The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-template` or `opos-core`). Naming mirrors the consumer's experience: they scaffold from `Koroqe/OPOS` and receive updates from the same upstream. No renaming planned.
