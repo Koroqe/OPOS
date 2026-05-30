@@ -50,6 +50,8 @@ Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
 
 Followed by a free-form body with notes, links, and decisions.
 
+**Scheduled runs (v0.6.0+):** processes that opt into cron-based scheduling (via the 4 scheduling frontmatter fields in `PROCESS.md` + `/schedule-process`) write each scheduled invocation to a **separate** `scheduled-runs/` folder, sibling to `history/`. Manual interactive invocations continue writing to `history/`. The split keeps the rare manual-improvement signal from drowning in the steady scheduled-run cadence. Schema is a superset of the history schema (adds `triggered_by: schedule`, `authority_declared`, `authority_used`, `verification_state`); template at `shared/templates/scheduled-run.md.tmpl`.
+
 ## Glossary
 
 See `company/knowledge-base/glossary.md`.

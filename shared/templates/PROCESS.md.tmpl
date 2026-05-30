@@ -76,3 +76,25 @@ Schema for each history entry (see root `CLAUDE.md` for the full description and
 - `status`: `open` | `applied` | `rejected`
 
 The entry body is free-form prose: notes, links to artifacts, decisions.
+
+## Scheduled runs
+
+(OPTIONAL — only relevant if this process has the 4 scheduling frontmatter fields set; added v0.6.0.)
+
+Scheduled-run records live in `./scheduled-runs/` — sibling to `./history/`, NOT mixed with it. One file per scheduled invocation, named `YYYY-MM-DD-<run-id>.md`. Manual interactive invocations of this process continue writing to `history/`; scheduled invocations (fired by Claude Code's CronCreate via `/schedule-process`) write to `scheduled-runs/`.
+
+Schema for each scheduled-run entry (template at `shared/templates/scheduled-run.md.tmpl`; superset of the history schema):
+
+- `date`: YYYY-MM-DD
+- `run_id`: short identifier unique within this skill (UUID suffix recommended to prevent collisions on concurrent runs)
+- `skill`: skill name
+- `triggered_by`: literal `schedule` (vs `manual` for history entries — this is the distinguishing field)
+- `outcome`: `success` | `partial` | `failure`
+- `duration_min`: integer
+- `authority_declared`: bracketed list copied from this PROCESS.md's `authority:` frontmatter at run time
+- `authority_used`: bracketed list of actions actually taken (best-effort; v1 may equal declared)
+- `verification_state`: `unverified` on first run; human edits to `verified` after reviewing output
+- `proposed_delta`: free text, or `"none"`
+- `status`: `open` | `applied` | `rejected`
+
+**Distinguishing scheduled vs manual at run time:** the SKILL body should check the invoking prompt for the prelude string `"You are running as a scheduled routine"` (injected by `/schedule-process`). Present → write to `scheduled-runs/`; absent → write to `history/`.

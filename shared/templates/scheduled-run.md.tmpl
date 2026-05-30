@@ -1,0 +1,54 @@
+<!--
+TEMPLATE: substitute the tokens listed below.
+
+Substitution tokens:
+  <<DATE>>                  — YYYY-MM-DD of the run
+  <<RUN_ID>>                — short identifier unique within this skill (UUID suffix recommended to prevent collisions when concurrent runs overlap)
+  <<SKILL>>                 — skill name being scheduled (matches the parent skill folder)
+  <<OUTCOME>>               — success | partial | failure
+  <<DURATION_MIN>>          — integer minutes the run took
+  <<AUTHORITY_DECLARED>>    — bracketed list copied from PROCESS.md `authority:` at run time
+  <<AUTHORITY_USED>>        — bracketed list of actions actually taken (best-effort; v1 may equal declared)
+  <<VERIFICATION_STATE>>    — `unverified` on first run; a human edits to `verified` after reviewing output
+  <<PROPOSED_DELTA>>        — free text describing a suggested change to SKILL.md/PROCESS.md, or "none"
+  <<STATUS>>                — open | applied | rejected
+
+Convention:
+  Scheduled runs write to `<skill-folder>/scheduled-runs/` — NEVER to `history/`.
+  Manual invocations (interactive Claude Code session) write to `history/` instead.
+  This file is the per-run-record schema for the scheduled folder. The body below
+  the frontmatter is free-form prose (notes, links, decisions, observed authority
+  drift, etc.).
+-->
+
+---
+date: <<DATE>>
+run_id: <<RUN_ID>>
+skill: <<SKILL>>
+triggered_by: schedule
+outcome: <<OUTCOME>>
+duration_min: <<DURATION_MIN>>
+authority_declared: <<AUTHORITY_DECLARED>>
+authority_used: <<AUTHORITY_USED>>
+verification_state: <<VERIFICATION_STATE>>
+proposed_delta: <<PROPOSED_DELTA>>
+status: <<STATUS>>
+---
+
+# scheduled run — <<SKILL>> @ <<DATE>>
+
+## Context
+
+What this scheduled run was supposed to accomplish (1-2 sentences). Free-form prose; the structured signal lives in the frontmatter above.
+
+## What happened
+
+Step-by-step or paragraph summary. If the run took an action OUTSIDE the declared authority list, document the refusal here (the prelude-injected self-check should have caught it, but a human reviewer scanning this section is the v1 backstop until the v2 post-run guard ships).
+
+## Outcome
+
+One-line restatement matching `outcome:` in the frontmatter. If `partial` or `failure`, name the failure mode.
+
+## Notes
+
+Anything worth surfacing to the owner agent's next process-improvement pass — friction, drift between `authority_declared:` and `authority_used:`, suggestions for `proposed_delta:`, links to artifacts produced or issues filed.

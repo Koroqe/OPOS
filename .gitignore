@@ -2,5 +2,7 @@
 .claude/.paused-tasks
 .claude/.last-update-check
 .claude/scratchpad.md
+.claude/scheduled-processes.json
+**/scheduled-runs/202[0-9]-*.md
 __pycache__/
 *.pyc
