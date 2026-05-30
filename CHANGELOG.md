@@ -6,6 +6,61 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.5.2] - 2026-05-30
+
+### Added
+
+- **`chief-of-staff` promoted to the explicit OPOS steward** — single conversational entry point for any session opened at the repo root. Five new body sections in `.claude/agents/company/chief-of-staff.md`:
+  - **Steward role** — codifies the user → chief-of-staff → everything mental model. Steward never asks user to invoke `/some-skill`; user describes intent, steward maps to capability.
+  - **Framework expertise** — what the steward knows by heart (15 skills, 13 agents, 9 templates, 6 depts, the `allocate-resource` AI-first kernel, the CLAUDE.md cascade, the release pipeline). Knowledge stays current by reading `.claude/skills/*/history/` on demand; in doubt, the steward consults via `consult-agent` rather than guesses.
+  - **Goal decomposition pattern** — 5-step procedure when user states a goal-shaped intent: read state autonomously → parse intent → 1-3 line plan → execute → concise report.
+  - **Permission tiers** — 5 levels (Auto / Notice / Confirm / Explicit approval / Hard refuse) with concrete examples for each. Includes the **heuristic for tier selection** (if the undo path requires more than `git checkout` of a file or `gh release create` to recreate, escalate at least one tier). Documents the convention-vs-enforcement distinction (these tiers are convention; Claude Code's `.claude/settings.json` handles hard enforcement).
+  - **First-touch behavior** — greeting protocol at session start. Step 0 is the ad-hoc-skip heuristic ("what is…", "show me…" first-message patterns skip the greeting entirely). Steps 1-5 handle missing `.current-task` / `.paused-tasks` / empty history / unauthenticated `gh` gracefully (no errors on fresh scaffold). Greeting template: ≤3 lines, status + open question, no setup prompts, no menus.
+- **Root `CLAUDE.md.jinja` "Default posture for sessions opened at this repo root"** section — activates the steward UX automatically. Placed between Values and Operating principles. Instructs Claude to read `chief-of-staff.md` in full, read `.current-task` + recent history + GitHub state, and greet per First-touch behavior — all before responding to the user's first message. Explicit dept-folder fallback (e.g. `cd departments/finance && claude` → act as `finance-lead`).
+- **README "How to use OPOS day-to-day"** section — placed immediately after "First steps after scaffold". Shows 4 example user prompts and how the steward decomposes each ("Let's ship a feature for X" → slice plan + task-register + commits + release-from-changelog + close; "We need a marketing analyst" → people-lead → allocate-resource → AI/human route; etc.). Closing line: "You don't memorize skill names. You state intent — the steward maps it to capability."
+
+### Changed
+
+- `chief-of-staff.md` `description:` rewritten from `"Coordinates between CEO/COO and departments, manages company-level backlog and task tracking"` to `"The OPOS steward — single conversational entry point. Knows the entire framework; decomposes user goals into primitives; executes autonomously by default; asks permission only for commits / releases / agent creation / destructive ops."`
+- `chief-of-staff.md` `## Delegation pattern` Calls section expanded — explicit mention of `consult-agent` as the dispatch mechanism + "can consult ANY of the 13 framework agents" framing.
+- `chief-of-staff.md` `## Inputs` section adds **natural-language goals** as the most common input type.
+- `chief-of-staff.md` `## Outputs` section adds **concise status reports** (1 line per executed step; full detail in history entries).
+
+### Migration
+
+The root `CLAUDE.md` "Default posture" section will NOT auto-propagate to existing v0.5.0 / v0.5.1 consumers via `copier update`. Reason: root `CLAUDE.md` is in `copier.yml _skip_if_exists` (v0.5.0 introduced this so founder-written Mission/Values survive updates). The trade-off: framework changes to root `CLAUDE.md` (rare; previous changes were v0.3.1's `time:` schema field and v0.5.1's engineering→rnd cascade example) require manual application by existing consumers.
+
+**For existing consumers** (those who scaffolded from v0.5.0 or v0.5.1 before this release):
+
+```bash
+# 1. Pull v0.5.2 framework changes
+copier update --vcs-ref v0.5.2
+
+# 2. Manually copy the "Default posture" section from the framework's CLAUDE.md
+#    at the v0.5.2 tag into your root CLAUDE.md between Values and Operating
+#    principles:
+gh api repos/Koroqe/OPOS/contents/CLAUDE.md.jinja?ref=v0.5.2 \
+  --jq '.content' | base64 -d | \
+  awk '/^## Default posture/{p=1} /^## Operating principles/{exit} p'
+
+# Paste the printed section into your local CLAUDE.md between Values and
+# Operating principles. Save.
+
+# 3. Verify the steward UX activates: open Claude Code at your repo root,
+#    type "hi", expect the chief-of-staff greeting (≤3 lines, status + "What
+#    can I do?", no setup prompts).
+```
+
+`chief-of-staff.md` and `README.md` updates DO auto-propagate (those files are not in `_skip_if_exists`). New consumers scaffolding directly from v0.5.2 get the Default posture section on initial scaffold — no manual step needed.
+
+### Notes
+
+- Closes [#11](https://github.com/Koroqe/OPOS/issues/11) — "v0.5.2 — chief-of-staff as explicit steward."
+- **The framework now has a single conversational entry point.** Users state goals; the steward executes. The OPOS UX shifts from "user learns 15 skill names and routes manually" to "user states intent, steward routes." This is the natural conclusion of v0.5.1's opinionated-framework direction.
+- **Plan critic step now load-bearing for 4 consecutive releases** (v0.4.0 → v0.5.0 → v0.5.1 → v0.5.2). Each release surfaced findings the original plan would have left broken. This release: 9 findings (5 MAJOR + 4 MINOR), all CRITICAL/MAJOR addressed in-plan.
+- **Smallest v0.5.x release** by design: 7 slices, 4 files updated, 0 new framework files. Promoting an existing agent rather than adding new primitives.
+- **The chief-of-staff agent is now formalizing itself.** Meta-step in the framework's evolution: the agent who orchestrates every release is the deliverable.
+
 ## [0.5.1] - 2026-05-30
 
 ### Added
@@ -241,6 +296,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.5.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.2
 [0.5.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.4.0
