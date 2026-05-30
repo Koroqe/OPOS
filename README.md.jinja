@@ -25,7 +25,7 @@ That gives you a fresh OPOS instance with all CORE files (agents, skills, templa
 
 ## First steps after scaffold
 
-After `copier copy` finishes, your repo is structurally complete but content-blank in six places: Mission, Values, strategic priorities, dept missions (engineering / R&D), and the policies folder. Run the `company-setup` skill (owned by `coo`) to fill these in conversationally:
+After `copier copy` finishes, your repo is structurally complete but content-blank in six places: Mission, Values, strategic priorities, dept missions (the 6 v0.5.1 default depts: rnd, finance, people, legal, commercial, pr), and the policies folder. Run the `company-setup` skill (owned by `coo`) to fill these in conversationally:
 
 1. Open the repo in your editor (VS Code recommended for the inline Claude Code session).
 2. Open a Claude Code session at the repo root.
@@ -52,18 +52,18 @@ See [`RISKS.md`](RISKS.md) Risks 9–13 for known limitations (manual conflict r
    grep -rn "<<[A-Z_]*>>" . --include="*.md"
    ```
    The primary token is {% raw %}`{{ COMPANY_NAME }}`{% endraw %}. Once substituted, this command should return zero matches.
-3. Pick one department to start with. The `departments/engineering/` folder is a worked example — copy it to your first real department and rename.
+3. Pick one department to start with. The `departments/rnd/` folder is a worked example with both research and engineering content (engineering folded in as the building branch at v0.5.1) — use it as the reference for adapting another dept's structure.
 4. Add real MCP servers in `.mcp.json` and configure per-agent access via each agent's `tools:` allow-list.
 5. Open Claude Code at the repo root and verify the smoke test (see [`RISKS.md`](RISKS.md) for the recipe).
 
 ## The cascade model
 
-Claude Code automatically walks the directory tree from your session's working directory upward, loading every `CLAUDE.md` it finds. A session opened in `departments/engineering/` sees:
+Claude Code automatically walks the directory tree from your session's working directory upward, loading every `CLAUDE.md` it finds. A session opened in `departments/rnd/` sees:
 
 ```
-departments/engineering/
+departments/rnd/
         ↑ (closer files load last, highest priority)
-departments/engineering/CLAUDE.md   ← dept charter
+departments/rnd/CLAUDE.md           ← dept charter (R&D umbrella; eng-lead + eng-reviewer report up)
         ↑
 company/CLAUDE.md                   ← if cascade passes through it
         ↑
@@ -108,7 +108,7 @@ The framework's process-creation primitive is itself a skill: [`design-process`]
 4. The user iterates with `ops-manager` until satisfied, then approves explicitly ("write it," "ship it," etc.).
 5. On approval, the files are written to the chosen path (global or dept-scoped), the owner agent's advisory `owns_processes:` is updated, and (if a backlog item was the input) it's flipped to `state: designed` with a `designed_as:` pointer.
 
-Backlog items remain a useful notebook for ideas and one-offs that aren't yet formalized — see [`departments/engineering/backlog/example-add-rollback-step.md`](departments/engineering/backlog/example-add-rollback-step.md) for a worked example of an item in `state: active` that hasn't yet been fed into `design-process`.
+Backlog items remain a useful notebook for ideas and one-offs that aren't yet formalized — see [`departments/rnd/backlog/example-add-rollback-step.md`](departments/rnd/backlog/example-add-rollback-step.md) for a worked example of an engineering-flavored item in `state: active` that hasn't yet been fed into `design-process` (moved from `departments/engineering/` to `departments/rnd/` at v0.5.1 when engineering folded into the R&D umbrella).
 
 ## The task-tracking loop
 
@@ -121,6 +121,21 @@ Three sibling skills track each new task as a GitHub issue, owned by [`chief-of-
 - [`task-resume`](.claude/skills/task-resume/) (NEW in v0.2.0) — resume a paused task; moves the issue number from `.paused-tasks` back to `.current-task`. Status flips to `in_progress`.
 
 The target GitHub repo is configured in [`.claude/task-tracking.config.json`](.claude/task-tracking.config.json). All five skills shell out to the `gh` CLI via Bash; the `gh` CLI must be authenticated on the machine. Department labels follow the `dept:<name>` convention (lowercased; auto-created if missing — color from `_label_palette` in the config).
+
+## The AI-first kernel (NEW in v0.5.1)
+
+OPOS now ships a specific organizational philosophy as starter content. When ANY dept surfaces a capability gap — "we need to be able to do X" — `people-lead` runs [`allocate-resource`](.claude/skills/allocate-resource/) which executes the **4-question AI-first decision tree**:
+
+1. Is the core work text-based (reading documents, writing content, analyzing data)?
+2. Does the work AVOID requiring physical-world action (driving, on-site presence, hands-on physical work)?
+3. Does the work AVOID requiring legally-mandated human accountability (signing as a licensed professional, sworn testimony)?
+4. Does the work AVOID requiring lived human experience as a primary input (judging mood in a room, building trust face-to-face)?
+
+**All 4 yes → AI route**: `allocate-resource` emits a `/design-agent` recommendation; the founder runs it; [`ops-manager`](.claude/agents/company/ops-manager.md) owns `design-agent` and creates the new AI agent.
+
+**Any no → human route**: `allocate-resource` writes a job spec to `company/hiring/<slug>.md` using [`shared/templates/HIRING-SPEC.md.tmpl`](shared/templates/HIRING-SPEC.md.tmpl). The `why_not_ai:` frontmatter field records WHICH question failed (audit trail). `ceo` reviews + flips the state to `approved`.
+
+The 6 default departments are designed around this philosophy: every dept lead (`finance-lead`, `legal-lead`, `commercial-lead`, `pr-lead`, `rnd-lead`, `eng-lead`) starts with tools sized for AI-first execution (LLM-strength work like content generation, document analysis, contract review) and consults `allocate-resource` before any human-hire conversation.
 
 ## Console (read-only browser)
 
@@ -168,7 +183,7 @@ The smoke-test recipe (run after substituting tokens for your company) lives in 
 ## Subscopes
 
 - [`company/`](company/) — strategy, policies, knowledge-base, cross-cutting backlog
-- [`departments/`](departments/) — one folder per department; ship with `engineering/` as a worked example
+- [`departments/`](departments/) — one folder per department; ships with 6 starter depts as of v0.5.1 (`rnd` umbrella for the building function including engineering as internal branch; `finance`, `people`, `legal`, `commercial`, `pr`)
 - [`shared/`](shared/) — templates and cross-company resources
 - [`tasks/`](tasks/) — per-task markdown files (one per GitHub issue tracked by `task-register`)
 - [`ui/`](ui/) — local-host read-only console (Python + Jinja2; see "Console (read-only browser)" above)

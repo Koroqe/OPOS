@@ -6,6 +6,74 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.5.1] - 2026-05-30
+
+### Added
+
+- **5 new starter departments** — `finance`, `people`, `legal`, `commercial`, `pr`. Each with a `CLAUDE.md.jinja` charter (Mission/Roles/Escalation/Data scopes/Processes-as-skills/Pointers sections) rendered from the new `shared/templates/DEPARTMENT.md.tmpl`. Each dept also gets its own lead agent (see below). Total starter depts: 2 → 6 (`rnd` umbrella + the 5 new).
+- **5 new dept-lead agents** — `finance-lead`, `people-lead`, `legal-lead`, `commercial-lead`, `pr-lead`. All `model: opus`. Tools sized for AI-first execution per the v0.4.0 design-agent ladder. `people-lead` owns the NEW `allocate-resource` skill.
+- **`allocate-resource` skill** (owner: `people-lead`) — **the AI-first kernel**. 9-step interactive procedure that runs the 4-question decision tree (text-based work? avoids physical action? avoids legal accountability? avoids needing lived experience?) → AI route EMITS `/design-agent` recommendation (does NOT auto-invoke; honest about the Task-tool semantic gap per the v0.5.1 plan critic finding); human route writes a job spec to `company/hiring/<slug>.md` using the new `HIRING-SPEC.md.tmpl`. Explicit slug-derivation algorithm (stop-word list + first 3-5 tokens + `safe_slug` regex + `-2`/`-3` collision-check). Glob-based coverage check against existing agents/skills. PROCESS.md state_schema commented per template convention.
+- **2 new templates** — `shared/templates/DEPARTMENT.md.tmpl` (6 tokens: DEPT_NAME, DEPT_TITLE, MISSION, LEAD_NAME, ESCALATION, DATA_SCOPES) used by Slice 2's 5 charters and (eventually) `design-department` skill; `shared/templates/HIRING-SPEC.md.tmpl` (9 tokens) used by `allocate-resource` step 6 human route. Both follow the v0.5.0 POLICY.md.tmpl comment-header-stripping convention (rendered files don't show token instructions).
+- **`company/hiring/` folder convention** — `.gitkeep` + README documenting the `pending → approved → posted → filled` lifecycle. First explicit application of the kb-curator dogfood `proposed_delta` finding from v0.4.0 ("ship `.gitkeep` + README when an agent introduces a new folder convention").
+- **AI-first kernel** section in `README.md` documenting the philosophy + the 4-question decision tree + how the 6 default depts are designed around it.
+- **RISKS Risk 17** — v0.5.1 dept restructure migration steps for theoretical v0.5.0 consumers.
+
+### Changed
+
+- **Engineering folds into R&D as the building branch.** `departments/engineering/` removed entirely; `.claude/agents/engineering/` removed entirely. `eng-lead.md` and `eng-reviewer.md` moved to `.claude/agents/rnd/`. The `deploy` dept-nested skill moved to `departments/rnd/.claude/skills/deploy/`. The `example-add-rollback-step.md` backlog item moved to `departments/rnd/backlog/`. Engineering's `backlog/README.md` and `data/README.md` content was MERGED into R&D's existing READMEs (rather than overwriting). `eng-lead.md` frontmatter: `department: engineering → rnd`; Escalation rules body: `coo → rnd-lead`. `eng-reviewer.md` frontmatter: `department: engineering → rnd`.
+- **`rnd-lead.md` scope expansion** — description + body rewritten for the umbrella role (research + engineering execution + production + product/service delivery). `Calls:` adds `eng-reviewer` as sub-lead. `owns_processes: [] → [deploy]` (binding-of-record stays with `eng-lead` who executes; rnd-lead owns at the umbrella level).
+- **`departments/rnd/CLAUDE.md.jinja`** Roles section: adds `eng-lead` + `eng-reviewer` bullets. Mission expanded. Data scope covers both research AND engineering flavors.
+- **`company-setup` SKILL.md** restructured from 10 → 9 steps. Old step 6 (engineering decision) + old step 7 (rnd decision) merged into a single richer step 6: 6-dept loop covering all v0.5.1 default depts (rnd umbrella + finance + people + legal + commercial + pr) with `keep` or `customize` per dept. Old step 8 (policies) → 7; old step 9 (smoke) → 8; old step 10 (history) → 9. PROCESS.md `success_criteria.dept_decisions_applied` wording updated.
+- **`copier.yml _skip_if_exists`** adds `company/hiring/**` (founder-owned per the new folder convention).
+- **12 downstream files updated** to remove orphaned references to `departments/engineering/` and `.claude/agents/engineering/`: `design-process/SKILL.md` (reference example path), `design-agent/SKILL.md` (dept-tier reference agent path), 3 PROCESS.md files with "engineering's domain" body framing (`sync-from-core`, `task-register`, `release-from-changelog`), 4 company-tier agents' `Calls:` example lists (`ceo.md`, `coo.md`, `chief-of-staff.md`, `ops-manager.md`) — replaced `(e.g. eng-lead)` with the enumerated 6 dept leads; root `CLAUDE.md.jinja` cascade example; `RISKS.md.jinja` Risk 4 verification recipe (subagent count baseline 6 → 13; `cd departments/engineering` → `cd departments/rnd`); `shared/templates/BACKLOG-ITEM.md.tmpl` example INTENDED_TARGET.
+- **`README.md.jinja`** swept for the 5 specific hardcoded engineering references (per plan critic MAJOR #8): "First steps" dept-mission list, "Quickstart" worked example, cascade-model session example (3 lines), backlog-item link, Subscopes ship-with note. New "AI-first kernel" section added.
+- **Test count stable at 37** — 2 existing tests updated (`test_includes_dept_nested` deploy.dept assertion engineering → rnd; `test_includes_company_synthetic` now asserts the 6 v0.5.1 starter depts and explicitly NOT engineering).
+
+### Removed
+
+- **`departments/engineering/`** (entire folder; content moved to `departments/rnd/` per the merge).
+- **`.claude/agents/engineering/`** (entire folder; eng-lead + eng-reviewer moved to `.claude/agents/rnd/`).
+
+### Migration
+
+For theoretical v0.5.0 consumers updating to v0.5.1, `copier update` does NOT auto-apply the restructure (the `_skip_if_exists` pattern protects `departments/**` and `.claude/agents/**` from overwrite, but the framework-side REMOVAL of `engineering/` leaves stale content in the consumer). Manual cleanup steps:
+
+```bash
+# 1. Move agents under rnd
+git mv .claude/agents/engineering/eng-lead.md .claude/agents/rnd/eng-lead.md
+git mv .claude/agents/engineering/eng-reviewer.md .claude/agents/rnd/eng-reviewer.md
+rm -rf .claude/agents/engineering/
+
+# 2. Move dept-nested skill + example backlog item
+git mv departments/engineering/.claude/skills/deploy departments/rnd/.claude/skills/deploy
+git mv departments/engineering/backlog/example-add-rollback-step.md departments/rnd/backlog/
+
+# 3. Either merge engineering's READMEs into rnd's, or accept rnd's + delete
+rm departments/engineering/backlog/README.md departments/engineering/data/README.md
+
+# 4. Remove the now-empty engineering folder
+rm -rf departments/engineering/
+
+# 5. Update eng-lead.md frontmatter: department: engineering → rnd
+#    Update eng-lead.md body Escalation rules: coo → rnd-lead
+#    Update eng-reviewer.md frontmatter: department: engineering → rnd
+
+# 6. Verify
+bash ui/smoke.sh                                # 16/16 should pass
+python3 -m unittest discover ui.tests           # 37/37 should pass
+```
+
+See RISKS Risk 17 for the longer-form discussion of the trade-off.
+
+### Notes
+
+- Closes [#10](https://github.com/Koroqe/OPOS/issues/10) — "v0.5.1 — 7-dept AI-first org chart + allocate-resource skill".
+- **The most opinionated release yet.** v0.5.1 ships a SPECIFIC organizational philosophy as starter content, not just primitives. Founders adopting OPOS now START with the 6-dept structure (rnd umbrella + finance + people + legal + commercial + pr) and the AI-first kernel codified as `allocate-resource`. The framework was previously domain-agnostic (engineering + rnd were generic examples); v0.5.1 makes the AI-first-company philosophy load-bearing.
+- The `allocate-resource` step 5 AI-route design is the FIRST explicit framing of the "skills can RECOMMEND next-turn slash commands but cannot AUTO-INVOKE them via Task" convention. Surfaced as a CHANGELOG-worthy framework constraint.
+- Plan critic pass surfaced 22 findings (5 CRITICAL + 11 MAJOR + 6 MINOR); all addressed in-plan. Two consecutive releases (v0.5.0 + v0.5.1) saved from broken state by the critic step. The plan-critic loop is now load-bearing framework infrastructure.
+- First explicit application of the kb-curator-dogfood `proposed_delta` finding from v0.4.0: shipping `.gitkeep` + README for new folder conventions (here: `company/hiring/`).
+- Total starter content: 6 depts (was 2), 13 agents (was 8), 15 skills (was 14).
+
 ## [0.5.0] - 2026-05-29
 
 ### Added
@@ -173,6 +241,7 @@ In `0.x.y` releases breaking changes are allowed.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.5.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.4.0
 [0.3.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.3.1

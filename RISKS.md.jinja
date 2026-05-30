@@ -212,6 +212,45 @@ Input validation (`safe_slug`, `safe_int`, `safe_date` in `ui/validate.py`) bloc
 
 The console honors the same convention-only restricted-folder rule as the rest of the framework. Adopters who use the MCP-based hardening path from Risk 1 (path allow-lists) must additionally gate the console-side reads — v0.3.0 reads any markdown the host filesystem allows. A future console-side `restricted:` honor-list could enforce dropping the file content from rendered pages even when the file is on disk.
 
+## Risk 17 — v0.5.1 dept restructure: migration for v0.5.0 consumers
+
+**Status:** LOW impact (no real consumers exist yet — v0.5.0 was tagged 2026-05-29 and v0.5.1 ships 2026-05-30; the user's `zipread` company will start from v0.5.1 directly). Documented here so any theoretical v0.5.0 consumer who scaffolded mid-window has a clear path.
+
+**The change:** v0.5.1 ships the framework's first opinionated org chart as starter content. `engineering` is folded into `rnd` as the building branch (eng-lead + eng-reviewer now report up to rnd-lead). 5 new starter depts ship: `finance`, `people`, `legal`, `commercial`, `pr`. A new `allocate-resource` skill (owned by `people-lead`) ships as the AI-first kernel. Total: 6 starter depts (was 2), 13 starter agents (was 8), 15 starter skills (was 14).
+
+**Migration for v0.5.0 consumers** (`copier update` from v0.5.0 → v0.5.1 leaves stale `departments/engineering/` in place because `_skip_if_exists` protects it; founder must clean up manually):
+
+```bash
+# 1. Move eng-lead + eng-reviewer agents under rnd
+git mv .claude/agents/engineering/eng-lead.md .claude/agents/rnd/eng-lead.md
+git mv .claude/agents/engineering/eng-reviewer.md .claude/agents/rnd/eng-reviewer.md
+rm -rf .claude/agents/engineering/
+
+# 2. Move dept-nested deploy skill + backlog
+git mv departments/engineering/.claude/skills/deploy departments/rnd/.claude/skills/deploy
+git mv departments/engineering/backlog/example-add-rollback-step.md departments/rnd/backlog/example-add-rollback-step.md
+
+# 3. Merge READMEs manually (engineering's backlog/README + data/README content
+# was merged into rnd's existing READMEs in the framework; v0.5.0 consumers do
+# the same merge by hand or accept rnd's version + delete engineering's)
+rm departments/engineering/backlog/README.md  # or merge into rnd's
+rm departments/engineering/data/README.md     # or merge into rnd's
+
+# 4. Remove the now-empty engineering folder
+rm -rf departments/engineering/
+
+# 5. Update eng-lead.md frontmatter manually:
+#    department: engineering → rnd
+#    Escalation rules body: coo → rnd-lead
+
+# 6. Update eng-reviewer.md frontmatter manually:
+#    department: engineering → rnd
+
+# 7. Run `bash ui/smoke.sh` to verify (should still pass 16/16).
+```
+
+**Mitigation:** none beyond documentation. Per Risk 9 (Copier conflict resolution), `_skip_if_exists` protects consumer-customized files from auto-overwrite — but the trade-off is that framework-removed starter content (engineering) stays orphaned. The migration is one-time per v0.5.0 consumer. The framework's CHANGELOG `### Migration` section in v0.5.1 captures the same steps in shippable form.
+
 ## Advisory note — upstream naming
 
 The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-template` or `opos-core`). Naming mirrors the consumer's experience: they scaffold from `Koroqe/OPOS` and receive updates from the same upstream. No renaming planned.
