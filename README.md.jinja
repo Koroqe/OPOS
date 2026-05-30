@@ -35,6 +35,21 @@ When complete, browse your populated OS via `/serve-console` (opens `http://127.
 
 If you re-run `/company-setup` on a populated repo it will refuse — to re-do, restore the `<one short sentence>` placeholder in root `CLAUDE.md`'s Mission section first.
 
+## How to use OPOS day-to-day
+
+After `/company-setup`, open Claude Code at the repo root and **talk to your `chief-of-staff`** — the OPOS steward (NEW in v0.5.2). The steward is the single conversational entry point. You state goals; the steward decomposes and executes:
+
+- **"Let's ship a new feature for [thing]"** → steward proposes a slice plan, runs `task-register`, paces through commits, runs `release-from-changelog`, closes the issue.
+- **"Audit our company state"** → steward reads `.claude/.current-task`, recent history, open issues; reports a 1-page state summary.
+- **"We need a marketing analyst"** → steward routes through `people-lead` → `allocate-resource` → AI-first decision tree → either a `/design-agent` recommendation OR a job spec written to `company/hiring/`.
+- **"What's the deploy status?"** → steward consults `eng-lead` via `consult-agent` and summarizes.
+
+The steward executes autonomously by default for low-risk operations (reads, tests, drafts). It asks one-line confirmation for `git commit`, `gh issue close`, agent creation. It asks explicit approval for `git push`, release cutting, destructive operations. See [`.claude/agents/company/chief-of-staff.md`](.claude/agents/company/chief-of-staff.md) "Permission tiers" section for the full ladder (5 levels: Auto, Notice, Confirm, Explicit approval, Hard refuse).
+
+When you open Claude Code at the repo root, the steward greets you with current state in ≤3 lines (active task, paused tasks, last activity) and asks "What can I do?" — no setup prompts, no menus. The greeting is skipped automatically for ad-hoc lookups ("show me task #6" gets an immediate answer, not a status report).
+
+You don't memorize skill names. You don't know template paths. You state intent — the steward maps it to capability.
+
 ## Updating from upstream
 
 Two ways to receive updates from `Koroqe/OPOS`:
