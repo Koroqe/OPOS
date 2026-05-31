@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.6.1] - 2026-05-31
+
+### Added
+
+- **`deliberate-decision` skill** — the framework's missing agent-to-agent critique loop, owned by `coo`. Multi-round propose → critique → revise pattern for high-level company decisions (strategic direction, hiring, market entry, major policy changes). 12-step procedure:
+  - **Direct parallel Task calls** for round-N critiques (one per critic — all 6 dept-leads + escalation-target), executed in a SINGLE executor message so they run concurrently. **NOT** through `consult-agent` middleware: `consult-agent` is a skill, not an agent — `Task → skill` doesn't work. The simulation prompt template is reproduced INLINE.
+  - **Round-N critic-memory:** each round-N critic receives, as part of the prompt, their own round-(N-1) stance + the proposer's specific response to them. Prevents re-raising already-addressed concerns across rounds.
+  - **STANCE parser** (`re.compile(r"^STANCE:\s*(AGREE|CONCERNS|BLOCKER)\s*$", re.MULTILINE)`) with PARSE_FAILED → CONCERNS (critic-side) / DEFER (arbiter-side); UNAVAILABLE classification for failed Task calls (silence is NOT endorsement).
+  - **All-AGREE early-exit** at round 1 short-circuits to arbiter.
+  - **`/tmp/deliberation-<decision_id>.md` persistence** between rounds — executor reads from disk for the arbiter prompt + artifact render rather than holding the full log in working memory.
+  - **Verbatim ESCALATION dict** (verified against agent files): eng-lead → rnd-lead; rnd-lead + finance-lead → coo; people/legal/commercial/pr-lead → ceo; coo → ceo; ceo → None (self-arbitrates with a prepended warning).
+  - **UUID-suffixed decision_id** (`<slug>-<6char-uuid>` via Bash `uuidgen`) — collision-free across machines / rapid succession.
+  - **Human-in-the-loop at step 12:** user APPROVE → artifact written + tmp cleaned; REJECT → tmp cleaned, partial outcome history; REQUEST_ANOTHER_ROUND → loop (absolute cap 5 rounds total).
+  - **mkdir -p company/decisions/** before write — handles old consumers who scaffolded pre-v0.6.1.
+- **`shared/templates/decision.md.tmpl`** — 10-field frontmatter (date, time, decision_id, proposer, critics, arbiter, rounds_run, verdict, tags, early_exit_at_round) + body sections (Proposal, Round N × M, Arbiter verdict, Rationale, Follow-ups, Audit). Audit section explicitly notes deliberation-induced Task calls do NOT write to `consult-agent/history/`.
+- **`company/decisions/` folder convention** — sibling to backlog/strategy/policies/knowledge-base/hiring. Ships with README + `.gitkeep` as framework CORE (propagates to existing v0.6.0 consumers via `copier update`); per-decision dated files (`202[0-9]-*.md`) are runtime-only and excluded.
+
+### Changed
+
+- `.claude/agents/company/coo.md` — `owns_processes:` `[company-setup]` → `[company-setup, deliberate-decision]`. Role narrative gains v0.6.1 paragraph; Outputs gains 4th bullet on decision artifacts; Owned processes gains `deliberate-decision` entry.
+- `README.md.jinja` — "How to use OPOS day-to-day" gains a 6th example (Berlin sales-office hypothetical → coo → deliberate-decision → arbiter → artifact). Inline cost note: "~15 consult-agent-pattern Task calls per deliberation; trigger only for decisions whose stakes justify the cost."
+- `.claude/agents/company/chief-of-staff.md` Framework expertise bullet — `"All 16 v0.5.3 skills"` → `"All 20 v0.6.1 skills"`. Backfills the v0.6.0 omission (3 scheduling skills) AND adds `deliberate-decision (NEW v0.6.1)`. Skill-count math explicitly: 10 owned + 9 framework-wide + 1 dept-scoped (deploy) = 20. owns_processes UNCHANGED (Framework expertise is a knowledge claim, not ownership).
+- `copier.yml` — `_exclude` adds `company/decisions/202[0-9]-*.md` (per-adopter decision artifacts).
+- **`.claude/skills/task-complete/SKILL.md` step 13 — `mv` → `git mv`** (bonus fix). Closes the v0.5.3 / v0.6.0 dual-tracking bug at root: plain `mv` left `tasks/<n>.md` tracked alongside `tasks/closed/<n>.md` in HEAD, requiring retroactive cleanup commit `b775b0f`. `git mv` stages the deletion atomically; backwards-compat fallback to `mv` semantics if file is untracked.
+- `RISKS.md.jinja` — new Risk 27 (deliberation cost burn).
+
+### Notes
+
+Closes Koroqe/OPOS#14. **The framework gains agent-to-agent deliberation** — the propose→critique→revise loop that's been load-bearing on 6 consecutive releases via plan-critic is now a first-class company process for high-level decisions. Cost: ~15 subagent invocations per default 2-round deliberation (Risk 27). Plan-critic + post-ExitPlanMode pressure-test load-bearing for 7 consecutive releases (v0.4.0 through v0.6.1) — this release's plan went through both layers: plan-critic surfaced 27 findings (including a CRITICAL ESCALATION-dict-wrong: people/legal/commercial/pr-lead escalate to CEO, not COO); pressure-test surfaced 8 architectural issues (direct-Task-vs-consult-agent ambiguity, tmp-file persistence, round-N critic-memory, etc.). **New convention candidate this release:** post-ExitPlanMode pressure-test for any skill that orchestrates multi-step subagent work — plan-critic catches paper-level issues, pressure-test catches execution-mechanics issues. No breaking changes.
+
 ## [0.6.0] - 2026-05-30
 
 ### Added
@@ -351,6 +381,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.6.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.1
 [0.6.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.0
 [0.5.3]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.3
 [0.5.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.2

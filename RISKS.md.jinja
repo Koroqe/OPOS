@@ -363,6 +363,42 @@ The three v0.6.0 wrappers (`schedule-process` / `unschedule-process` / `list-sch
 - `MAINTAINER.md` documents this as a known dependency.
 - The brainstorm plan originally specified WRONG tool names (`create_scheduled_task` etc.); pre-execution validation via the `claude-code-guide` agent against official docs caught it before any wrapper was written. Documented as a convention: any future framework release that depends on external (Claude Code, MCP, etc.) tool/API names should run a pre-execution validation pass.
 
+## Risk 27 — Deliberation cost burn (v0.6.1)
+
+**Status:** MEDIUM impact; documented; matches Risk 6 cost-awareness convention.
+
+`/deliberate-decision` spawns N critics × M rounds of direct Task subagent calls (NOT through `consult-agent` middleware — see `deliberate-decision/SKILL.md` "Task-call pattern" section), each consuming Opus tokens. Default is 6 dept-leads + escalation-target (7 critics) × 2 rounds = 14 critique calls + 2 proposer-revision calls + 1 arbiter call = **~17 subagent invocations per deliberation**. For an active company running 10 strategic deliberations per month, that's ~170 subagent calls.
+
+**Mitigations:**
+
+- Default round count is 2 (not 3+); user can override down to 1 for cheaper one-shot critique.
+- Round 1 has explicit all-critics-AGREE early-exit (step 6) — consensus decisions skip directly to arbiter verdict, saving ~half the cost.
+- README's "How to use OPOS day-to-day" Berlin-example bullet includes an inline cost note: "trigger only for decisions whose stakes justify the cost (strategic direction, hiring, market entry — NOT routine tactical choices)."
+- Future v0.6.x candidates: cost-aware critic culling (auto-skip dept-leads obviously irrelevant to the decision domain); pre-summary skill to compress the arbiter input when the deliberation log exceeds ~25K chars.
+
+## Risk 28 — Deliberation simulation fidelity (v0.6.1)
+
+**Status:** MEDIUM impact; documented; aggravated version of Risk 14 (consult-agent fidelity).
+
+`deliberate-decision`'s critic, proposer, and arbiter Task calls all SIMULATE the target agents — the spawned subagent reads the agent's definition as part of its prompt but is not the registered agent. Single-shot simulation fidelity is acceptable per Risk 14; multi-round simulation COMPOUNDS the gap: round-2 critic simulates responding to round-1 simulation-revision (two layers of "what would this agent say" rather than one).
+
+**Mitigations:**
+
+- Round-N critic-memory block (SKILL step 4) — each round-N critic sees its own round-(N-1) stance + the proposer's specific response, anchoring the new critique against its prior position. Reduces drift between rounds.
+- Human-in-the-loop at step 12 — the user reviews the full deliberation log + arbiter verdict before any artifact is written. The human is the final fidelity check.
+- `verification_state`-like convention is not used for decisions (unlike scheduled-runs/), but the artifact's `Rationale` + `Audit` sections preserve enough trail for a post-hoc human review.
+
+## Risk 29 — Deliberation audit-trail divergence (v0.6.1)
+
+**Status:** LOW impact; documented divergence from convention.
+
+Deliberation-induced Task calls do NOT write entries to `.claude/skills/consult-agent/history/`. The framework convention "every skill-mediated consultation has an entry in that skill's history" is intentionally bypassed for these calls. Rationale: ~17 entries per deliberation would drown out genuine user-invoked single-shot consultations in the consult-agent history folder.
+
+**Mitigations:**
+
+- Audit lives in `.claude/skills/deliberate-decision/history/` (one consolidated entry per deliberation naming all critics + summarizing each response) AND in the decision artifact's `Audit` section (per-round Task-call summary). No information is lost; it's just routed differently.
+- The skill body documents this divergence prominently. Future framework reviews can flag if a different audit routing is preferred.
+
 ## Advisory note — upstream naming
 
 The upstream repository is `Koroqe/OPOS` (not renamed to something like `opos-template` or `opos-core`). Naming mirrors the consumer's experience: they scaffold from `Koroqe/OPOS` and receive updates from the same upstream. No renaming planned.
