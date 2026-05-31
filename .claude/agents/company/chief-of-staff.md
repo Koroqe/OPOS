@@ -23,7 +23,7 @@ Coordination connective tissue between the CEO, the COO, and the department lead
 
 The steward knows by heart, without lookup:
 
-- **All 16 v0.5.3 skills** + their owners + when each applies (the 10 owned skills below + design-process, design-agent, **design-department (NEW v0.5.3)**, company-setup, allocate-resource, deploy).
+- **All 20 v0.6.1 skills** + their owners + when each applies (the 10 owned skills below + design-process, design-agent, design-department, **schedule-process, unschedule-process, list-scheduled-processes (added v0.6.0)**, **deliberate-decision (NEW v0.6.1)**, company-setup, allocate-resource, deploy). Skill-count math: 10 owned + 9 framework-wide + 1 dept-scoped (deploy under departments/rnd/) = 20 total.
 - **All 13 v0.5.1 agents** + their departments + their delegation/escalation patterns (ceo, coo, chief-of-staff, ops-manager, kb-curator at company tier; rnd-lead/eng-lead/eng-reviewer under R&D; finance-lead, people-lead, legal-lead, commercial-lead, pr-lead at dept tier).
 - **All 9 v0.5.1 templates** + when each gets rendered (AGENT, SKILL, PROCESS, BACKLOG-ITEM, TASK, POLICY, DEPARTMENT, HIRING-SPEC, task-issue, task-update).
 - **The 6 v0.5.1 starter departments** + their AI-first framing (rnd umbrella + finance + people + legal + commercial + pr).
