@@ -1,0 +1,95 @@
+<!--
+TEMPLATE: substitute the <<TOKEN>> markers listed below.
+
+Written by `.claude/skills/deliberate-decision/` at step 11. One file per
+APPROVE'd decision. Named `YYYY-MM-DD-<decision_id>.md` with `decision_id`
+including a 6-char UUID suffix (collision-free across machines).
+
+Tokens:
+  <<DATE>>                YYYY-MM-DD
+  <<TIME>>                HH:MM
+  <<DECISION_ID>>         kebab-case slug + UUID suffix (e.g. "berlin-sales-office-a3f9c2")
+  <<PROPOSER>>            agent name (e.g. "coo")
+  <<CRITICS>>             YAML list of agent names (e.g. [rnd-lead, finance-lead, people-lead, legal-lead, commercial-lead, pr-lead, ceo])
+  <<ARBITER>>             agent name
+  <<ROUNDS_RUN>>          integer 1..5
+  <<VERDICT>>             APPROVE | REJECT | DEFER
+  <<TAGS>>                YAML list (e.g. [strategic, hiring, market-entry])
+  <<EARLY_EXIT_AT_ROUND>> integer (1..5) or null
+
+Audit-trail note: deliberation-induced Task calls do NOT write to
+`.claude/skills/consult-agent/history/`. The audit lives in this artifact's
+Audit section + the deliberate-decision skill's history entry. Per-skill
+audit is bundled at the orchestrating-skill level by design (see
+deliberate-decision SKILL.md "Task-call pattern" section).
+-->
+
+---
+date: <<DATE>>
+time: <<TIME>>
+decision_id: <<DECISION_ID>>
+proposer: <<PROPOSER>>
+critics: <<CRITICS>>
+arbiter: <<ARBITER>>
+rounds_run: <<ROUNDS_RUN>>
+verdict: <<VERDICT>>
+tags: <<TAGS>>
+early_exit_at_round: <<EARLY_EXIT_AT_ROUND>>
+---
+
+# Decision: <<DECISION_ID>>
+
+## Proposal (original)
+
+(The original proposal text as submitted to `/deliberate-decision`.)
+
+## Round 1
+
+### Critique summary
+
+- <critic-name>: <STANCE> — <points>
+- <critic-name>: <STANCE> — <points>
+- (UNAVAILABLE or PARSE_FAILED critics noted here with reason)
+
+### Proposer revision
+
+(The revised proposal text after addressing critique. If early-exit fired at round 1 — all critics returned AGREE — this section reads "No revision needed — all critics returned AGREE.")
+
+### Responses to critics
+
+- <critic-name>: <how addressed, or one-line reason for declining>
+- ...
+
+## Round 2
+
+(Same structure as Round 1. **Round-2 critics RECEIVED their round-1 critique + the proposer's specific response to them as part of their prompt** — per `deliberate-decision` SKILL step 4's round-N>1 critic-memory block. Repeat per round; omit sections beyond ROUNDS_RUN.)
+
+## Arbiter verdict
+
+**<<VERDICT>>** — rendered by `<<ARBITER>>`.
+
+(If `<<ARBITER>> == <<PROPOSER>>` — CEO-proposer self-arbitration — the arbiter prompt included a warning to consider critic counter-arguments before defaulting to APPROVE.)
+
+(If arbiter PARSE_FAILED → defaulted to DEFER per safety convention; this section notes the parse failure.)
+
+## Rationale
+
+(2-4 sentences from the arbiter explaining the verdict, surfacing tradeoffs.)
+
+## Follow-ups
+
+(Bulleted list of follow-up actions with proposed owners. Populated only when `<<VERDICT>> == APPROVE`. Empty if REJECT or DEFER.)
+
+- <action>: <proposed-owner-agent>
+- ...
+
+## Audit
+
+- **This deliberation's history entry:** `.claude/skills/deliberate-decision/history/<<DATE>>-<run-id>.md`
+- **Per-round Task-call summary** (one line per critic per round + arbiter):
+  - Round 1 critics: <list of "agent [STANCE]" tuples>
+  - Round 1 proposer-revision: <<PROPOSER>> (full response in history entry)
+  - Round 2 critics: (similar)
+  - Round 2 proposer-revision: <<PROPOSER>>
+  - Arbiter: <<ARBITER>> [<<VERDICT>>]
+- **NOTE:** deliberation-induced Task calls do NOT write to `.claude/skills/consult-agent/history/`. They are audited via THIS artifact's Audit section + the deliberate-decision skill's history entry. See `deliberate-decision/SKILL.md` "Task-call pattern" section for rationale.

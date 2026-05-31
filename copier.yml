@@ -15,6 +15,7 @@ _exclude:
   - "**/history/202[0-9]-*.md"
   - "**/scheduled-runs/202[0-9]-*.md"   # v0.6.0: per-adopter scheduled-run records; runtime-only, never shipped
   - .claude/scheduled-processes.json    # v0.6.0: per-machine routine-id cache; gitignored + excluded
+  - "company/decisions/202[0-9]-*.md"   # v0.6.1: per-adopter decision artifacts written by deliberate-decision; README + .gitkeep DO ship (not in _skip_if_exists)
   - "tasks/[0-9]*.md"       # framework's own dogfooded task files; consumers get empty tasks/ via .gitkeep
   - "tasks/closed/**"        # same as above for completed tasks
   - "ui/tests/**"           # framework-dogfooded tests asserting on OPOS's own agent/skill counts
