@@ -16,7 +16,7 @@ At task completion: after the final slice is committed and the work is merge-rea
 
 - `summary` — 2-4 sentence agent-written summary of what shipped and why (required).
 - `since_sha` — git SHA where the task started. If omitted, resolve via the fallback chain below.
-- `issue` — optional override; default: read from `<repo-root>/.claude/.current-task`.
+- `issue` — optional override; default: read from `<repo-root>/.claude/.current-task`. **As of v0.7.0** `.current-task` is a newline-delimited array of active issues; this skill auto-picks when exactly 1 is active and REQUIRES `--issue` when 2+ are active (see step 3).
 - `deliverables` — optional markdown checklist of final deliverables state.
 
 ## `since_sha` fallback chain
@@ -32,7 +32,11 @@ When `--since_sha` is not passed, resolve in this order:
 
 1. **Check for upstream updates.** Invoke `check-for-updates` (silent unless an update is available; cached 6h). Best-effort — failures do not block this skill's run.
 2. Resolve repo root via `git rev-parse --show-toplevel`.
-3. Read `$REPO_ROOT/.claude/.current-task` (or `--issue`). Exit clearly if neither is set.
+3. **Read `$REPO_ROOT/.claude/.current-task` as a newline-delimited array** of active task issue numbers (v0.7.0 array semantics; v0.6.x single-task content parses as 1-element array — fully backwards-compatible). Apply defensive read-side filtering (drop non-digit lines per Risk 30). Then determine the target issue number:
+   - If `--issue <N>` was provided → use it directly.
+   - Else if the array has **EXACTLY 1 entry** → use that entry. **This preserves v0.6.x single-task workflow behavior.**
+   - Else if the array has **>1 entries** (multi-active parallel-session workflow as of v0.7.0) → ABORT with: `Multiple active tasks: #<comma-list>. Pass --issue <N> to specify which one to complete.`
+   - Else (array empty / file absent) → ABORT with: `No active task. Pass --issue <N> explicitly if completing a task you didn't open via task-register on this machine.`
 4. Read and validate config.
 5. Resolve `since_sha` via the fallback chain above (if not passed).
 6. Compute the changelog: `git log <since_sha>..HEAD --oneline --no-merges`. Capture as a bulleted list.
@@ -43,7 +47,14 @@ When `--since_sha` is not passed, resolve in this order:
 11. Ensure label `status:done` exists; create with `gh label create status:done --color <hex>` if missing (warn on creation). The color SHOULD come from `.claude/task-tracking.config.json`'s `_label_palette["status:done"]` field (defaults to green `0E8A16` in the shipped config); v0.1.1 documents the palette as the source of truth, but the config-read mechanic is currently still manual (the skill body picks the color; future v0.2.0 work will wire the read into the skill itself). Apply it: `gh issue edit <number> --add-label status:done`.
 12. `gh issue close <number> --repo <repo> --reason completed`.
 13. **Archive the task file to `tasks/closed/`** (new in v0.2.0; uses `git mv` since v0.6.1). Ensure the directory exists via `mkdir -p "$REPO_ROOT/tasks/closed/"` (idempotent — first task-complete after v0.2.0 creates it; subsequent calls no-op). Then move the task file via `git mv` so the deletion is staged automatically: `git mv "$REPO_ROOT/tasks/<number>.md" "$REPO_ROOT/tasks/closed/<number>.md"`. **Why `git mv` (v0.6.1 fix):** plain `mv` leaves the original `tasks/<number>.md` tracked in git's index (since the original was added in `task-register`'s step 11 — see task-register/SKILL.md), causing both paths to exist in HEAD. The v0.5.3 + v0.6.0 task-complete runs hit this bug and required a retroactive cleanup commit (`b775b0f`). `git mv` stages the deletion atomically with the add, fixing it at root. **Backwards-compat**: if `tasks/<number>.md` doesn't exist (e.g. task was opened pre-v0.2.0 before the `tasks/` convention), skip silently. If `tasks/<number>.md` exists but is NOT tracked (rare; only the first task ever opened on a brand-new consumer repo), `git mv` falls back to `mv` semantics — no error.
-14. Delete `$REPO_ROOT/.claude/.current-task`.
+14. **Remove the completed issue from `$REPO_ROOT/.claude/.current-task`** (v0.7.0 array semantics; replaces the v0.6.x unconditional delete). Use:
+    ```bash
+    grep -v "^${ISSUE_NUM}$" "$REPO_ROOT/.claude/.current-task" > "$REPO_ROOT/.claude/.current-task.tmp" \
+      && mv "$REPO_ROOT/.claude/.current-task.tmp" "$REPO_ROOT/.claude/.current-task"
+    ```
+    If the file becomes empty after removal, optionally `rm "$REPO_ROOT/.claude/.current-task"` (cosmetic — empty file and absent file are semantically identical under v0.7.0 array semantics; both parse to `current_tasks = []`).
+    
+    **Backwards-compat preserved as a special case:** when the array had exactly 1 element going in and the cleanup `rm` fires, the resulting file-absent state matches v0.6.x semantics. v0.7.0 consumers with multiple active tasks see the file retained with the remaining issues. Defensive: if `grep -v` fails because `.current-task` is absent (rare; only possible if another concurrent skill removed it between step 3 and step 14), skip silently — the desired end-state (issue not in `.current-task`) is already achieved.
 15. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
 16. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
 
@@ -51,12 +62,13 @@ When `--since_sha` is not passed, resolve in this order:
 
 - A final comment on the issue.
 - The issue is closed with reason `completed` and has the `status:done` label.
-- `.current-task` is cleared.
+- The completed issue is **removed from `.current-task`** (v0.7.0 array semantics). If the array becomes empty, the file is optionally `rm`'d. Other active tasks (in the multi-active workflow) are untouched.
 - A history entry.
 
 ## Failure modes
 
-- **`.current-task` absent and no `--issue`** → exit; `failure` entry.
+- **`.current-task` absent/empty and no `--issue`** → exit; `failure` entry.
+- **Ambiguous active task** (v0.7.0) → array has >1 entries AND `--issue` was not supplied. Recovery: re-run with `--issue <N>` naming one of the active issues. `failure` entry.
 - **Issue already CLOSED** → warn but proceed: post the final comment for the record; do not re-close; `partial` entry.
 - **No commits in range** → still post the summary; `partial` entry; flag in the history body.
 - **PR-link discovery returns nothing** → not a failure; just an empty PR section in the final comment.

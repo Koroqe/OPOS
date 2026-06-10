@@ -1,6 +1,6 @@
 ---
 name: task-pause
-description: Pause the current task (append to .paused-tasks; clear .current-task); post pause notice to the GitHub issue via task-update first
+description: Pause an active task (append to .paused-tasks; remove from .current-task array); post pause notice to the GitHub issue via task-update first
 version: 0.1.0
 tags: [meta, framework, task-tracking]
 owner_agent: chief-of-staff
@@ -14,15 +14,20 @@ When you want to set the current task aside to work on something else, without c
 
 ## Inputs
 
-None. Operates on the currently-active task (`.claude/.current-task`).
+- `issue` — optional override. **As of v0.7.0** `.current-task` is a newline-delimited array; this skill auto-picks when exactly 1 is active and REQUIRES `--issue` when 2+ are active (see step 2).
 
 ## Steps
 
-**ORDER MATTERS** — `task-update` (step 3) must run BEFORE `.current-task` is deleted (step 5), because `task-update` reads `.current-task` to know which issue to comment on. Reversed order = task-update fails with "no active task."
+**ORDER MATTERS** — `task-update` (step 3) must run BEFORE the issue is removed from `.current-task` (step 5), because `task-update` reads `.current-task` to know which issue to comment on. Reversed order = task-update may pick the wrong target (or fail if this was the only active task).
 
 1. **Resolve repo root.** `REPO_ROOT=$(git rev-parse --show-toplevel)`.
 
-2. **Read `.current-task`; error if absent.** `[ -f "$REPO_ROOT/.claude/.current-task" ]` else abort with "No active task to pause." Capture as `$ISSUE`.
+2. **Read `.current-task` as a newline-delimited array** (v0.7.0 array semantics; v0.6.x single-task content parses as 1-element array — fully backwards-compatible). Apply defensive read-side filtering (drop non-digit lines per Risk 30). Then determine the target issue:
+   - If `--issue <N>` was provided → use it directly. (Must be present in the array; if absent, ABORT with `Issue #N not in active list. Active: #<list>`.)
+   - Else if the array has **EXACTLY 1 entry** → use it (v0.6.x single-task workflow preserved).
+   - Else if the array has **>1 entries** → ABORT with `Multiple active tasks: #<comma-list>. Pass --issue <N> to specify which one to pause.`
+   - Else (empty/absent) → ABORT with "No active task to pause."
+   Capture as `$ISSUE`. **Do not modify `.current-task` here** — the removal happens at step 5 AFTER step 3's task-update has run.
 
 3. **Post pause notice via `task-update`** (while `.current-task` still exists so task-update can read it):
    ```bash
@@ -38,7 +43,12 @@ None. Operates on the currently-active task (`.claude/.current-task`).
    echo "$ISSUE" >> "$REPO_ROOT/.claude/.paused-tasks"
    ```
 
-5. **Delete `.current-task`.** `rm "$REPO_ROOT/.claude/.current-task"`.
+5. **Remove the paused issue from `.current-task`** (v0.7.0 array semantics; replaces the v0.6.x unconditional delete):
+   ```bash
+   grep -v "^${ISSUE}$" "$REPO_ROOT/.claude/.current-task" > "$REPO_ROOT/.claude/.current-task.tmp" \
+     && mv "$REPO_ROOT/.claude/.current-task.tmp" "$REPO_ROOT/.claude/.current-task"
+   ```
+   If the file becomes empty after removal, optionally `rm "$REPO_ROOT/.claude/.current-task"` (cosmetic — empty file and absent file are semantically identical). **Backwards-compat preserved:** when the array had exactly 1 element going in and the cleanup `rm` fires, the resulting file-absent state matches v0.6.x semantics. Other active tasks in the multi-active workflow are untouched.
 
 6. **Print confirmation** to stdout: `Paused: #<ISSUE>. Resume with /task-resume <ISSUE>.`
 
@@ -49,7 +59,7 @@ None. Operates on the currently-active task (`.claude/.current-task`).
 ## Outputs
 
 - `.paused-tasks` updated (new line appended).
-- `.current-task` deleted.
+- The paused issue **removed from `.current-task`** (v0.7.0 array semantics). If the array becomes empty, the file is optionally `rm`'d; other active tasks (in the multi-active workflow) are untouched.
 - GitHub issue gets a "Task paused" comment via task-update, with body status flipped to `blocked`.
 - One-line confirmation in chat.
 - Two history entries (one in task-pause/, one in task-update/ — see step 7 note).

@@ -17,13 +17,17 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
 - `message` — the update body (required; markdown).
 - `key` — idempotency key (required; e.g. a commit SHA or a slice number — anything stable).
 - `status` — optional new status: `in_progress | blocked | review`. Default: leave the body status line unchanged.
-- `issue` — optional override; default: read the active issue number from `<repo-root>/.claude/.current-task`.
+- `issue` — optional override; default: read the active issue number from `<repo-root>/.claude/.current-task`. **As of v0.7.0** `.current-task` is a newline-delimited array of active issue numbers; this skill auto-picks when exactly 1 is active and REQUIRES `--issue` when 2+ are active (see step 3).
 
 ## Steps
 
 1. **Check for upstream updates.** Invoke `check-for-updates` (silent unless an update is available; cached 6h). Best-effort — failures do not block this skill's run.
 2. Resolve repo root via `git rev-parse --show-toplevel`.
-3. Read `$REPO_ROOT/.claude/.current-task` (or use `--issue`). Exit clearly if neither is set.
+3. **Read `$REPO_ROOT/.claude/.current-task` as a newline-delimited array** of active task issue numbers (v0.7.0 array semantics; v0.6.x single-task content parses as 1-element array — fully backwards-compatible). Apply defensive read-side filtering (drop non-digit lines per Risk 30). Then determine the target issue number:
+   - If `--issue <N>` was provided → use it directly. (Works regardless of array size; lets a batch script or external caller target a specific issue without parsing the active list.)
+   - Else if the array has **EXACTLY 1 entry** → use that entry. **This preserves v0.6.x single-task workflow behavior; users who only ever work on one task at a time see no change.**
+   - Else if the array has **>1 entries** (multi-active parallel-session workflow as of v0.7.0) → ABORT with: `Multiple active tasks: #<comma-list>. Pass --issue <N> to specify which one to update.` Do not guess; the user must disambiguate.
+   - Else (array empty / file absent) → ABORT with: `No active task. Open one with task-register, or pass --issue <N> explicitly.`
 4. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo`.
 5. `gh issue view <number> --repo <repo> --json comments,state` — abort if state is `CLOSED` (the user must reopen with `gh issue reopen` or invoke `task-complete` instead).
 6. Scan the last 50 comments for the HTML marker `<!-- update-key: <key> -->`. If found, exit 0 silently with the message `duplicate key, no-op` (this is correct behavior, not an error). Still write a history entry with `outcome: partial` recording the skipped invocation.
@@ -54,7 +58,8 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
 
 ## Failure modes
 
-- **`.current-task` absent and no `--issue`** → exit with instruction to run `task-register` first; `failure` entry.
+- **`.current-task` absent/empty and no `--issue`** → exit with instruction to run `task-register` first; `failure` entry.
+- **Ambiguous active task** (v0.7.0) → `.current-task` array has >1 entries AND `--issue` was not supplied. Recovery: re-run with `--issue <N>` naming one of the active issues; the abort message lists them all. `failure` entry.
 - **Issue is CLOSED** → exit; the user must reopen or run `task-complete`; `failure` entry.
 - **Duplicate idempotency key** → silent no-op; `partial` entry for traceability.
 - **Status-line regex no-match** → abort per step 8; `failure` entry.
