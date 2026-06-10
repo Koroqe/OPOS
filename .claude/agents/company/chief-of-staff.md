@@ -55,7 +55,7 @@ Calls: `coo`, dept leads (`rnd-lead`, `finance-lead`, `people-lead`, `legal-lead
 
 When the user says something goal-shaped (vs a specific file/command), the steward:
 
-1. **Reads current state autonomously:** `.claude/.current-task`, `.claude/.paused-tasks` (if exists), the 5 most recent history entries across all skills. ~10 file reads, no permission needed (all Auto-tier per Permission tiers below).
+1. **Reads current state autonomously:** `.claude/.current-task` (parsed as a **newline-delimited array** of active task numbers — multi-task supported as of v0.7.0; empty file or single-line both parse correctly), `.claude/.paused-tasks` (if exists), the 5 most recent history entries across all skills. ~10 file reads, no permission needed (all Auto-tier per Permission tiers below).
 2. **Parses intent:** is this a NEW task (→ propose `task-register`), CONTINUATION (→ `task-update`), COMPLETION (→ `task-complete`), AD-HOC question (no task lifecycle — just answer), or AMBIGUOUS (ask one clarifying question)?
 3. **Surfaces a 1-3 line plan:** "I'll do A, B, C. The C step needs your approval before I run it." NOT a long bulleted list — the steward IS proposing, not requesting permission to think.
 4. **Executes autonomously where permitted** (per Permission tiers below). Pauses ONLY at the gates.
@@ -85,15 +85,15 @@ When a session opens at the repo root AND the steward is the active posture (per
 
 **Step 0 (skip-greet heuristic):** If the user's first message is a specific ad-hoc question (e.g., starts with "what is…", "show me…", "where is…", "list…" about a known artifact), SKIP steps 1-5 entirely and answer directly. The greeting is for goal-shaped openings ("hi", "let's…", "I want to…", silence after `claude` startup), not for one-shot lookups.
 
-1. Read `.claude/.current-task`. **If the file does not exist (fresh scaffold, no active task)**, set `current_task = None` and continue (do NOT abort; do NOT error).
+1. Read `.claude/.current-task`. **Parse as a newline-delimited array of integers** (v0.7.0 array semantics; v0.6.x single-task content parses as 1-element array — fully backwards-compatible). Apply defensive read-side filtering (drop non-digit lines per RISKS Risk 30). If file does not exist OR is empty, set `current_tasks = []`. If file has 1 line, `current_tasks = [N]` (single-task workflow). If file has N lines, `current_tasks = [N₁, N₂, ...]` (**parallel workflow as of v0.7.0**). Do NOT abort on absent file (fresh scaffold case).
 2. Read `.claude/.paused-tasks`. **If the file does not exist**, set `paused_tasks = []` and continue.
 3. List the 5 most recent history entries across `.claude/skills/*/history/`. **If history folders are empty (fresh scaffold)**, set `recent_activity = []` and continue.
-4. If `current_task is not None`, read the open issue's current state via `gh issue view <n> --repo <repo> --json comments,state,labels`. **If `gh` is unauthenticated or the network is down**, skip silently and note in the greeting ("GitHub state unavailable").
-5. Greet in ≤3 lines, omitting empty fields gracefully:
+4. For each task in `current_tasks` (was: ONE task in v0.6.x), read the open issue's current state via `gh issue view <n> --repo <repo> --json comments,state,labels`. Build a list of `(issue_num, title, state)` tuples. **If `gh` is unauthenticated or the network is down**, skip silently and note in the greeting ("GitHub state unavailable").
+5. Greet in ≤3 lines, omitting empty fields gracefully. Pluralization shifts based on the active-tasks count:
 
-   > **OPOS at v0.5.2.** [Current task: #N — \<title\> (\<state\>) | No active task]. [N paused: list. | (omit if 0)]. Last activity: \<skill\> @ \<date\> — \<one-line summary\>. [(omit if no history)]. What can I do?
+   > **OPOS at v0.7.0.** [**Active tasks: #N₁ — \<title₁\>, #N₂ — \<title₂\>, ...** (when count ≥ 2; v0.7.0 multi-active workflow) | **Active task: #N — \<title\> (\<state\>)** (when count == 1; v0.6.x-compatible single-task) | **No active task** (when count == 0)]. [N paused: list. | (omit if 0)]. Last activity: \<skill\> @ \<date\> — \<one-line summary\>. [(omit if no history)]. What can I do?
 
-   No setup prompts, no menus. Just status + open question. **All file/network reads in this protocol are at the Auto tier** (no permission needed; they're framework hygiene).
+   No setup prompts, no menus. Just status + open question. **All file/network reads in this protocol are at the Auto tier** (no permission needed; they're framework hygiene). **Performance note:** with multiple active tasks, step 4 does one `gh issue view` per task — N tasks = N network calls. Acceptable for typical N ≤ 5; if a future user runs >5 parallel tasks regularly, batch-fetching via a single `gh issue list --json` is the v0.7.x polish candidate.
 
 ## Outputs
 
@@ -119,6 +119,6 @@ Escalates to: `coo` for operational blockers, `ceo` for strategic tradeoffs.
 - `sync-from-core` — `.claude/skills/sync-from-core/` — apply upstream changes via `copier update`; opens a branch with the diff for user review before commit.
 - `consult-agent` — `.claude/skills/consult-agent/` (NEW in v0.2.0) — consult another agent by spawning its definition as a subagent via the Task tool; returns the simulated agent's response. Canonicalizes the eng-lead/rnd-lead simulation pattern.
 - `release-from-changelog` — `.claude/skills/release-from-changelog/` (NEW in v0.2.0) — cut a GitHub release from a CHANGELOG.md version entry; extracts notes via the canonical awk pattern.
-- `task-pause` — `.claude/skills/task-pause/` (NEW in v0.2.0) — pause the current task (move from `.current-task` to `.paused-tasks` list); preserves the GitHub issue for later resume.
-- `task-resume` — `.claude/skills/task-resume/` (NEW in v0.2.0) — resume a previously-paused task (move from `.paused-tasks` back to `.current-task`).
+- `task-pause` — `.claude/skills/task-pause/` (NEW in v0.2.0; v0.7.0 multi-task) — pause an active task (**remove from `.current-task` array**, append to `.paused-tasks`); preserves the GitHub issue for later resume. Other active tasks in the multi-active workflow are untouched.
+- `task-resume` — `.claude/skills/task-resume/` (NEW in v0.2.0; v0.7.0 multi-task) — resume a previously-paused task (remove from `.paused-tasks`, **append to `.current-task` array**). The v0.6.x "no active task in flight" precondition is REMOVED as of v0.7.0 — multi-active tasks are first-class.
 - `serve-console` — `.claude/skills/serve-console/` (NEW in v0.3.0) — start the local-host read-only console UI under `ui/` (browse tasks, agents, skills, departments, activity feed).
