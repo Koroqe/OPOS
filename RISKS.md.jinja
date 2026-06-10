@@ -196,7 +196,9 @@ The `.claude/.current-task` and `.claude/.paused-tasks` state files are both git
 - Pausing a task on machine A doesn't show up on machine B.
 - `task-register` refusing because of an active task on machine A won't refuse on machine B.
 
-**Mitigation:** documented. Future v0.3.0 could move the state to tracked files (`tasks/<n>.md`'s frontmatter `state:` field is the natural place; the `.current-task` pointer could move to a tracked `tasks/.active` file). For v0.2.0, the per-machine model is accepted as a known limitation.
+**Status update v0.7.0 — single-machine parallel-session collision CLOSED:** the second bullet above (`task-register` refusing on a single machine when one task is already in flight) was historically a guard *within a machine* that prevented opening multiple Claude sessions for parallel tasks. **v0.7.0 converts `.current-task` from single-value to newline-delimited array** — parallel manual sessions on the same machine can each `task-register` without colliding (the issue numbers append to the array; defensive read-side filtering handles concurrent-write race per the new Risk 30). The intra-machine collision case is now CLOSED. **Cross-machine state sharing remains the deferred work item:** machine A and machine B still each have their own `.current-task` array; they don't share state. A future release (v0.8.x+ candidate) could move state to tracked files (`tasks/<n>.md`'s frontmatter `state:` field is the natural place) so cross-machine teams see a unified active-tasks view. For v0.7.0, cross-machine is accepted as a known limitation.
+
+**Mitigation (legacy v0.2.0 framing, retained for context):** documented. Future v0.3.0 could move the state to tracked files (`tasks/<n>.md`'s frontmatter `state:` field is the natural place; the `.current-task` pointer could move to a tracked `tasks/.active` file). For v0.2.0, the per-machine model is accepted as a known limitation.
 
 ## Risk 16 — Console exposes filesystem reads on localhost
 
@@ -398,6 +400,24 @@ Deliberation-induced Task calls do NOT write entries to `.claude/skills/consult-
 
 - Audit lives in `.claude/skills/deliberate-decision/history/` (one consolidated entry per deliberation naming all critics + summarizing each response) AND in the decision artifact's `Audit` section (per-round Task-call summary). No information is lost; it's just routed differently.
 - The skill body documents this divergence prominently. Future framework reviews can flag if a different audit routing is preferred.
+
+## Risk 30 — Intra-machine concurrent-register race (v0.7.0)
+
+**Status:** LOW impact; documented; defensive read-side filtering mitigates.
+
+v0.7.0 allows multiple parallel manual sessions on the same machine to each call `task-register` (it removed the v0.6.x single-active-task refuse-on-exists guard from step 4). If two sessions both pass step 4's parse-array AND both reach step 10's append within the same millisecond window, the appends may interleave at the OS level producing duplicate lines or partial writes in `.current-task`.
+
+**Mitigations:**
+
+- The race window is small. Steps 4-10 in `task-register` consist mostly of local file operations plus a single `gh issue create` network call; the actual append in step 10 is a single `>>` redirect. Two sessions starting `task-register` within the same millisecond is extremely unlikely in interactive use.
+- **Every skill that READS `.current-task`** (task-register step 4, task-update step 3, task-complete step 3, task-pause step 2, task-resume step 2, chief-of-staff first-touch step 1) applies **defensive read-side filtering**: drop any line that isn't pure digits. Partial-write garbage (a half-written number, a stray byte, a missing newline that merged two issue numbers) is silently dropped. Conceptually:
+  ```python
+  lines = [int(l.strip()) for l in raw.splitlines() if l.strip().isdigit()]
+  ```
+- **Duplicate issue numbers are de-duplicated at read time too**. The skill bodies don't trust that the file content is unique; readers apply `dict.fromkeys` (Python) or `awk '!seen[$0]++'` (Bash) to drop dups while preserving order.
+- **Write-side defensive duplicate check** (task-register step 10, task-resume step 5): before the `>>` append, the skill checks the just-parsed array. If the candidate issue is already present (e.g., another concurrent session beat us to it), the append is skipped silently and a `partial`-outcome history entry records the race.
+
+**Future v0.8.x candidate:** proper `flock`-based locking around the `>>` append, eliminating the race window entirely. Not in v0.7.0 scope per the user's Minimal-scope choice — the defensive-read pattern is sufficient for the actual concurrent-session pattern in practice (two interactive humans rarely hit the same millisecond).
 
 ## Advisory note — upstream naming
 

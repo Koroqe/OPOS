@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.7.0] - 2026-06-10
+
+### Changed
+
+- **`.current-task` is now a newline-delimited array of active issue numbers** (was: single-value file). Matches the existing `.paused-tasks` array pattern. **Backwards-compatible:** v0.6.x single-line content parses correctly as a 1-element array — no migration step required. Multi-active tasks are first-class as of this release; parallel Claude Code sessions can each open + close their own task without colliding.
+- `.claude/skills/task-register/SKILL.md` — Step 4 was "refuse-on-exists" (the v0.6.x guard blocking parallel sessions); now "Parse current active-task array" with defensive read-side filtering. Continue regardless of count. Step 10 was `echo $ISSUE_NUM > .current-task`; now `echo $ISSUE_NUM >> .current-task` with duplicate-check. Failure modes section's "`.current-task` already exists" entry REPLACED with "Duplicate issue in active list" (skip + partial outcome, not refuse). History entry now records pre/post `.current-task` array contents for audit.
+- `.claude/skills/task-update/SKILL.md` — Step 3 array-aware: auto-picks when exactly 1 entry; aborts with `Multiple active tasks: #<comma-list>. Pass --issue <N>` when 2+ entries and no `--issue` override. v0.6.x single-task behavior preserved as a special case.
+- `.claude/skills/task-complete/SKILL.md` — Step 3 array-aware (same pattern as task-update). Step 14 was unconditional delete; now removes the specific completed issue from the array via `grep -v "^${ISSUE_NUM}$"` + optional `rm` if the file becomes empty. v0.6.1 `git mv` for `tasks/<n>.md` archival preserved unchanged.
+- `.claude/skills/task-pause/SKILL.md` — Step 2 array-aware (Inputs gains optional `--issue`). Step 5 was unconditional delete; now removes the specific paused issue from the array via the same `grep -v` pattern. Other active tasks in the multi-active workflow are untouched.
+- `.claude/skills/task-resume/SKILL.md` — Step 2's pre-v0.7.0 "verify `.current-task` absent" guard REMOVED — multi-active tasks are first-class. Step 5 was `echo $ISSUE > .current-task` (overwrite); now `echo $ISSUE >> .current-task` (append). Step 6's task-update call now passes `--issue $ISSUE_NUMBER` explicitly to avoid the new multi-active disambiguation guard.
+- `.claude/agents/company/chief-of-staff.md` — Goal decomposition pattern + First-touch behavior + Owned-processes descriptions all updated for v0.7.0 array semantics. First-touch greeting template gains pluralization variant: `Active tasks: #N₁ — <title₁>, #N₂ — <title₂>, ...` for multi-active workflow (vs `Active task: #N — <title>` for single-task v0.6.x-compatible workflow). Step 4 now iterates `gh issue view` per task (was: ONE task); performance note added for future batch-fetching candidate.
+- `README.md.jinja` "How to use OPOS day-to-day" — 7th example bullet added (parallel terminal workflow demonstrating both `/task-register` calls succeeding + each session's First-touch greeting seeing both tasks).
+- `RISKS.md.jinja` — **Risk 15 updated** (the actual state-file per-machine risk; Risk 23 is about scheduled-process per-machine state, which is a different concern): "Single-machine parallel-session collision CLOSED in v0.7.0 via the `.current-task` array conversion. Cross-machine state sharing remains the v0.8.x+ work item." **New Risk 30 added** (Intra-machine concurrent-register race; LOW impact; defensive read-side filtering mitigates; future `flock`-based locking is v0.8.x candidate).
+
+### Notes
+
+Closes Koroqe/OPOS#15. **Multi-active-task support landed** — the architectural concern surfaced in this session (parallel Claude Code sessions colliding on `.current-task`) is resolved. Backwards-compatible: existing v0.6.x consumers' single-line `.current-task` content parses as a 1-element array; no migration step. Claude Code provides no session identifier so cross-session race on concurrent `task-register` IS possible but window is small and defensive read-side filtering (drop non-digit lines, dedupe issues at read time) mitigates. **Survey-confirmed isolation:** scheduled-vs-manual architecture untouched (scheduled processes write to `scheduled-runs/`, never touch `.current-task`, use `--issue` overrides for GitHub issue work). Console UI also unaffected (zero `current-task` references in `ui/`). Cross-machine coordination still deferred (Risk 23 unchanged for that dimension). Why minor-bump (0.7.0): semantic contract of `.current-task` changes from "single value, second register refuses" to "array, second register appends" — consumers scripting against the file should be aware. No new files; no new skills.
+
 ## [0.6.1] - 2026-05-31
 
 ### Added
@@ -381,6 +399,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.7.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.0
 [0.6.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.1
 [0.6.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.0
 [0.5.3]: https://github.com/Koroqe/OPOS/releases/tag/v0.5.3
