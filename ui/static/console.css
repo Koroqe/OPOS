@@ -126,10 +126,17 @@ tr:hover td { background: #f8fafb; }
 .badge.success { background: var(--ok); }
 .badge.partial { background: var(--partial); }
 .badge.failure { background: var(--fail); }
-.dept[data-dept] { display: inline-block; padding: 0.1em 0.5em; border-radius: 3px; font-size: 0.85em; color: white; }
+.dept[data-dept] { display: inline-block; padding: 0.1em 0.5em; border-radius: 3px; font-size: 0.85em; color: white; background: var(--fg-dim); /* default fallback for any unmapped dept name — prevents white-on-white when consumer creates a dept via /design-department */ }
+/* v0.5.1 starter depts (current). All 7 mapped to the 6-color dept_cycle from .claude/task-tracking.config.json */
 .dept[data-dept="company"]    { background: var(--dept-1); }
-.dept[data-dept="engineering"]{ background: var(--dept-2); color: #333; }
+.dept[data-dept="finance"]    { background: var(--dept-2); color: #333; } /* yellow needs dark text */
 .dept[data-dept="rnd"]        { background: var(--dept-3); }
+.dept[data-dept="people"]     { background: var(--dept-4); }
+.dept[data-dept="legal"]      { background: var(--dept-5); }
+.dept[data-dept="commercial"] { background: var(--dept-6); }
+.dept[data-dept="pr"]         { background: var(--dept-1); } /* cycles back; pr + company rarely appear adjacent so collision is acceptable */
+/* Legacy pre-v0.5.1 dept names — retained so consumers who never ran copier update still render correctly */
+.dept[data-dept="engineering"]{ background: var(--dept-2); color: #333; }
 .dept[data-dept="sales"]      { background: var(--dept-4); }
 .dept[data-dept="marketing"]  { background: var(--dept-5); }
 .dept[data-dept="ops"]        { background: var(--dept-6); }
