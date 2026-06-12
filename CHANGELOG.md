@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.7.1] - 2026-06-12
+
+### Fixed
+
+- **Console dept-badge rendered white-on-white for v0.5.1+ starter depts.** `ui/static/console.css` set `color: white` for all `.dept[data-dept]` badges, but the per-dept background-color rules only covered the stale pre-v0.5.1 dept names (`company`, `engineering`, `rnd`, `sales`, `marketing`, `ops`). The 5 v0.5.1+ starter depts NOT in that stale set (`finance`, `people`, `legal`, `commercial`, `pr`) fell through → white text on white page background → invisible. Visible on every v0.5.1+ consumer's `/agents` page and anywhere else the dept badge renders.
+  - **Fix part 1:** added `background: var(--fg-dim)` as a default fallback on the base `.dept[data-dept]` rule. Any unmapped dept (e.g., one created via `/design-department`) now renders with a neutral grey background instead of invisible.
+  - **Fix part 2:** mapped the 5 v0.5.1+ starter depts to the 6-color `dept_cycle` from `.claude/task-tracking.config.json` — `finance` → dept-2 (yellow + dark text for contrast); `people` → dept-4; `legal` → dept-5; `commercial` → dept-6; `pr` → dept-1 (cycles back since `pr` + `company` rarely appear adjacent).
+  - **Fix part 3:** retained legacy `engineering`/`sales`/`marketing`/`ops` rules so consumers who haven't run `copier update` since pre-v0.5.1 still render correctly.
+
+### Notes
+
+Closes Koroqe/OPOS#16. **Bug-class observation:** CSS rendering quality isn't asserted by the unittest + smoke suite — this bug was discovered by user eyeball during live browser review of the v0.7.0 console. Worth noting as a v0.7.x candidate: visual regression test or `curl`-grep on rendered HTML asserting specific CSS classes work end-to-end. Single-file fix; no breaking changes; no schema changes. Demonstrates the release pipeline scales down to trivial patches as well as up to architectural beats.
+
 ## [0.7.0] - 2026-06-10
 
 ### Changed
@@ -399,6 +412,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.7.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.1
 [0.7.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.0
 [0.6.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.1
 [0.6.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.0
