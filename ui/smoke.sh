@@ -70,6 +70,31 @@ check_200 "/activity"
 check_200 "/static/console.css"
 
 echo
+echo "--- v0.7.2 dept-badge CSS rules ---"
+# Assert that dept-badge CSS rules exist for all 7 starter depts (catches
+# the v0.7.1 white-on-white bug class — CSS structure regressions that
+# pass the 200-status check but break visual rendering).
+CSS=$(curl -fsS "http://127.0.0.1:$PORT/static/console.css")
+for dept in company rnd finance people legal commercial pr; do
+  if echo "$CSS" | grep -qE "data-dept=\"$dept\".*background"; then
+    echo "PASS console.css has data-dept=\"$dept\" with background rule"
+    PASS=$((PASS+1))
+  else
+    echo "FAIL console.css missing data-dept=\"$dept\" background rule"
+    FAIL=$((FAIL+1))
+  fi
+done
+# Default fallback ensures any unmapped dept (user-created via /design-department)
+# gets a sensible default rather than invisible white-on-white.
+if echo "$CSS" | grep -qE '\.dept\[data-dept\][^{]*\{[^}]*background:'; then
+  echo "PASS console.css has fallback background on .dept[data-dept] base rule"
+  PASS=$((PASS+1))
+else
+  echo "FAIL console.css missing fallback background on .dept[data-dept] base rule"
+  FAIL=$((FAIL+1))
+fi
+
+echo
 echo "--- input-validation 400s ---"
 check_status "/tasks/abc" 400
 check_status "/agents/eng/..%2Fpasswd" 400
