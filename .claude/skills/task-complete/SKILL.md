@@ -47,14 +47,27 @@ When `--since_sha` is not passed, resolve in this order:
 11. Ensure label `status:done` exists; create with `gh label create status:done --color <hex>` if missing (warn on creation). The color SHOULD come from `.claude/task-tracking.config.json`'s `_label_palette["status:done"]` field (defaults to green `0E8A16` in the shipped config); v0.1.1 documents the palette as the source of truth, but the config-read mechanic is currently still manual (the skill body picks the color; future v0.2.0 work will wire the read into the skill itself). Apply it: `gh issue edit <number> --add-label status:done`.
 12. `gh issue close <number> --repo <repo> --reason completed`.
 13. **Archive the task file to `tasks/closed/`** (new in v0.2.0; uses `git mv` since v0.6.1). Ensure the directory exists via `mkdir -p "$REPO_ROOT/tasks/closed/"` (idempotent — first task-complete after v0.2.0 creates it; subsequent calls no-op). Then move the task file via `git mv` so the deletion is staged automatically: `git mv "$REPO_ROOT/tasks/<number>.md" "$REPO_ROOT/tasks/closed/<number>.md"`. **Why `git mv` (v0.6.1 fix):** plain `mv` leaves the original `tasks/<number>.md` tracked in git's index (since the original was added in `task-register`'s step 11 — see task-register/SKILL.md), causing both paths to exist in HEAD. The v0.5.3 + v0.6.0 task-complete runs hit this bug and required a retroactive cleanup commit (`b775b0f`). `git mv` stages the deletion atomically with the add, fixing it at root. **Backwards-compat**: if `tasks/<number>.md` doesn't exist (e.g. task was opened pre-v0.2.0 before the `tasks/` convention), skip silently. If `tasks/<number>.md` exists but is NOT tracked (rare; only the first task ever opened on a brand-new consumer repo), `git mv` falls back to `mv` semantics — no error.
-14. **Remove the completed issue from `$REPO_ROOT/.claude/.current-task`** (v0.7.0 array semantics; replaces the v0.6.x unconditional delete). Use:
+14. **Remove the completed issue from `$REPO_ROOT/.claude/.current-task`** (v0.7.0 array semantics; v0.7.2 Python one-liner rewrite — see below). Use:
     ```bash
-    grep -v "^${ISSUE_NUM}$" "$REPO_ROOT/.claude/.current-task" > "$REPO_ROOT/.claude/.current-task.tmp" \
-      && mv "$REPO_ROOT/.claude/.current-task.tmp" "$REPO_ROOT/.claude/.current-task"
+    ISSUE="$ISSUE_NUM" TARGET="$REPO_ROOT/.claude/.current-task" python3 -c '
+    import os, sys
+    target = os.environ["TARGET"]
+    issue = os.environ["ISSUE"]
+    if not os.path.exists(target):
+        sys.exit(0)  # File already absent — desired end state achieved (defensive against concurrent task-complete from another session).
+    with open(target) as f:
+        lines = [l for l in f.read().splitlines() if l.strip() and l.strip() != issue]
+    if lines:
+        with open(target, "w") as f:
+            f.write("\n".join(lines) + "\n")
+    else:
+        os.remove(target)
+    '
     ```
-    If the file becomes empty after removal, optionally `rm "$REPO_ROOT/.claude/.current-task"` (cosmetic — empty file and absent file are semantically identical under v0.7.0 array semantics; both parse to `current_tasks = []`).
     
-    **Backwards-compat preserved as a special case:** when the array had exactly 1 element going in and the cleanup `rm` fires, the resulting file-absent state matches v0.6.x semantics. v0.7.0 consumers with multiple active tasks see the file retained with the remaining issues. Defensive: if `grep -v` fails because `.current-task` is absent (rare; only possible if another concurrent skill removed it between step 3 and step 14), skip silently — the desired end-state (issue not in `.current-task`) is already achieved.
+    **Why Python (v0.7.2 rewrite — replaces the v0.7.0 `grep -v ... && mv ...` chain):** the prior shell pattern was reproducibly flaky — v0.7.0 Slice 10 + v0.7.1 Slice 4 both saw the first invocation leave the file unchanged; standalone re-execution worked. Root cause unknown (possibly Bash variable expansion in the `"^${VAR}$"` pattern, redirect timing inside the `&&` chain, or filesystem-cache hiccup). The Python one-liner eliminates the failure class by construction: single Python process (no `&&` timing dependency), variable values passed via environment (no shell-quoting issues with `${VAR}$`), atomic write semantics (Python `open(target, "w")` truncates + writes in one syscall, no `.tmp` intermediate file), defensive `os.path.exists` short-circuit (file already absent → success, the desired end-state is achieved).
+    
+    **Backwards-compat preserved as a special case:** when the array had exactly 1 element going in, the Python script's `lines = []` branch fires and `os.remove(target)` is called → resulting file-absent state matches v0.6.x semantics. v0.7.0 consumers with multiple active tasks see the file retained with the remaining issues. The semantics are IDENTICAL to the v0.7.0 grep-v pattern; only the execution mechanism is more robust.
 15. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
 16. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
 

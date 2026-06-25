@@ -43,12 +43,25 @@ When you want to set the current task aside to work on something else, without c
    echo "$ISSUE" >> "$REPO_ROOT/.claude/.paused-tasks"
    ```
 
-5. **Remove the paused issue from `.current-task`** (v0.7.0 array semantics; replaces the v0.6.x unconditional delete):
+5. **Remove the paused issue from `.current-task`** (v0.7.0 array semantics; v0.7.2 Python one-liner rewrite — same pattern as `task-complete` step 14):
    ```bash
-   grep -v "^${ISSUE}$" "$REPO_ROOT/.claude/.current-task" > "$REPO_ROOT/.claude/.current-task.tmp" \
-     && mv "$REPO_ROOT/.claude/.current-task.tmp" "$REPO_ROOT/.claude/.current-task"
+   ISSUE="$ISSUE" TARGET="$REPO_ROOT/.claude/.current-task" python3 -c '
+   import os, sys
+   target = os.environ["TARGET"]
+   issue = os.environ["ISSUE"]
+   if not os.path.exists(target):
+       sys.exit(0)  # File already absent — desired end state achieved.
+   with open(target) as f:
+       lines = [l for l in f.read().splitlines() if l.strip() and l.strip() != issue]
+   if lines:
+       with open(target, "w") as f:
+           f.write("\n".join(lines) + "\n")
+   else:
+       os.remove(target)
+   '
    ```
-   If the file becomes empty after removal, optionally `rm "$REPO_ROOT/.claude/.current-task"` (cosmetic — empty file and absent file are semantically identical). **Backwards-compat preserved:** when the array had exactly 1 element going in and the cleanup `rm` fires, the resulting file-absent state matches v0.6.x semantics. Other active tasks in the multi-active workflow are untouched.
+   
+   **Why Python (v0.7.2 rewrite):** replaces the v0.7.0 shell-chain pattern that was reproducibly flaky (same root-cause-unknown anomaly that surfaced in `task-complete` step 14 across v0.7.0 + v0.7.1 — see CHANGELOG v0.7.2 Fixed section for the historical pattern and bug class). The Python one-liner eliminates the failure class by construction: single process, env-passed variable values, atomic write semantics, defensive `os.path.exists` short-circuit. Identical semantics to the v0.7.0 pattern — only the execution mechanism is more robust. **Backwards-compat preserved:** when the array had exactly 1 element going in, the Python script's `lines = []` branch fires and `os.remove(target)` is called → file-absent state matches v0.6.x semantics. Other active tasks in the multi-active workflow are untouched.
 
 6. **Print confirmation** to stdout: `Paused: #<ISSUE>. Resume with /task-resume <ISSUE>.`
 
