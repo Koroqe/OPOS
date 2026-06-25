@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.7.2] - 2026-06-25
+
+### Added
+
+- **`requirements-dev.txt`** — pinned Python dev-deps required for `ui/tests/`, `ui/smoke.sh`, and `release-from-changelog`'s pre-release scaffold check. Range pins (`>=X.Y,<X+1.0`) cover `markdown` (used by `ui/render.py`), `copier` (used by `release-from-changelog` step 5), `pyyaml` (used by `ui/data.py` + `ui/scheduling.py` + multiple tests), `jinja2` (used by `ui/render.py`; Copier transitive but explicit-pinned for safety). Ships as CORE (NOT in `copier.yml` `_skip_if_exists`); existing v0.7.x consumers receive it via `copier update`.
+- **`MAINTAINER.md` "Testing locally" section** gains a "Dev-deps prerequisite (v0.7.2+)" subsection documenting `pip install -r requirements-dev.txt` workflow, which deps go where, and why the prereq exists (catches the v0.7.0 + v0.7.1 fresh-machine failures at root).
+
+### Fixed
+
+- **`task-complete` step 14 + `task-pause` step 5 rewritten with Python one-liner.** The v0.7.0 shell pattern was:
+  ```bash
+  grep -v "^${VAR}$" .current-task > .current-task.tmp && mv .current-task.tmp .current-task
+  ```
+  This was reproducibly flaky — surfaced in v0.7.0 Slice 10 task-complete (closing #15) AND v0.7.1 Slice 4 task-complete (closing #16). Same failure pattern in both: first invocation leaves the file unchanged; manual standalone re-execution of `grep -v` works. Root cause unknown (possibly Bash variable expansion in the `"^${VAR}$"` pattern, redirect timing inside `&&`, or filesystem-cache hiccup). Both SKILL.md steps now use a Python one-liner: single process (no `&&` chain), env-passed variable values (no shell-quoting issues with `${VAR}$`), atomic write semantics (`open(target, "w")` truncates+writes in one syscall), defensive `os.path.exists` short-circuit. Identical semantics to v0.7.0 — only the execution mechanism is more robust. v0.7.0 + v0.7.1 history entries remain as immutable audit trail; the fix only affects v0.7.2+ invocations. **Slice 7 of this release is the validating exercise** — first task-complete under the new logic must work on first invocation; if retry needed, v0.7.3 candidate.
+
+### Changed
+
+- **`release-from-changelog` step 5 auto-installs `requirements-dev.txt`** before the scaffold check. Wraps with `|| warn-and-continue` so a broken pip doesn't hold the release pipeline hostage. New failure mode entry documents the cascade (`pip install` failed → scaffold check likely also fails → operator fixes env post-release).
+- **`ui/smoke.sh` gains 8 dept-badge CSS rule assertions** — 7 starter depts (`company`, `rnd`, `finance`, `people`, `legal`, `commercial`, `pr`) checked for `data-dept="${dept}".*background` rules, plus 1 fallback assertion verifying `.dept[data-dept] { ... background: ... }` exists on the base rule. Catches the v0.7.1 white-on-white bug class: CSS structure regressions that pass the `/static/console.css` 200-status check but break visual rendering. Smoke count: 16/16 → **24/24 PASS**.
+
+### Notes
+
+Closes Koroqe/OPOS#17. **Pipeline-quality hygiene release.** 3 sub-items each addressed at root rather than mitigated: the `task-complete` step-14 reproducible anomaly that surfaced TWICE in v0.7.x is now eliminated at root via the Python one-liner; fresh machines can `pip install -r requirements-dev.txt && bash ui/smoke.sh && python3 -m unittest discover ui.tests && python3 ui/console.py` without per-package debugging; visual regression for CSS rule presence is now smoke-asserted (catches the v0.7.1 white-on-white bug class pre-release). No breaking changes. **Smallest substantive update in v0.7.x** — 1 new file + 7 updated, narrow edits per file.
+
 ## [0.7.1] - 2026-06-12
 
 ### Fixed
@@ -412,6 +436,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.7.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.2
 [0.7.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.1
 [0.7.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.0
 [0.6.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.6.1
