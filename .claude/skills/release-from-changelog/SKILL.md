@@ -38,8 +38,17 @@ When cutting a new version release. Replaces the multi-step manual workflow (ext
    fi
    ```
 
-5. **Pre-release scaffold check (added v0.3.1).** Before tagging, verify the working tree scaffolds cleanly via Copier:
+5. **Pre-release scaffold check (added v0.3.1; auto-install dev-deps added v0.7.2).** Before tagging, verify the working tree scaffolds cleanly via Copier. **First, ensure pinned Python dev-deps are installed** — this catches the v0.7.0 + v0.7.1 fresh-machine failure mode where `copier` itself was missing/broken:
    ```bash
+   # v0.7.2: ensure dev-deps are pinned/installed BEFORE the scaffold check.
+   # Prevents the "copier missing on fresh machine" failure mode that skipped
+   # the v0.7.0 + v0.7.1 scaffold checks. Warn-and-continue on pip failure so
+   # the release pipeline isn't held hostage by a broken pip.
+   pip install --quiet -r "$REPO_ROOT/requirements-dev.txt" || {
+     echo "WARNING: pip install -r requirements-dev.txt failed. Falling back to"
+     echo "         best-effort scaffold check (may also fail). Investigate after."
+   }
+   
    rm -rf /tmp/opos-prerelease-check
    python3 -m copier copy . /tmp/opos-prerelease-check \
      -d COMPANY_NAME=PreReleaseCheck --defaults --vcs-ref=HEAD
@@ -85,6 +94,7 @@ When cutting a new version release. Replaces the multi-step manual workflow (ext
 - **Empty extract** — step 3 fail. Recovery: check the section's actual content; the awk pattern stops at the next `## [` or `[X.Y.Z]:` line, so a malformed CHANGELOG could produce empty output.
 - **Release already exists** — step 4 fail. Recovery: pick a higher version (or delete the existing release manually if it was a mistake — destructive, ask the user).
 - **`gh release create` fails** — step 5 fail. Surface the error (auth, network, permissions, target-branch missing on remote).
+- **`pip install` failed** (v0.7.2+) — step 5 pre-check `pip install --quiet -r requirements-dev.txt` returned non-zero. Recovery: the warn-and-continue fall-through emits a `WARNING` line and proceeds to the scaffold check anyway (which will likely also fail if copier was missing — that's the expected cascade). Operator must fix the env post-release (network, permissions, conflicting venv, architecture mismatch). Not fatal to release-from-changelog itself; the scaffold check just gets skipped per v0.7.0 + v0.7.1 precedent.
 - **Auto-title derivation finds wrong heading** — title is cosmetic; if it looks wrong, the user can edit via `gh release edit <version> --title <new>` post-facto.
 
 ## Related
