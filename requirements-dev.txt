@@ -1,0 +1,16 @@
+# OPOS framework development dependencies.
+# Required for: running ui/tests/, ui/smoke.sh, release-from-changelog
+# pre-release scaffold check (release-from-changelog SKILL.md step 5).
+#
+# Install via: pip install -r requirements-dev.txt
+# A fresh-machine maintainer MUST run this before invoking any framework
+# scaffold/test/release skill.
+#
+# Range pins: lower bound = current-major as of v0.7.2; upper bound prevents
+# breaking-major upgrades from silently breaking the framework. Adjust upper
+# bounds in a future patch if a new major proves benign.
+
+markdown>=3.7,<4.0
+copier>=9.0,<10.0
+pyyaml>=6.0,<7.0
+jinja2>=3.1,<4.0

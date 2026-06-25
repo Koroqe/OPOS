@@ -67,6 +67,18 @@ The three v0.6.0 wrappers reference `CronCreate` / `CronList` / `CronDelete` by 
 
 ## Testing locally
 
+### Dev-deps prerequisite (v0.7.2+)
+
+Before running `python3 -m unittest discover ui.tests`, `bash ui/smoke.sh`, or `release-from-changelog`'s pre-release scaffold check, install pinned Python dev-deps:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Required deps: `markdown` (used by `ui/render.py` to render markdown content in console templates), `copier` (used by `release-from-changelog` step 5's scaffold check and the smoke test below), `pyyaml` (used by `ui/data.py` + `ui/scheduling.py` + multiple tests to parse frontmatter and config), `jinja2` (used by `ui/render.py` for template rendering — technically a Copier transitive dep but explicit-pinned for safety against Copier deps churn). Skipping this step on a fresh machine causes the failures documented in v0.7.0 + v0.7.1 release histories (scaffold check skipped because copier was missing/broken; `markdown` import error blocking `ui/tests`). Use range pins; switch to a `pip freeze` lockfile in a future v0.7.x if the range proves too loose.
+
+### Smoke test
+
 Before any release, run the local smoke test from the OPOS working directory:
 
 ```bash
