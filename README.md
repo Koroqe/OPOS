@@ -11,6 +11,10 @@
 
 ---
 
+![OPOS — Systema Operativum Imperii](docs/images/opos-hero.png)
+
+---
+
 ## The big idea
 
 A company is really just a set of decisions, roles, and repeatable work. OPOS encodes all of it as markdown in a single repository: who you are, what you're building, how the work gets done. There's no platform to log into and no runtime to operate — your company *is* the repo. You lead in plain language; an AI organization turns your intent into execution.
