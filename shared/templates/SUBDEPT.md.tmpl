@@ -1,0 +1,54 @@
+<!--
+TEMPLATE: substitute the tokens listed below. Used by `/design-subdept`
+to render a sub-dept charter at `departments/<<PARENT_DEPT>>/<<SUB_NAME>>/CLAUDE.md[.jinja]`.
+
+Substitution tokens (7):
+  <<PARENT_DEPT>>     parent dept slug (e.g. "legal") — the EXISTING top-level dept
+  <<SUB_NAME>>        sub-dept slug (e.g. "compliance"); folder name + display source
+  <<SUB_TITLE>>       display title (e.g. "Compliance")
+  <<MISSION>>         1-3 sentences: what this sub-dept owns vs. what stays with the parent
+  <<LEAD_NAME>>       name of the sub-lead agent (default: "<<SUB_NAME>>-lead")
+  <<ESCALATION>>      escalation chain (e.g. "<<LEAD_NAME>> → <<PARENT_DEPT>>-lead → coo → ceo")
+  <<DATA_SCOPES>>     what sub-dept-internal vs cross-dept data lives here
+
+NOTE: this is a FORK of DEPARTMENT.md.tmpl with depth-3 relative paths.
+Top-level depts at depth-2 (`departments/<dept>/`) use DEPARTMENT.md.tmpl;
+sub-depts at depth-3 (`departments/<parent>/<sub>/`) use this template.
+The depth-3 paths (`../../../`) are what make this fork necessary —
+DEPARTMENT.md.tmpl hardcodes `../../` everywhere, which would produce
+broken links from a sub-dept charter.
+-->
+
+# {{ COMPANY_NAME }} — <<SUB_TITLE>>
+
+Inherits from `../CLAUDE.md` (the parent **<<PARENT_DEPT>>** dept's charter) and `../../../company/CLAUDE.md` (the company-wide scope) via the CLAUDE.md cascade. This file adds sub-dept-specific scope on top of those.
+
+## Mission
+
+<<MISSION>>
+
+## Roles
+
+- `<<LEAD_NAME>>` — sub-dept lead, owns end-to-end execution within the sub-dept. Defined at [`.claude/agents/<<PARENT_DEPT>>/<<LEAD_NAME>>.md`](../../../.claude/agents/<<PARENT_DEPT>>/<<LEAD_NAME>>.md).
+
+(Sub-roles can be added later via [`design-agent`](../../../.claude/skills/design-agent/) when the sub-dept load justifies splitting.)
+
+## Escalation
+
+<<ESCALATION>>
+
+## Data scopes
+
+<<DATA_SCOPES>>
+
+## Processes-as-skills convention
+
+Sub-dept-scoped skills live at `.claude/skills/<name>/` (nested within this sub-dept folder). Cross-cutting skills live at the repo root `.claude/skills/`. Parent-dept skills at `../.claude/skills/`. Owner-binding-of-record is `owner:` in each PROCESS.md.
+
+## Pointers
+
+- Sub-dept lead: [`.claude/agents/<<PARENT_DEPT>>/<<LEAD_NAME>>.md`](../../../.claude/agents/<<PARENT_DEPT>>/<<LEAD_NAME>>.md) — flat under the parent's agents folder (matches v0.5.1 rnd precedent where `eng-lead` lives at `.claude/agents/rnd/eng-lead.md`)
+- Sub-dept-internal data: `data/` (this folder)
+- Sub-dept-internal backlog: `backlog/` (this folder)
+- Cross-cutting backlog: `../../../company/backlog/`
+- Parent dept charter: [`../CLAUDE.md`](../CLAUDE.md)
