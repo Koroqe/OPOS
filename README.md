@@ -11,7 +11,7 @@
 
 ---
 
-![OPOS — Systema Operativum Imperii](docs/images/opos-hero.png)
+![OPOS — Systema Operativum Imperii](docs/images/opos-hero.jpg)
 
 ---
 
