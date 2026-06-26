@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.8.0] - 2026-06-26
+
+### Added
+
+- **`design-subdept` skill** — the 4th and final org-chart-shape primitive after `design-process` (v0.1.0), `design-agent` (v0.4.0), and `design-department` (v0.5.3). Owned by `ops-manager`. Creates a sub-dept under an existing top-level dept (e.g., `compliance` under `legal`, `data` under `rnd`) with REAL folder nesting at `departments/<parent>/<sub>/`. Charter cascade-inherits from parent + root. 12-step procedure mirroring `design-department`: parent-dept validation + name validation (5 conditions including cross-collision against the to-be-written `<sub-name>-lead` agent file); consult parent-lead + coo + optional peer; draft charter; present + iterate to approval; write the single charter file + emit `/design-agent` recommendation for the sub-lead (NOT auto-invoke; v0.5.1 anti-pattern). Sub-sub-depts (depth > 2) intentionally NOT supported — step 4 ABORT offers two recovery paths (promote-to-top-level OR use sub-role agent). Closes RISKS Risk 8 fully-fully (third + final tier).
+- **`shared/templates/SUBDEPT.md.tmpl`** — forked from `DEPARTMENT.md.tmpl`. Same 6 substitution tokens from the parent template PLUS a new `<<PARENT_DEPT>>` token (7 tokens total). The fork was REQUIRED per plan-critic CRITICAL finding: `DEPARTMENT.md.tmpl`'s depth-2 relative paths (`../../company/CLAUDE.md`, `../../.claude/agents/<<DEPT_NAME>>/...`) would produce BROKEN LINKS from a sub-dept charter at depth-3 — every relative reference needed `../../../`. The fork keeps both templates simple at the cost of duplication; rejected alternative was brittle post-render path surgery. Ships as CORE (NOT in `copier.yml _skip_if_exists`).
+
+### Changed
+
+- `.claude/agents/company/ops-manager.md` — `owns_processes:` 6 → 7 (adds `design-subdept`). Role narrative gains a v0.8.0 paragraph: "ops-manager owns the COMPLETE org-chart-shape design family: design-process + design-agent + design-department + design-subdept. The quartet covers every primitive a founder might need to grow the org chart from natural-language input." Delegation pattern + Owned-processes sections updated.
+- `.claude/skills/design-department/SKILL.md` — 4 places updated (per plan-critic count, not 3): line 21 paragraph rewritten (sub-depts are first-class as of v0.8.0; sub-role-agent vs. sub-dept decision tree); step 4 ABORT message rewritten (directs to `/design-subdept` with concrete `--parent` invocation); failure-modes "Sub-dept requested" entry rewritten (recovery is now `/design-subdept`); Related section gains a `design-subdept` cross-reference + Closes line updated to note v0.8.0 fully-fully closure.
+- `.claude/agents/company/chief-of-staff.md` Framework expertise — "All 20 v0.6.1 skills" → "All 21 v0.8.0 skills" with `design-subdept (NEW v0.8.0)` marker. Skill-count math: 10 owned + 10 framework-wide + 1 dept-scoped (deploy) = 21.
+- `README.md.jinja` — 8th "How to use OPOS day-to-day" example added: "We need a compliance sub-dept under legal" routes through `ops-manager` → `/design-subdept` → consultations with `legal-lead` + `coo` → charter from `SUBDEPT.md.tmpl` with sub-dept escalation chain → `/design-agent` recommendation for `compliance-lead` → files written under `departments/legal/compliance/`. Notes the org-chart-shape family is now COMPLETE.
+- `RISKS.md.jinja` Risk 8 — title appended "or sub-dept structure" (now 3-class); status "FULLY CLOSED in v0.5.3" → "FULLY CLOSED in v0.8.0 (third + final tier)"; cross-references all 3 closing skills. New v0.8.0 resolution paragraph: full `design-subdept` overview; SUBDEPT.md.tmpl fork rationale; escalation chain detail; sub-sub-dept non-support with recovery; plan-critic re-discipline note. Closes with "the org-chart-shape design family is now COMPLETE" + quartet enumeration.
+
+### Notes
+
+Closes Koroqe/OPOS#18. **The org-chart-shape design family is COMPLETE.** ops-manager owns all 4 primitives (skills via `design-process` v0.1.0; agents via `design-agent` v0.4.0; top-level depts via `design-department` v0.5.3; sub-depts via `design-subdept` v0.8.0). RISKS Risk 8 fully-fully closed across all 3 tiers. The framework can now generate every org-chart-shape primitive a founder might need from natural-language input.
+
+**Plan-critic discipline RE-ESTABLISHED for v0.8.0** after a 3-release skip (v0.7.0 + v0.7.1 + v0.7.2 all skipped because of small surface area / hygiene-only work). The critic round caught **2 CRITICAL findings** that would have shipped broken charters: (1) `DEPARTMENT.md.tmpl` has depth-2 hardcoded paths that render BROKEN LINKS from a depth-3 sub-dept charter — resolved by forking the template to `SUBDEPT.md.tmpl` with depth-3 paths; (2) the original draft used `<<DEPT_NAME>> = <parent>/<sub>` substitution which produced a Roles bullet pointing at `.claude/agents/legal/compliance/compliance-lead.md` while the actual lead lives FLAT at `.claude/agents/legal/compliance-lead.md` — resolved by splitting into two pure-slug tokens (`<<PARENT_DEPT>>` + `<<SUB_NAME>>`). Plus 5 MAJOR findings (collision-check missed `-lead` suffix; `.claude/agents/<parent>/` may not exist; sub-sub-dept ABORT wording; design-department line 137 not enumerated; slash semantics divergence) and 5 MINOR — all addressed before execution. **The critic round paid for itself.** Worth maintaining for v0.8.x+ substantive work.
+
+No breaking changes; minor bump for the new capability (new skill + new template + sub-dept folder convention). Backwards-compatible: existing v0.7.x consumers receive `design-subdept` + `SUBDEPT.md.tmpl` via `copier update`.
+
 ## [0.7.2] - 2026-06-25
 
 ### Added
@@ -436,6 +459,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.8.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.0
 [0.7.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.2
 [0.7.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.1
 [0.7.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.0
