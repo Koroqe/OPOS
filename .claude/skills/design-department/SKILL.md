@@ -18,7 +18,7 @@ Invoke when a new top-level department needs to exist. Two entry points:
 
 The skill is INTERACTIVE: it produces a proposal, iterates with the user, and only writes the dept charter on explicit user approval. The human is the approval gate. This is the third member of the `design-*` family — after `design-process` (v0.1.0) and `design-agent` (v0.4.0). All three are owned by `ops-manager`; together they close the org-chart-expansion loop end-to-end (skills, agents, depts).
 
-**Top-level only.** Sub-depts (`A` under `B`) are NOT supported in v0.5.3 — they require a sub-lead delegation pattern that's better modeled via `design-agent`'s sub-role creation (see v0.5.1's eng-lead-under-rnd pattern). A future `design-subdept` skill would close that gap. For now, if a founder wants `compliance` under `legal`, recommend `/design-agent` for a `compliance-lead` agent placed at `.claude/agents/legal/`.
+**Top-level only.** This skill handles top-level depts. **Sub-depts are first-class as of v0.8.0** — use [`/design-subdept --parent <name>`](../design-subdept/) for sub-depts (e.g., `compliance` under `legal`, `data` under `rnd`). Two patterns now exist for sub-organization: `/design-agent` for a sub-role agent under the parent's agents folder (the v0.5.1 eng-lead-under-rnd pattern); `/design-subdept` for a sub-dept with its own charter/data/backlog/skills scope (the v0.8.0 capability). When in doubt, start with `/design-agent` (lighter weight); promote to a sub-dept later via `/design-subdept` if scope warrants.
 
 ## Inputs
 
@@ -62,7 +62,7 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
      - Rationale for the `engineering` reservation: v0.5.1 explicitly merged engineering into the R&D umbrella as the AI-first kernel's opinion. Allowing a parallel `departments/engineering/` would re-fragment the structure. Founders who want a distinct engineering identity should rename `rnd` to taste or add sub-leads under it.
    - **Existing-folder collision**: `departments/<name>/` already exists.
 
-4. **Decide org-chart placement.** All v0.5.3 dept creations are TOP-LEVEL (peer to the 6 starter depts). If the user requests a sub-dept ("compliance under legal", "data under rnd"), ABORT with: "Sub-depts (`A` under `B`) are not yet supported by `design-department` (v0.5.3 ships top-level only). For sub-roles under an existing dept, use `/design-agent` instead — the v0.5.1 eng-lead-under-rnd pattern shows how sub-leads work without dedicated sub-dept folders. A future `design-subdept` skill would close this gap."
+4. **Decide org-chart placement.** All `design-department` invocations create TOP-LEVEL depts (peer to the 6 starter depts). If the user requests a sub-dept ("compliance under legal", "data under rnd"), ABORT with: "Sub-depts are first-class as of v0.8.0 — invoke `/design-subdept --parent <parent> --description '<description>'` instead. `design-department` handles top-level depts only; `design-subdept` handles sub-depts at `departments/<parent>/<sub>/` with cascade-inherited charter + own data/backlog/skills scope. For sub-roles (just a person/role under the parent, no separate scope), `/design-agent` remains the right tool — the v0.5.1 eng-lead-under-rnd pattern."
 
 5. **Decide on a lead agent.** Ask the user: "Do you want me to also design a lead agent for this dept in the same session? (yes/no)" — default: yes. The skill DOES NOT auto-invoke `/design-agent` (the v0.5.1 anti-pattern documented in `allocate-resource` step 5 — the `Task` tool spawns sub-AGENTS but cannot execute slash commands). Instead:
    - If **yes**: capture the proposed lead-agent name (default: `<dept-name>-lead`) and a brief role description. At step 11, the skill prints a prominent `/design-agent` RECOMMENDATION for the user to invoke in the NEXT turn. The new charter ships with the proposed lead name as the placeholder in the Roles section.
@@ -134,7 +134,7 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
 - **Conflicting dept name** — step 3 fail. Recovery: ask user for a different name.
 - **Slug-regex fail** — step 3 fail. Recovery: print the regex `^[a-z][a-z0-9-]{0,63}$` + offer concrete suggestions (lowercase, replace spaces with `-`, etc.). Do NOT auto-coerce.
 - **Framework-reserved name** — step 3 fail. Print the reserved-list rationale (e.g., "`engineering` is historical; add a role to `departments/rnd/` via `/design-agent` instead").
-- **Sub-dept requested** — step 4 ABORT (see the v0.5.3 scope statement above).
+- **Sub-dept requested** — step 4 ABORT. Recovery: invoke [`/design-subdept`](../design-subdept/) (v0.8.0+) which handles sub-depts at `departments/<parent>/<sub>/` with cascade-inherited charter. `design-department` remains top-level-only by design.
 - **`DEPARTMENT.md.tmpl` missing or modified** — step 8 fail. Recovery: `copier update` to restore upstream; or hand-fix the template against the upstream tokens.
 - **Consultation timeout** — `consult-agent` returns no response. Recovery: skip that consultation, note in proposal AND in step 12's history-entry body, proceed.
 - **User does not approve** — files NOT written. Step 12 still runs with `outcome: partial`.
@@ -144,8 +144,8 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
 
 - Process definition: `./PROCESS.md`
 - Run history: `./history/`
-- Sibling skills: [`design-process`](../design-process/) — new skills; [`design-agent`](../design-agent/) — new agent roles. All three owned by `ops-manager`.
+- Sibling skills (the design-* quartet, all owned by `ops-manager`): [`design-process`](../design-process/) — new skills; [`design-agent`](../design-agent/) — new agent roles; [`design-subdept`](../design-subdept/) — sub-depts at `departments/<parent>/<sub>/` (v0.8.0+).
 - Used by: [`consult-agent`](../consult-agent/) — invoked in step 6 for each consultation.
 - Template: [`shared/templates/DEPARTMENT.md.tmpl`](../../../shared/templates/DEPARTMENT.md.tmpl)
 - Owner agent: [`.claude/agents/company/ops-manager.md`](../../agents/company/ops-manager.md)
-- Closes: RISKS.md Risk 8 fully (was partially-closed in v0.4.0 by `design-agent`).
+- Closes: RISKS.md Risk 8 second-tier (was partially-closed in v0.4.0 by `design-agent` for new agents; v0.5.3 closed top-level depts via this skill; v0.8.0 closed sub-depts via `design-subdept` — fully-fully closed across all 3 org-chart-shape primitives).

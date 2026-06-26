@@ -106,9 +106,9 @@ The skill's step 3 ("Identify involved departments") consults only departments t
 - Git revert is the recovery path: every design session lands as a single commit, easy to back out.
 - Adopters who want a formal review queue can fork `design-process` to write to a `proposals/` staging folder first.
 
-## Risk 8 — `design-process` cannot create new agent roles or new dept charters
+## Risk 8 — `design-process` cannot create new agent roles, new dept charters, or sub-dept structure
 
-**Status:** **FULLY CLOSED in v0.5.3** — see [`.claude/skills/design-agent/`](.claude/skills/design-agent/) (v0.4.0, new agents) and [`.claude/skills/design-department/`](.claude/skills/design-department/) (v0.5.3, new dept charters).
+**Status:** **FULLY CLOSED in v0.8.0** (third + final tier) — see [`.claude/skills/design-agent/`](.claude/skills/design-agent/) (v0.4.0, new agents), [`.claude/skills/design-department/`](.claude/skills/design-department/) (v0.5.3, new top-level depts), and [`.claude/skills/design-subdept/`](.claude/skills/design-subdept/) (v0.8.0, sub-depts).
 
 **Original concern (historical, pre-v0.4.0):** If a designed process needed an agent role that didn't exist (e.g. a "release-coordinator" with no matching `name:` in `.claude/agents/`), `design-process` would escalate to `coo` and stop. The skill did not create new agents. The same gap existed for new department charters.
 
@@ -118,9 +118,15 @@ The `design-agent` skill (owned by `ops-manager`, same as `design-process`) mirr
 
 **Resolution (v0.5.3 — new dept charters):**
 
-The `design-department` skill (owned by `ops-manager`, completing the design-* trio) closes the remaining new-dept-charter gap. 12-step procedure mirroring `design-agent`: consultations with `ceo` + `coo` (always) plus one optional specific dept-lead/sub-lead, draft from `shared/templates/DEPARTMENT.md.tmpl`, approval gate, write the dept charter only (no auto-scaffold of `data/` or `backlog/` subdirs — matches 5 of 6 v0.5.1 starters' minimal pattern). Context-detected charter suffix (`.md.jinja` in the framework repo; `.md` in a consumer's already-rendered repo). Step 5 emits a `/design-agent` recommendation when the user wants the dept's lead designed in the same session — does NOT auto-invoke per the v0.5.1 `allocate-resource` anti-pattern. Framework-reserved exact-match list blocks adding a parallel `engineering/` dept (the v0.5.1 merge folded engineering under `rnd`). Sub-depts (`A` under `B`) are NOT supported in v0.5.3 — a future `design-subdept` skill would close that final org-chart-shape gap.
+The `design-department` skill (owned by `ops-manager`, completing the design-* trio at v0.5.3) closes the top-level-dept-charter gap. 12-step procedure mirroring `design-agent`: consultations with `ceo` + `coo` (always) plus one optional specific dept-lead/sub-lead, draft from `shared/templates/DEPARTMENT.md.tmpl`, approval gate, write the dept charter only (no auto-scaffold of `data/` or `backlog/` subdirs — matches 5 of 6 v0.5.1 starters' minimal pattern). Context-detected charter suffix (`.md.jinja` in the framework repo; `.md` in a consumer's already-rendered repo). Step 5 emits a `/design-agent` recommendation when the user wants the dept's lead designed in the same session — does NOT auto-invoke per the v0.5.1 `allocate-resource` anti-pattern. Framework-reserved exact-match list blocks adding a parallel `engineering/` dept (the v0.5.1 merge folded engineering under `rnd`).
 
-See `design-process/SKILL.md` Failure modes and `.claude/agents/company/ops-manager.md` for the updated escalation path (now: `design-agent` inline for new agents; `design-department` inline for new dept charters; `coo` only on user rejection of either design).
+**Resolution (v0.8.0 — sub-depts):**
+
+The `design-subdept` skill (owned by `ops-manager`, completing the design-* QUARTET at v0.8.0) closes the sub-dept gap. 12-step procedure mirroring `design-department`: parent-dept validation (must exist at `departments/<parent>/`) + sub-name validation (reuses the 8-name framework-reserved list to prevent shadowing top-level dept names; checks for collision with the to-be-written `<sub-name>-lead` agent file under `.claude/agents/<parent>/`); consultations with parent-lead + coo (always) plus one optional peer; draft from new `shared/templates/SUBDEPT.md.tmpl` (forked from `DEPARTMENT.md.tmpl` with depth-3 relative paths — the fork was REQUIRED because `DEPARTMENT.md.tmpl`'s depth-2 hardcoded paths would produce broken links from a depth-3 sub-dept charter). Sub-dept escalation chain `<sub>-lead → <parent>-lead → coo → ceo` (parent-lead is the FIRST escalation stop — the key difference from top-level depts). Charter written at `departments/<parent>/<sub>/CLAUDE.md[.jinja]` (cascade-inherits from parent + root). Sub-lead recommended via emit-not-invoke `/design-agent` pattern. **Sub-sub-depts (depth > 2) intentionally NOT supported** — hierarchy complexity rarely justified; step 4 ABORT offers two recovery paths (promote-to-top-level OR use sub-role agent). The plan-critic discipline (re-established for v0.8.0 after a 3-release skip) caught 2 CRITICAL findings before execution that would have shipped broken charters — see v0.8.0 plan Review Notes.
+
+**The org-chart-shape design family is now COMPLETE.** ops-manager owns all 4 primitives: `design-process` (skills) + `design-agent` (roles) + `design-department` (top-level depts) + `design-subdept` (sub-depts). The framework's self-extension covers every primitive a founder might need.
+
+See `design-process/SKILL.md` Failure modes and `.claude/agents/company/ops-manager.md` for the escalation path (now: `design-agent` for new agents; `design-department` for new top-level depts; `design-subdept` for new sub-depts; `coo` only on user rejection).
 
 ## Risk 9 — Copier conflict resolution is manual
 
