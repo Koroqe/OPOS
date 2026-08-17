@@ -223,7 +223,7 @@ Every process records each run in its own `history/` folder. Files are named `YY
 - `outcome`: `success` | `partial` | `failure`
 - `duration_min`: integer
 - `proposed_delta`: free text describing a proposed SKILL.md/PROCESS.md change, or "none"
-- `status`: `open` | `applied` | `rejected`
+- `status`: `open` | `applied` | `rejected` | `n/a` (`n/a` is REQUIRED when `proposed_delta` is `none` — v0.8.1)
 
 Owner agents review their history folders periodically and convert `open` deltas into updates to their own PROCESS.md (which itself can be promoted into a `history/` entry of its own — the loop closes).
 

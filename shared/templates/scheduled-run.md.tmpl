@@ -11,7 +11,10 @@ Substitution tokens:
   <<AUTHORITY_USED>>        — bracketed list of actions actually taken (best-effort; v1 may equal declared)
   <<VERIFICATION_STATE>>    — `unverified` on first run; a human edits to `verified` after reviewing output
   <<PROPOSED_DELTA>>        — free text describing a suggested change to SKILL.md/PROCESS.md, or "none"
-  <<STATUS>>                — open | applied | rejected
+  <<STATUS>>                — open | applied | rejected | n/a
+                              Use `n/a` whenever <<PROPOSED_DELTA>> is "none". The other three
+                              all assert a delta exists, so a no-delta run marked `open` can
+                              never be closed and lingers forever in review reports.
 
 Convention:
   Scheduled runs write to `<skill-folder>/scheduled-runs/` — NEVER to `history/`.
