@@ -22,6 +22,7 @@ _exclude:
   - "ui/smoke.sh"           # smoke script asserting on framework-specific routes; consumers run their own
   - copier.yml
   - MAINTAINER.md   # framework-developer guide; not for consumers
+  - docs            # v0.8.1: framework-only docs + hero image, referenced only by the framework's own README.md (which Copier already skips in favour of README.md.jinja — templated-sibling rule); consumers never need it
 
 # Files shipped on initial scaffold only; never updated by `copier update`.
 # Consumers own these post-scaffold and may edit freely without losing edits.

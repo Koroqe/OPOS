@@ -46,7 +46,7 @@ Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
 - `outcome`: `success` | `partial` | `failure`
 - `duration_min`: integer
 - `proposed_delta`: free text or "none"
-- `status`: `open` | `applied` | `rejected`
+- `status`: `open` | `applied` | `rejected` | `n/a` — **`n/a` is REQUIRED when `proposed_delta` is `none`.** The other three all assert a delta exists, so a no-delta run marked `open` can never be closed and lingers in review reports forever (v0.8.1; observed downstream as two entries sitting `open` for 41 days).
 
 Followed by a free-form body with notes, links, and decisions.
 

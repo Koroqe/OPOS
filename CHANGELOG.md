@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.8.1] - 2026-08-17
+
+### Fixed
+
+- **The upstream→consumer update loop could fail silently and permanently.** A consumer scaffolded from a *local* clone (`copier copy /path/to/OPOS my-company -d COMPANY_NAME=...`) records `_src_path: /path/to/OPOS` in `.copier-answers.yml`. `check-for-updates` step 4 only knew `gh:` / `git@github.com:` / `https://github.com/` shapes, produced a garbage `<owner>/<repo>`, and its only documented failure contract was "silent exit 0" — so a broken checker was byte-for-byte indistinguishable from "you are up to date". First real consumer sat two releases behind with no signal. Fixes, all in `check-for-updates/SKILL.md` (v0.2.0) + `sync-from-core/SKILL.md` (v0.2.0):
+  - Step 4 now classifies `_src_path` into four shapes: remote GitHub (portable, recommended), **existing local clone** (works via `git -C <path> tag`, prints a portability warning every run), **missing local path** and **unparseable** (both LOUD: one-line warning + history entry with `outcome: failure`). Configuration failures are permanent and visible; only network failures stay silent.
+  - `sync-from-core` step 2 aborts with the concrete remediation (`edit .copier-answers.yml _src_path → gh:<owner>/<repo>, leave _commit untouched, commit, re-run`) instead of a misleading `gh auth login` hint. Documented in Failure modes: there is no CLI override for `_src_path` on `copier update`, so this one hand-edit is the only path.
+  - `gh api repos/...` (no leading slash) in both skills — under Git-Bash/MSYS on Windows a leading `/repos/...` is rewritten to a Windows path and `gh api` fails with "invalid API endpoint".
+- **`sync-from-core --check_only` was specified against a flag Copier does not have.** Step 4 called `copier update --dry-run`; Copier has no `--dry-run`, and `--pretend` is ignored by `copier update`'s patch-apply step. Rewritten as a throw-away preview branch: `git checkout -b opos-preview-<tag>` → `copier update` → print `git status --porcelain` + `git diff --stat` → `git reset --hard && git clean -fd` → back to the original branch. Nothing committed; tree left as found. `sync-from-core/PROCESS.md` step 4 + `Done when` wording updated to match.
+- **`check-for-updates` had no trigger outside the task-lifecycle skills.** Its only three call sites were step 1 of `task-register` / `task-update` / `task-complete`. A consumer whose daily rhythm runs on native GitHub issues (the observed case) therefore never probed upstream at all. `chief-of-staff.md` First-touch gains step 3b: invoke `check-for-updates` on session open (Auto tier; 6h cache makes it free) and surface `update_notice` in the greeting. Greeting template now reads the version from `.copier-answers.yml` `_commit` instead of the hardcoded "OPOS at v0.7.0".
+- **`docs/` shipped to every consumer.** `copier.yml` `_exclude` gains `docs` — the folder holds only the 549 KB hero image referenced by the framework's own marketing `README.md`, which Copier already skips in favour of `README.md.jinja` (templated-sibling rule in `_render_path`). Neither file had a CHANGELOG entry when added (v0.7.2 / v0.8.0 `docs:` commits), which is why `copier.yml` was never revisited.
+- **`.claude/settings.local.json` was not gitignored.** Claude Code writes approved commands verbatim into that file, so a one-off `curl`/`Invoke-RestMethod` against a tokenised URL persists the secret; a downstream instance was found carrying a live bot token there. Added to `.gitignore` (mid-file, after `.claude/scheduled-processes.json`, so consumers with locally-appended lines don't get an EOF-anchored `.rej`).
+- **Self-improvement log schema lacked a terminal status for no-delta runs.** `status: open | applied | rejected` — a run with `proposed_delta: none` could only be marked `open` and then never closed (the other two assert a delta existed); downstream measured two entries sitting `open` for 41 days. Added `n/a` (REQUIRED when `proposed_delta` is `none`) to `CLAUDE.md.jinja`, `README.md.jinja`, `shared/templates/PROCESS.md.tmpl` (both occurrences) and `shared/templates/scheduled-run.md.tmpl`. Note: root `CLAUDE.md` is `_skip_if_exists`, so existing consumers must copy the schema line by hand; new scaffolds get it.
+
+### Added
+
+- **`.gitattributes`** (`* text=auto`) — normalises repository line endings to LF regardless of the contributor's OS. Consumers scaffolded on Windows otherwise end up with a CRLF working tree, and every `copier update` (git apply under the hood) reports whole-file conflicts that are pure line-ending noise. Ships as CORE. **Measured while preparing this release:** a `copier copy --vcs-ref v0.7.1` scaffold on Windows committed 100% CRLF blobs and the very next `copier update` produced 13 `.rej` files that were nothing but `` (every hunk of every changed file); the identical scaffold from this branch (with `.gitattributes`) committed 125/125 text blobs as LF and updates cleanly.
+
+### Notes
+
+First contribution to originate in a consumer instance and travel back upstream via PR (`getdeal-ai/getdeal-os` → `MacDelorian/OPOS` fork → `Koroqe/OPOS`). Deliberately small: every change is generic and already proven downstream, and together they are the minimum needed for the update loop to be **observable** end-to-end — this release is the payload for the first `copier update` round-trip test on a real consumer. Follow-ups queued as v0.8.2 / v0.9.0 candidates: MAINTAINER.md CORE-file procedure (documents a `_envops` / `<<TOKEN>>` mechanism `copier.yml` does not implement — real mechanism is `.jinja` + `{{ COMPANY_NAME }}` + `{% raw %}`), CONTRIBUTING.md + LICENSE + PR template (all must be `_exclude`d so they don't relicense consumer repos), scheduling family port from session-scoped `CronCreate` to the MCP `scheduled-tasks` server (12 files / ~82 references; downstream v0.2.0 already in production), a `docs/framework-reserved-names.md` + `.claude/skills/local/**` namespace for consumer-authored skills, and consumer-owned `CHANGELOG.md`. No breaking changes; patch bump.
+
 ## [0.8.0] - 2026-06-26
 
 ### Added
@@ -459,6 +481,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.8.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.0
 [0.7.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.2
 [0.7.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.1

@@ -1,0 +1,5 @@
+# v0.8.1: normalise line endings in the repository to LF regardless of the
+# contributor's OS. Consumers scaffolded on Windows otherwise end up with a
+# CRLF working tree, and every `copier update` (git apply under the hood)
+# reports whole-file conflicts that are pure line-ending noise.
+* text=auto
