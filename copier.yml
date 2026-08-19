@@ -5,6 +5,15 @@ _min_copier_version: "9.0.0"
 # verbatim. The 5 templated files (CLAUDE.md, README.md, RISKS.md, company/
 # CLAUDE.md, departments/*/CLAUDE.md) are stored as *.md.jinja; Copier strips
 # the suffix on render to produce the destination filenames.
+#
+# CAUTION: never add a bare root README.md (or any bare file whose *.jinja
+# sibling exists). Both resolve to the same destination and the winner is
+# filesystem-walk-order dependent — a v0.7.2 regression shipped the framework
+# readme verbatim to consumers this way. Excluding the bare file is NOT a fix:
+# _exclude matches the RENDERED destination path, so it would drop the .jinja
+# output too. The framework's own GitHub readme therefore lives at
+# .github/README.md (GitHub prefers that path for repo display) and is
+# excluded there, where no collision is possible.
 
 _exclude:
   - .git
@@ -22,6 +31,8 @@ _exclude:
   - "ui/smoke.sh"           # smoke script asserting on framework-specific routes; consumers run their own
   - copier.yml
   - MAINTAINER.md   # framework-developer guide; not for consumers
+  - .github/README.md   # framework's own GitHub readme (see CAUTION above)
+  - .github/images      # framework marketing assets (hero image) referenced only by the framework readme
 
 # Files shipped on initial scaffold only; never updated by `copier update`.
 # Consumers own these post-scaffold and may edit freely without losing edits.
