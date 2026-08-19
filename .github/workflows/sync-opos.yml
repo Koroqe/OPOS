@@ -2,6 +2,10 @@
 # (workflow_dispatch). To enable weekly background PRs, uncomment the
 # `schedule:` block below.
 #
+# MUTUAL EXCLUSION (v0.9.0): pick ONE sync driver per repo — this workflow's
+# schedule OR the /auto-sync cron routine (which refuses to run while the
+# schedule below is uncommented). Two drivers produce competing branches.
+#
 # Permissions: the default GITHUB_TOKEN provides read+write on this repo and
 # is enough if the upstream OPOS repo is PUBLIC. If upstream is PRIVATE,
 # add a `GH_PAT_OPOS_READ` secret (a PAT with read access to upstream) and

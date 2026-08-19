@@ -33,6 +33,8 @@ _exclude:
   - MAINTAINER.md   # framework-developer guide; not for consumers
   - .github/README.md   # framework's own GitHub readme (see CAUTION above)
   - .github/images      # framework marketing assets (hero image) referenced only by the framework readme
+  - "docs/**"           # v0.9.0: framework-development SDLC docs (PRD, use cases, QA, architecture); never consumer-facing
+  - "**/proposals/202[0-9]-*.md"   # v0.9.0: per-adopter propose-to-core draft files — exist BECAUSE redaction failed, so they carry company data and must never ship to another consumer. README + LEDGER + .gitkeep DO ship (mirrors the company/decisions pattern).
 
 # Files shipped on initial scaffold only; never updated by `copier update`.
 # Consumers own these post-scaffold and may edit freely without losing edits.
@@ -50,6 +52,7 @@ _skip_if_exists:
   - company/backlog/**
   - company/hiring/**     # v0.5.1: job specs written by allocate-resource (people-lead's human route); founder-owned post-scaffold
   - departments/**
+  - .claude/skills/propose-to-core/proposals/LEDGER.md   # v0.9.0: shipped once, consumer-mutated thereafter (the proposal dedupe ledger) — an upstream edit to it would otherwise .rej on every active consumer
 
 COMPANY_NAME:
   type: str

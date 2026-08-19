@@ -33,6 +33,8 @@ This skill is a **wrapper around Claude Code's built-in `CronCreate` tool**. It 
 
 5. **Ensure `<skill-folder>/scheduled-runs/` exists.** The skill folder is the directory containing the PROCESS.md (e.g., `.claude/skills/<name>/`). If `scheduled-runs/.gitkeep` is absent, create the directory and add a `.gitkeep`. This is the lazy-creation path for existing skills that became scheduled after their initial design.
 
+5b. **Propose the permission allow-list (v0.9.0 — registration is the authorization moment).** A cron-fired session cannot answer permission prompts, so `non_interactive: true` processes need their underlying commands pre-allowed in `.claude/settings.json`. Derive the minimal, narrowly-scoped entries from the declared `authority:` list — e.g. `commit` on a sync process → `Bash(copier update:*)`; `push` → `Bash(git push origin:*)` (NEVER bare `Bash(git push:*)`, which prefix-matches force-pushes); `open_pr` → `Bash(gh pr create:*)`; `file_issue` → `Bash(gh issue create:*)`; plus the specific read-only `gh api repos/*` probes the SKILL.md names (NEVER blanket `Bash(gh api:*)` — it is a universal GitHub write primitive). Present the exact entries to the user and add them to `.claude/settings.json` `permissions.allow` **only on their confirmation** (`.claude/settings.json` is a sensitive path; the scaffold default stays empty — nothing is pre-authorized for consumers who never schedule anything). The user declining the entries is not an error: register anyway and note that the routine's first fire may stall on permission prompts.
+
 6. **Compose the routine prompt.** The prompt body sent to `CronCreate` is:
    ```
    <prelude>
