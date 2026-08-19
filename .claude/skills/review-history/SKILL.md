@@ -47,7 +47,7 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
 4. **Classify each delta:** FIRST apply the stale/moot check — it runs before, and independent of, target classification (a delta whose text is self-evidently obsolete goes straight to step 5's `rejected` bucket even with no target at all). Otherwise classify: by the validated `delta_target:` hint; else infer the target path from the `proposed_delta` text; else run the two-part runtime classification test (identical to `propose-to-core` step 2 — pinned-`_commit` `copier.yml` fetch for `_skip_if_exists`, HEAD existence probe; fetch once per run, memoize). Unclassifiable (and not stale) → triage note, leave `open`, move on.
 5. **Triage table** (every touched entry gets a dated triage note):
    - **Upstreamable (CORE) target** → invoke `/propose-to-core` for it. **Cap: at most 3 actual PR creations per run** (dedupe skips and drafts don't count) — bounds upstream-maintainer load (RISKS Risk 33). Beyond the cap: note `deferred to next run`, leave `open`.
-   - **STARTER/consumer target, within the objective threshold** — the delta touches **≤ 2 files AND ≤ 20 changed lines AND no sensitive path** (any path containing `auth`, `payment`, `billing`, `secret`, `migration`; `.claude/settings.json`; anything under `.github/workflows/`) → apply the fix and commit `chore(review-history): apply delta from <entry-path>`; set `status: applied`.
+   - **STARTER/consumer target, within the objective threshold** — the delta touches **≤ 2 files AND ≤ 20 changed lines AND no sensitive path** (any path containing `auth`, `payment`, `billing`, `secret`, `migration`; `.claude/settings.json`; anything under `.github/workflows/`) → apply the fix and commit `chore(core): review-history — apply delta from <entry-path>`; set `status: applied`.
    - **STARTER/consumer target, above threshold** → write a proposal draft into the owning agent's dept backlog (`write_proposal`); set a note, leave `open` until the owner acts.
    - **Nonsensical, stale, or already-moot** → `status: rejected` + one-line reason. If the source entry is a gitignored scheduled-run record (the flip is not durable), also add a `rejected-local` row to the ledger so other machines/clones don't re-triage it.
 6. **Zero open deltas** (normal on a fresh consumer): write a `success` run record with the note `no open deltas` — every run records (RISKS Risk 20 liveness).
@@ -57,7 +57,7 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
 
 ## Outputs
 
-- Local STARTER fixes applied as `chore(review-history):` commits; upstream proposals via `propose-to-core`; backlog drafts for oversized deltas; reconciled PR states; every touched entry transitioned or annotated with a dated note.
+- Local STARTER fixes applied as `chore(core): review-history — ...` commits; upstream proposals via `propose-to-core`; backlog drafts for oversized deltas; reconciled PR states; every touched entry transitioned or annotated with a dated note.
 - A run record on every run, including zero-delta runs.
 
 ## Failure modes
