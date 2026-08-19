@@ -1,0 +1,35 @@
+<!--
+TEMPLATE: substitute the tokens listed below. Used by propose-to-core as the PR body
+for upstream contributions. EVERYTHING in the rendered body must be generic — the
+redaction gate (deterministic pre-gate + redaction-reviewer agent) scans the rendered
+result, and any company-identifying data or secret fails the proposal.
+
+Substitution tokens:
+  <<PROBLEM>>          — generic statement of the defect/improvement in the CORE file (no company context)
+  <<FAILURE_MODE>>     — what went wrong in operation, fully anonymized (roles and mechanisms, never names or numbers)
+  <<PROPOSED_CHANGE>>  — what the diff does and why this shape
+  <<HOW_VERIFIED>>     — how the change was checked (dry-run, fixture, template render, etc.)
+
+Title convention (set via `gh pr create --title`, not in this body):
+  [opos-core] <file-slug>: <short title>
+  — <file-slug> derives ONLY from the sanitized upstream file path, never from delta free text.
+-->
+
+## Problem
+
+<<PROBLEM>>
+
+## Observed failure mode
+
+<<FAILURE_MODE>>
+
+## Proposed change
+
+<<PROPOSED_CHANGE>>
+
+## How verified
+
+<<HOW_VERIFIED>>
+
+---
+*Submitted via OPOS `propose-to-core` from a consumer instance.*
