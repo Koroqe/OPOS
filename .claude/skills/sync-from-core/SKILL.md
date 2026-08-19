@@ -27,7 +27,7 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
    - Else: `gh api /repos/<owner>/<repo>/releases --jq '[.[] | select(.prerelease == false)] | first | .tag_name'`.
 4. **If `--check_only` is true**: run `copier update --vcs-ref <tag> --dry-run --defaults --conflict rej`. Print the would-be changes. Skip steps 5–9 (no branch, no commit, no history-write).
 5. Create the update branch: `git checkout -b <branch>` (default `opos-update-<tag>`).
-6. Run `copier update --vcs-ref <tag> --conflict rej --defaults`. The `--defaults` flag is safe because `copier.yml`'s only question (`COMPANY_NAME`) was answered at initial scaffold and persists in `.copier-answers.yml`; updates reuse the stored answer without re-prompting. `--trust` is NOT used today because `copier.yml` has no `_tasks` or `_migrations`. If future versions add tasks, add `--trust` here and to the Actions workflow.
+6. Run `copier update --vcs-ref <tag> --conflict rej --defaults`. The `--defaults` flag is safe because `copier.yml`'s only question (`COMPANY_NAME`) was answered at initial scaffold and persists in `.copier-answers.yml`; updates reuse the stored answer without re-prompting. `--trust` is NOT used today because `copier.yml` has no `_tasks` or `_migrations`. If future versions add tasks, add `--trust` in all THREE sync drivers: here, the `auto-sync` skill, and the Actions workflow (`.github/workflows/sync-opos.yml`).
 7. `git status --porcelain` — list changed files. Count `.rej` files (conflicts).
 8. Surface to the user in chat:
    - The list of changed files.

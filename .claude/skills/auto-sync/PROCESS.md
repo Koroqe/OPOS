@@ -31,18 +31,21 @@ The autonomous half of the OPOS update loop. Where `sync-from-core` applies an u
 
 ## Steps
 
-Mirrors SKILL.md v0.1.0 (happy path):
+Mirrors the 13-step procedure in SKILL.md:
 
 1. Resolve repo root.
 2. Non-scaffolded posture: no `.copier-answers.yml` → warn, exit 0.
-3. Clean-tree guard: dirty → `partial` record, no issue, stop.
-4. Direct release probe (bypasses the 6h cache; refreshes it after); tag validated `^v?[0-9]+\.[0-9]+\.[0-9]+$`.
-5. No update → `success` record with note, stop.
-6. `--dry_run` → print, mutate nothing, stop.
-7. Branch `opos-auto-sync-<tag>`; `copier update --vcs-ref <tag> --conflict rej --defaults`.
-8. Any `.rej` → delete branch, `failure` record, stop (v0.1.0; hardening pass adds the CHANGELOG-only auto-resolution and the conflict-escalation path).
-9. Commit (`chore: auto-sync OPOS core <tag>`, sha recorded), ff-merge to default branch, delete branch, push.
-10. Run record — scheduled invocations to `./scheduled-runs/`, manual to `./history/` (prelude-string routing).
+3. Mutual-exclusion preflight: sync-opos.yml Action schedule enabled → one-time issue, `partial`, stop.
+4. Clean-tree guard: dirty → `partial` record, no issue, stop.
+5. Stale-branch self-heal (tag ≤ pin → delete, continue) / pending-conflict hold (tag > pin → verify issue, `partial`, stop).
+6. Divergence guard: `git fetch` + `--ff-only` merge from origin; diverged → issue, `partial`, stop; unreachable remote → degraded mode.
+7. Direct release probe (bypasses the 6h cache; refreshes it after); tag validated `^v?[0-9]+\.[0-9]+\.[0-9]+$`.
+8. No update → `success` record with note, stop.
+9. `--dry_run` → print, mutate nothing, stop.
+10. Branch `opos-auto-sync-<tag>`; `copier update --vcs-ref <tag> --conflict rej --defaults`.
+11. CHANGELOG-only `.rej` auto-resolution under the mechanical predicate (all-additive hunks, version-block/link-ref lines only; insert before first `^## \[`; verify canonical awk extraction + no day heading below the first `^## \[`).
+12. Zero remaining `.rej` → commit (sha recorded), ff-merge to default branch, delete branch, push (push failure → issue + `partial`). Non-zero → commit partial state incl. `.rej` on the branch, checkout default, issue with resolution instructions, `partial`.
+13. Run record — scheduled invocations to `./scheduled-runs/`, manual to `./history/` (prelude-string routing). Issues use the `[opos-auto-sync]` title prefix with local open-issue title matching for dedupe.
 
 ## Done when
 
