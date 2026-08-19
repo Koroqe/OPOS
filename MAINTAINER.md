@@ -95,3 +95,4 @@ Verify:
 Clean up: `rm -rf /tmp/opos-smoketest`.
 
 For deeper validation of the update flow, scaffold a dummy at one tag, then `copier update` to a newer tag and inspect the resulting diff. The `--check_only` mode of `sync-from-core` is also useful for previewing.
+
