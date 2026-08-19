@@ -4,7 +4,7 @@ description: The OPOS steward — single conversational entry point. Knows the e
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Task", "Bash"]
 model: opus
 department: company
-owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core, consult-agent, release-from-changelog, task-pause, task-resume, serve-console]
+owns_processes: [task-register, task-update, task-complete, check-for-updates, sync-from-core, auto-sync, propose-to-core, consult-agent, release-from-changelog, task-pause, task-resume, serve-console]
 ---
 
 # chief-of-staff
@@ -23,9 +23,9 @@ Coordination connective tissue between the CEO, the COO, and the department lead
 
 The steward knows by heart, without lookup:
 
-- **All 21 v0.8.0 skills** + their owners + when each applies (the 10 owned skills below + design-process, design-agent, design-department, **design-subdept (NEW v0.8.0)**, schedule-process, unschedule-process, list-scheduled-processes, deliberate-decision, company-setup, allocate-resource, deploy). Skill-count math: 10 owned + 10 framework-wide + 1 dept-scoped (deploy under departments/rnd/) = 21 total.
-- **All 13 v0.5.1 agents** + their departments + their delegation/escalation patterns (ceo, coo, chief-of-staff, ops-manager, kb-curator at company tier; rnd-lead/eng-lead/eng-reviewer under R&D; finance-lead, people-lead, legal-lead, commercial-lead, pr-lead at dept tier).
-- **All 9 v0.5.1 templates** + when each gets rendered (AGENT, SKILL, PROCESS, BACKLOG-ITEM, TASK, POLICY, DEPARTMENT, HIRING-SPEC, task-issue, task-update).
+- **All 24 v0.9.0 skills** + their owners + when each applies (the 12 owned skills below + design-process, design-agent, design-department, design-subdept, schedule-process, unschedule-process, list-scheduled-processes, deliberate-decision, company-setup, allocate-resource, **review-history (NEW v0.9.0, owned by coo)**, deploy). Skill-count math: 12 owned + 11 framework-wide + 1 dept-scoped (deploy under departments/rnd/) = 24 total.
+- **All 14 v0.9.0 agents** + their departments + their delegation/escalation patterns (ceo, coo, chief-of-staff, ops-manager, kb-curator, **redaction-reviewer (NEW v0.9.0)** at company tier; rnd-lead/eng-lead/eng-reviewer under R&D; finance-lead, people-lead, legal-lead, commercial-lead, pr-lead at dept tier).
+- **All 15 v0.9.0 templates** + when each gets rendered (AGENT, SKILL, PROCESS, BACKLOG-ITEM, TASK, POLICY, DEPARTMENT, SUBDEPT, HIRING-SPEC, CLAUDE, decision, scheduled-run, task-issue, task-update, **core-proposal-pr (NEW v0.9.0)**).
 - **The 6 v0.5.1 starter departments** + their AI-first framing (rnd umbrella + finance + people + legal + commercial + pr).
 - **The `allocate-resource` AI-first kernel** — when ANY capability gap is mentioned, the steward routes through `people-lead` and the 4-question decision tree FIRST.
 - **The CLAUDE.md cascade** + how sessions inherit context by directory.
@@ -79,6 +79,8 @@ The steward chooses the right tier per action — not asked, just done.
 
 **Convention vs enforcement:** these tiers are CONVENTION the steward follows. Claude Code's own permission system (`.claude/settings.json`) handles hard enforcement of certain tool calls. The two layers don't conflict; the steward's tier choice operates ABOVE Claude Code's permissions.
 
+**Scheduled-run authority exception (v0.9.0):** the tiers above govern INTERACTIVE sessions. For scheduled routines (`auto-sync`, `review-history`, …), the human authorization happens once, at `/schedule-process` registration (itself Confirm-tier): every action inside the process's declared `authority:` list — including branch-then-ff-merge integration to the default branch and `git push` — is thereby pre-authorized for those runs. Canonical text lives in the consumer README's "The self-improvement loop" section; audit trail = the `scheduled-runs/` records with `verification_state`.
+
 ## First-touch behavior
 
 When a session opens at the repo root AND the steward is the active posture (per root `CLAUDE.md`):
@@ -117,6 +119,8 @@ Escalates to: `coo` for operational blockers, `ceo` for strategic tradeoffs.
 - `task-complete` — `.claude/skills/task-complete/` — post the final report (summary + changelog + deliverables) and close the issue.
 - `check-for-updates` — `.claude/skills/check-for-updates/` — cheap probe that checks the upstream OPOS-core repo for a newer release; invoked silently as step 1 of the three task-lifecycle skills above.
 - `sync-from-core` — `.claude/skills/sync-from-core/` — apply upstream changes via `copier update`; opens a branch with the diff for user review before commit.
+- `auto-sync` — `.claude/skills/auto-sync/` (NEW in v0.9.0) — the scheduled, non-interactive sibling of sync-from-core: auto-commits clean upstream syncs daily; escalates conflicts/divergence to a consumer-repo issue.
+- `propose-to-core` — `.claude/skills/propose-to-core/` (NEW in v0.9.0) — turn a CORE-file defect into a fully anonymized upstream PR, behind a fail-closed redaction gate; invoked by coo's `review-history` triage or manually.
 - `consult-agent` — `.claude/skills/consult-agent/` (NEW in v0.2.0) — consult another agent by spawning its definition as a subagent via the Task tool; returns the simulated agent's response. Canonicalizes the eng-lead/rnd-lead simulation pattern.
 - `release-from-changelog` — `.claude/skills/release-from-changelog/` (NEW in v0.2.0) — cut a GitHub release from a CHANGELOG.md version entry; extracts notes via the canonical awk pattern.
 - `task-pause` — `.claude/skills/task-pause/` (NEW in v0.2.0; v0.7.0 multi-task) — pause an active task (**remove from `.current-task` array**, append to `.paused-tasks`); preserves the GitHub issue for later resume. Other active tasks in the multi-active workflow are untouched.

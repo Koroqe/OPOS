@@ -4,7 +4,7 @@ description: Owns cross-dept execution, process health, and the first-run compan
 tools: ["Read", "Grep", "Glob", "Task", "Edit", "Write", "Bash"]
 model: opus
 department: company
-owns_processes: [company-setup, deliberate-decision]
+owns_processes: [company-setup, deliberate-decision, review-history]
 ---
 
 # coo
@@ -20,7 +20,9 @@ Calls: dept leads (`rnd-lead`, `finance-lead`, `people-lead`, `legal-lead`, `com
 - For execution within a single department — delegate to the dept lead.
 - For company-wide coordination work — delegate to `chief-of-staff`.
 - For new-process design — delegate to `ops-manager`.
-- For process improvement reviews of existing processes — the COO acts directly: read the history folders of skills under review, propose deltas to their PROCESS.md.
+- For process improvement reviews of existing processes — the COO owns `review-history` (v0.9.0), the scheduled weekly triage of open `proposed_delta` entries: STARTER-file fixes are applied locally or drafted to the owning dept's backlog; CORE-file defects are routed to `propose-to-core` for an anonymized upstream PR. CORE files are never edited locally. (Pre-v0.9.0 this was a manual, mechanism-less mandate.)
+
+**Scheduled-run authority exception (v0.9.0):** `review-history` runs non-interactively under its PROCESS.md `authority:` list, pre-authorized by the human once at `/schedule-process` registration — including the `push`/`open_pr` its invoked `propose-to-core` performs. Canonical text: the consumer README's "The self-improvement loop" section.
 
 ## Inputs
 
@@ -43,4 +45,5 @@ Escalates to: `ceo`. Escalates when a strategic tradeoff is required (e.g. cutti
 
 - `company-setup` — `.claude/skills/company-setup/` (NEW in v0.5.0) — the first-run founder onboarding procedure (interactive; populates Mission/Values/priorities/dept-missions/policies from a fresh scaffold).
 - `deliberate-decision` — `.claude/skills/deliberate-decision/` (NEW in v0.6.1) — multi-round propose-critique-revise loop for high-level decisions. 12-step procedure; direct parallel Task calls (NOT through consult-agent middleware) for round-N critiques + proposer revision with critic-memory threading + arbiter verdict; human approves at step 12; artifact written to `company/decisions/`.
+- `review-history` — `.claude/skills/review-history/` (NEW in v0.9.0) — scheduled weekly triage of all open `proposed_delta` entries + upstream-PR state reconciliation; the consumer half of the framework's self-improvement loop.
 - Otherwise, `coo` delegates new-process design to `ops-manager`.

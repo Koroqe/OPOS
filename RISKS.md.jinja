@@ -323,6 +323,7 @@ A process scheduled `*/5 * * * *` whose prior run takes more than 5 minutes has 
 
 - `run_id` generation convention (documented in `shared/templates/scheduled-run.md.tmpl`) includes a UUID suffix to prevent filename collisions even for simultaneous writes.
 - The cron runtime's own concurrency semantics (Claude Code's `CronCreate`) handle the live runtime — OPOS does not implement a lock above it.
+- **v0.9.0 note (`auto-sync` daily 06:17 × `review-history` Mon 07:23):** the two shipped scheduled processes both mutate the working tree, so a Monday overlap is possible if the 06:17 sync is still running (or left the tree dirty) at 07:23. The staggered crons make it rare; `auto-sync`'s clean-tree guard and `review-history`'s dated work branch turn any collision into a visible `partial` record rather than corruption.
 - **v2 work item:** in-process lock-file convention (e.g., `<skill-folder>/.run.lock`) to skip a fire if a prior run is still in-flight.
 
 ## Risk 23 — Live registrations are per-machine
@@ -335,6 +336,7 @@ Claude Code's cron tools (`CronCreate` / `CronList` / `CronDelete`) operate agai
 
 - `.claude/scheduled-processes.json` is gitignored AND copier-excluded — explicitly per-machine.
 - `/list-scheduled-processes` is the reconciliation tool when joining a new machine (and correctly treats `CronList` as authoritative, never the cache — so an empty cache on a fresh machine does NOT falsely classify live routines as ORPHAN).
+- **v0.9.0 single-scheduler convention:** register `auto-sync` and `review-history` on exactly ONE machine per company. Double-firing is bounded rather than fatal: `auto-sync`'s fetch + `--ff-only` guard turns a sync race into a `partial` + issue (never divergence), and duplicate upstream PRs are bounded by the committed `proposals/LEDGER.md` + PR-title slug dedupe — but the in-place `status:` flip on a gitignored scheduled-run entry is per-machine, so cross-machine re-triage of the same delta relies on the ledger alone.
 - **v2 work item:** a `tasks/<n>.md`-frontmatter-based or `shared-registration.yaml`-based cross-machine coordination mechanism (or move scheduling to GitHub Actions via `runtime: gha`, also a v2 work item).
 
 ## Risk 24 — Drift between PROCESS.md and live registration
@@ -426,6 +428,44 @@ v0.7.0 allows multiple parallel manual sessions on the same machine to each call
 **Future v0.8.x candidate:** proper `flock`-based locking around the `>>` append, eliminating the race window entirely. Not in v0.7.0 scope per the user's Minimal-scope choice — the defensive-read pattern is sufficient for the actual concurrent-session pattern in practice (two interactive humans rarely hit the same millisecond).
 
 **Status update v0.7.2 — Step-14 reproducible anomaly ELIMINATED AT ROOT in v0.7.2.** A separate but related shell-pattern flakiness surfaced REPRODUCIBLY across v0.7.0 + v0.7.1 task-complete runs: the `grep -v "^${ISSUE_NUM}$" file > file.tmp && mv file.tmp file` chain at `task-complete` step 14 (and the symmetric pattern at `task-pause` step 5) consistently failed on first invocation and worked on standalone retry. Root cause unknown but the empirical signal was strong (2 of 2 v0.7.x task-complete runs hit it). **v0.7.2 replaces both with a Python one-liner** that uses single-process execution, env-passed variable values, atomic write semantics, and a defensive `os.path.exists` short-circuit — eliminating the shell-chain timing/quoting failure class entirely. The intra-machine concurrent-register race window itself (the original Risk 30 surface — the `>>` append in `task-register` step 10 + `task-resume` step 5) is UNCHANGED; defensive read-side filtering still mitigates that. v0.7.2 only fixes the unrelated step-14/step-5 grep-v anomaly; the `>>` concurrency surface remains a `flock`/v0.8.x candidate.
+
+## Risk 31 — Outbound data/secret leak via upstream PRs (v0.9.0)
+
+**Status:** HIGH impact, LOW likelihood; mitigated by defense-in-depth, residual disclosed.
+
+`propose-to-core` publishes content from a company instance to a public upstream repository — the highest-blast-radius write in the framework, and irreversible once pushed (GitHub caches force-removed content).
+
+**Mitigations (three layers, all before any outbound write — the named invariant in `propose-to-core/SKILL.md`):**
+
+1. **Deterministic pre-gate** — orchestrator-assembled identifier blocklist (`COMPANY_NAME`, dept/agent names, repo `nameWithOwner`, git author names/emails) grepped case-insensitively across the FULL bundle (diff, PR title, body, branch name, commit message, diff paths), plus a blocklist-independent secret-shaped regex sweep (GitHub/AWS/Slack token shapes, private-key headers, credential-bearing URLs). Any hit hard-fails — it cannot be argued with.
+2. **Adversarial agent gate** — `redaction-reviewer` judges the same bundle fail-closed: anything but the literal `REDACTION: PASS`, including uncertainty, blocks the send. The canonical checklist lives in `propose-to-core/SKILL.md` step 4b; the agent mirrors it. This boundary is prompt-convention, not a sandbox (same posture as Risk 18).
+3. **Human fallback** — any FAIL produces a committed local draft + consumer-repo issue instead of a PR. Drafts are copier-excluded (they exist BECAUSE redaction failed) and never ship to other consumers.
+
+**Residual, disclosed:** GitHub *account* attribution — the PR author (and fork owner for non-maintainer consumers) is visible. Forks go to the user account, never a company org; commit identity is forced neutral; the consumer README advises a neutral GitHub account where attribution matters. The upstream maintainer is the last line (MAINTAINER.md incoming-PR checklist: never quote leaked content in review comments).
+
+## Risk 32 — A bad upstream release propagates fleet-wide via auto-commit (v0.9.0)
+
+**Status:** MEDIUM impact; mitigated.
+
+With `auto-sync` scheduled, every consumer applies each upstream release automatically. A defective release therefore ships everywhere within a day.
+
+**Mitigations:** the probe considers non-prerelease tags only (upstream can soak-test via prereleases); `release-from-changelog` runs a scaffold smoke test before any tag exists; every sync commit's sha is recorded in the run record — rollback is `git revert <sha>` (plus optional pin-down via `/sync-from-core --target_version <old-tag>`); the only conflict class ever auto-resolved is the purely-additive CHANGELOG hunk under a mechanical predicate — everything else escalates to a human.
+
+## Risk 33 — Upstream PR spam / maintainer load (v0.9.0)
+
+**Status:** LOW-MEDIUM impact; bounded.
+
+Every consumer can now open PRs on the upstream. Unbounded, a large fleet could swamp the maintainer with duplicates and noise.
+
+**Mitigations:** `review-history` caps actual PR creations at 3 per weekly run per consumer; dedupe is two-layer (the committed `proposals/LEDGER.md`, then `[opos-core] <file-slug>` title matching done LOCALLY over `gh pr list --json` — server-side search tokenization is unreliable); the `[opos-core]` title convention makes triage filterable; MAINTAINER.md ships a review checklist. Fleet-wide rate limiting across consumers is unaddressed in v1 (each consumer bounds only itself).
+
+## Risk 34 — Fork/auth unavailability on the upstream write path (v0.9.0)
+
+**Status:** LOW impact; degraded path defined.
+
+`propose-to-core`'s outbound write needs either push rights on the upstream (maintainer-consumer) or fork+PR rights (`gh repo fork`). Consumers with a private/unreachable upstream, an unauthenticated `gh`, or org policies blocking forks cannot send.
+
+**Mitigations:** every no-write-access shape falls back to the same committed-draft + consumer-repo-issue path as a redaction FAIL — the proposal is preserved for manual submission, never lost. Note: the literal `gh repo fork` call cannot be exercised by the maintainer-consumer (GitHub refuses same-account forks), so the fork branch ships mechanically rehearsed but first executed in the wild by a real third-party consumer.
 
 ## Advisory note — upstream naming
 
