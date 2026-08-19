@@ -75,7 +75,24 @@ Spawn the `redaction-reviewer` agent (consult-agent pattern — Task subagent ad
 
 **`--dry_run` stops here**, printing the full would-be PR and both gate verdicts.
 
-*(Steps 6–7 — the outbound write paths, ledger mechanics, and fallbacks — are specified in the next section of this skill; they land in the same release.)*
+### 6. Outbound write (only after BOTH gates passed — see the invariant above)
+
+All git work happens in an **ephemeral scratch clone** under the session scratchpad/temp dir — never in the consumer working tree, and never by adding an upstream remote to the consumer repo (that would leave a push target pointing at the framework repo inside a company repo).
+
+- **Choose the write path** by `gh api repos/<owner>/<repo> --jq .permissions.push`:
+  - `true` (maintainer-consumer — e.g. the framework maintainer dogfooding via their own company): shallow-clone the **upstream** repo, branch `propose/<file-slug>-<YYYYMMDD>` directly on it, PR from the same repo. (Forking your own repo is impossible on GitHub.)
+  - `false` (third-party consumer): `gh repo fork <owner>/<repo> --clone=false --default-branch-only` — the fork lands in the **user account, never a company org** (an org fork would publish the company name, the exact thing anonymization forbids). Then shallow-clone the fork and branch there.
+- **Commit with a neutral identity:** `git -c user.name="opos-consumer" -c user.email="opos-consumer@users.noreply.github.com" commit ...` — the commit message was part of the redaction bundle. (GitHub *account* attribution — PR author, fork owner — is inherent to GitHub and out of scope; the consumer README discloses it and suggests a neutral account where that matters.)
+- Push the branch, then `gh pr create --repo <owner>/<repo> --title "[opos-core] <file-slug>: <short title>" --body-file <rendered core-proposal-pr body>`.
+- **Record:** append the `proposals/LEDGER.md` row (`pr-opened`, per the schema in `./proposals/README.md` — this skill APPENDS rows only) and commit it in the consumer repo; best-effort `upstream_pr:` annotation + note on the source entry (durable only for committed `history/` entries — for gitignored scheduled-run entries the ledger IS the record; the entry stays `status: open` either way — `review-history` transitions it when the PR merges).
+- Delete the scratch clone.
+
+### 7. Fallback path (pre-gate FAIL, reviewer FAIL, uncertainty, no write access, fork failure)
+
+- Write the draft to `proposals/<YYYY-MM-DD>-<slug>.md`: the would-be diff, PR body, and — on redaction failures — the reviewer's findings list verbatim, so a human can fix exactly what failed.
+- File the consumer-repo issue `[propose-to-core] draft needs human review — <slug>` (repo via `gh repo view --json nameWithOwner`; local open-issue title match for dedupe, same rule as `auto-sync`).
+- Append the ledger row with outcome `draft`; note on the source entry (stays `open`).
+- Commit the draft + ledger together in the consumer repo.
 
 ## Outputs
 
