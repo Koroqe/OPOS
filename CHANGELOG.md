@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.9.0] - 2026-08-19
+
+### Added
+
+- **The bidirectional self-improvement loop** — OPOS consumers now pull framework updates autonomously AND push anonymized fixes back upstream, closing the loop across every company running the framework. Three new CORE skills + one new company-tier agent, all pure Claude Code (no side software):
+  - **`auto-sync`** (owner: `chief-of-staff`; scheduled daily `17 6 * * *`, `authority: [commit, push, file_issue]`) — the autonomous sibling of `sync-from-core`: probes the upstream release directly (bypasses the 6h cache, refreshes it after), applies clean updates via `copier update` on an `opos-auto-sync-<tag>` work branch, auto-commits + ff-merges + pushes, and escalates anything needing a human (conflicts, divergence, push failures) to a `[opos-auto-sync]`-titled issue in the consumer's own repo. Guards: clean-tree (no issue — dirty trees aren't incidents), `--ff-only` divergence check before any update, stale-branch self-heal, sync-driver mutual exclusion vs. the `sync-opos.yml` Action, and a mechanical predicate for the ONE auto-resolvable conflict class (a purely-additive `CHANGELOG.md.rej` carrying a new version section — inserted above older versions, verified with the canonical awk plus a day-heading position assertion). Every run writes a record, including "no update" runs — the liveness signal for Risk 20.
+  - **`review-history`** (owner: `coo`; scheduled weekly `23 7 * * 1`, `authority: [commit, push, write_proposal, file_issue, open_pr]`) — the missing CONSUMER of the `proposed_delta` signal. Weekly triage of every `status: open` delta across all `history/` + `scheduled-runs/` folders: STARTER-file fixes within an objective threshold (≤2 files, ≤20 lines, no sensitive path) are applied + committed; larger ones become dept-backlog proposals; CORE-file defects route to `propose-to-core` (≤3 PR creations/run). Also reconciles previously-opened upstream PRs: merged → `applied`, closed-unmerged → issue for human decision. CORE files are never edited locally.
+  - **`propose-to-core`** (owner: `chief-of-staff`; not scheduled — invoked by `review-history` or manually) — turns a CORE-file defect into a **fully anonymized** upstream PR. Runtime classification (fetches upstream `copier.yml` at the consumer's pinned `_commit` for `_skip_if_exists`; probes upstream existence at HEAD incl. `.jinja` variants); two-layer dedupe (committed `proposals/LEDGER.md` + local `[opos-core]` title-slug match); three-layer redaction gate — deterministic blocklist-grep + secret-regex pre-gate, adversarial `redaction-reviewer` pass (fail-closed on anything but the literal `REDACTION: PASS`), human-draft fallback; write path = direct branch (maintainer-consumers with push rights) or user-account fork (never a company org), neutral commit identity, ephemeral scratch clone. The named invariant: no outbound write before both gates pass.
+  - **`redaction-reviewer` agent** (`.claude/agents/company/redaction-reviewer.md`, CORE) — the adversarial gate: judges only the bundle it is handed (diff, PR title/body, branch, commit message, orchestrator-supplied identifier blocklist); seven scan classes including secrets/credentials (automatic FAIL); uncertainty = FAIL.
+  - **`shared/templates/core-proposal-pr.md.tmpl`** — the generic PR-body template (Problem / Observed failure mode / Proposed change / How verified + consumer-instance footer).
+  - **`proposals/` convention** — committed drafts + `LEDGER.md` (the authoritative cross-machine dedupe ledger; schema + writer constraints in `proposals/README.md`: `propose-to-core` appends rows only, `review-history` mutates the `outcome` column only). Dated draft files are copier-excluded (they exist BECAUSE redaction failed); README + LEDGER ship, LEDGER under `_skip_if_exists`.
+- **Schema fields `delta_target` + `upstream_pr`** (both OPTIONAL) on history/scheduled-run entries — mechanical-triage hint and upstream-PR tracking; added to `scheduled-run.md.tmpl`, `PROCESS.md.tmpl` schema lists, the consumer README, and root `CLAUDE.md.jinja`.
+- **`/schedule-process` step 5b** — at registration, proposes the minimal narrowly-scoped `.claude/settings.json` allow entries the process's declared authority needs (never blanket `gh api` or bare `git push`), added only on the user's confirmation. Registration is the human authorization moment; scaffold defaults stay empty.
+- **Scheduled-run authority exception** (governance) — documented canonically in the consumer README, referenced in the chief-of-staff Permission-tiers section and the coo charter: actions inside a scheduled process's declared `authority:` list are pre-authorized once at registration, including branch-then-ff-merge integration to the default branch.
+- **MAINTAINER.md "Reviewing incoming [opos-core] PRs"** — genericity / leak-scan / `.jinja`-correctness / smoke-test checklist; never quote leaked content in review comments.
+- **Six glossary terms** — Upstream, Consumer, CORE, STARTER, Delta, Redaction review.
+- **RISKS 31–34** (outbound leak; fleet-wide bad-release propagation; upstream PR spam; fork/auth unavailability) + v0.9.0 extensions to Risks 22 (auto-sync × review-history overlap) and 23 (single-scheduler convention).
+
+### Changed
+
+- Root `CLAUDE.md.jinja` "Self-improving" principle, `README.md.jinja` self-improvement section, and `coo.md` delegation line — all three copies of "owner agents propose deltas to their own PROCESS.md" now route through `review-history` triage (CORE targets go upstream, never edited locally).
+- `README.md.jinja` "Updating from upstream" — now three ways (auto-sync / check-for-updates+sync-from-core / GH Action) with the one-driver-per-repo rule; new "The self-improvement loop" section (anonymization guarantees + GitHub account-attribution disclosure + authority exception + non-interactive permissions).
+- `chief-of-staff.md` — `owns_processes` 10 → 12 (adds `auto-sync`, `propose-to-core`); Framework-expertise counts 21 → 24 skills (12 owned + 11 framework-wide + 1 dept-scoped), 13 → 14 agents, templates corrected to 15 (the "9" was stale — 14 files pre-v0.9.0); Permission tiers gain the scheduled-run authority exception.
+- `coo.md` — `owns_processes` adds `review-history`; process-improvement mandate now names its mechanism.
+- `sync-from-core/SKILL.md` — the `--trust` note names all THREE sync drivers; `.github/workflows/sync-opos.yml` header carries the mutual-exclusion note.
+- `copier.yml` — `_exclude` adds `docs/**` (framework SDLC docs) and `**/proposals/202[0-9]-*.md` (redaction-failed drafts must never ship); `_skip_if_exists` adds the proposal LEDGER.
+- `ui/tests/test_scheduled_run_schema.py` — 11 → 13 expected fields + type assertions for the new optional pair.
+
+### Migration
+
+For existing consumers (STARTER/consumer-owned files the sync will NOT touch — apply by hand after `copier update`):
+
+1. **Glossary** — add the six new terms to your `company/knowledge-base/glossary.md` (copy from a fresh scaffold or the upstream file).
+2. **Root `CLAUDE.md`** — add the two schema lines (`delta_target`, `upstream_pr`) to your "Self-improvement log schema" section, and reword your "Self-improving" operating principle to route through `review-history` (see `CLAUDE.md.jinja` upstream for the exact text).
+3. **Settings** — nothing to pre-add: `/schedule-process` proposes the narrowly-scoped allow entries at registration time; confirm them there.
+4. **Charters propagate automatically** — `.claude/agents/company/**` is CORE (only `engineering/**` and `rnd/**` agents are consumer-owned), so the chief-of-staff/coo updates arrive via `copier update`. If you have LOCAL edits to those two charters, expect `.rej` files on this sync and merge by hand.
+5. **Activate the loop** — `/schedule-process auto-sync` and `/schedule-process review-history`, on exactly ONE machine per company (Risk 23).
+
+### Notes
+
+The loop was dogfooded end-to-end before release: the framework's own first consumer ran `review-history` against a real `status: open` delta and produced the first genuine `[opos-core]` PR via `propose-to-core`. Minor bump: new capability, no breaking changes; v0.8.x consumers receive everything via `copier update` (plus the Migration steps above for their consumer-owned copies).
+
 ## [0.8.1] - 2026-08-19
 
 ### Fixed
@@ -469,6 +511,8 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.9.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.0
+[0.8.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.0
 [0.7.2]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.2
 [0.7.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.7.1
