@@ -13,7 +13,7 @@ tools: ["Read", "Edit", "Write", "Bash", "Grep", "Glob"]
 
 ONCE per OPOS instance, immediately after `copier copy gh:Koroqe/OPOS`. The founder runs `/company-setup` as the FIRST command in their freshly-scaffolded Claude Code session. The skill is INTERACTIVE: it asks ~10 questions conversationally, writes the answers to the right files, and refuses to overwrite if the repo already has founder content.
 
-Re-running on a populated repo is REFUSED (step 1 abort). To re-do from scratch: manually restore the `<one short sentence>` placeholder in root `CLAUDE.md`'s Mission section.
+Re-running on a COMPLETED repo is REFUSED (step 1 abort). Re-running after a PARTIAL run (interruption before the step-9 history entry) resumes at the first incomplete step. To re-do from scratch: manually restore the `<one short sentence>` placeholder in root `CLAUDE.md`'s Mission section.
 
 ## Inputs
 
@@ -25,9 +25,12 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
 ## Steps
 
-1. **Verify we are running on a fresh scaffold + git-initialized.**
-   - Read root `CLAUDE.md`. If the Mission section does NOT contain the unique literal token `<one short sentence>`, ABORT with: "Mission already set — appears to be a populated repo. Re-running company-setup would overwrite. If you want to re-do, manually restore the placeholder `<one short sentence>` token in the Mission section first." (The token is narrow on purpose; `exists to` alone would falsely trigger on legitimate missions like "...whose purpose exists to...".)
+1. **Verify we are running on a fresh scaffold + git-initialized — or a resumable partial run.**
    - Verify `.git/` exists. If not, ABORT with: "`/company-setup` requires a git repo. Run `git init && git add -A && git commit -m 'chore: initial OPOS scaffold'` first."
+   - Read root `CLAUDE.md`. If the Mission section still contains the unique literal token `<one short sentence>`, this is a fresh scaffold — continue at step 2. (The token is narrow on purpose; `exists to` alone would falsely trigger on legitimate missions like "...whose purpose exists to...".)
+   - If the Mission token is gone, distinguish a COMPLETED setup from a PARTIAL one by the step-9 artifact: does any `.claude/skills/company-setup/history/*-setup-*.md` entry exist? A completed run always writes it; an interrupted run never reached it.
+     - **History entry present** → ABORT with: "Mission already set — appears to be a populated repo. Re-running company-setup would overwrite. If you want to re-do, manually restore the placeholder `<one short sentence>` token in the Mission section first."
+     - **History entry absent (partial run)** → detect per-step completion from each step's artifact, in order: step 4 (no `- Value N — one-line restatement.` placeholder lines remain in root `CLAUDE.md`), step 5 (`company/strategy/priorities.md` exists), step 6 (no dept-mission placeholder lines remain in `departments/*/CLAUDE.md`). Print the detected state ("steps 3–5 complete; resuming at step 6") and **resume at the first incomplete step**, skipping completed ones. Step 7 (policies) is optional (0–3) and never counts as incomplete; steps 8–9 always re-run at the end of a resumed session. Fresh-scaffold and fully-completed behavior are unchanged.
 
 2. **Greet + explain the flow.** Print: "I'll ask ~10 questions about your company. Total time: ~15 minutes. Progress is written to files as we go; Ctrl-C exits and any sections already written stay. To re-run from scratch, restore the `<one short sentence>` placeholder in root CLAUDE.md. Let's begin."
 
@@ -107,12 +110,12 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
 ## Failure modes
 
-- **Already-populated repo** (step 1) — ABORT: "Mission already set; restore the `<one short sentence>` placeholder in root CLAUDE.md to re-run."
+- **Already-populated repo** (step 1, history entry present) — ABORT: "Mission already set; restore the `<one short sentence>` placeholder in root CLAUDE.md to re-run." A Mission without the history entry is a PARTIAL run, not this case — step 1 resumes it instead.
 - **No git repo** (step 1) — ABORT: "`/company-setup` requires a git repo. Run `git init && git add -A && git commit -m 'chore: initial OPOS scaffold'` first."
 - **Mission empty / too long** (step 3) — re-ask same question.
 - **Values count out of range** (step 4) — re-ask with "I need between 3 and 5 values, inclusive."
 - **Policy name conflict** (step 8) — print which check fired (slug-regex / existing-file / framework-reserved exact-match) + the relevant rule. Ask for a different name. Do NOT auto-coerce.
-- **User Ctrl-C mid-session** — partial progress persists (files written so far stay). The history entry (step 10) is NOT written if Ctrl-C fires before step 10; the founder should re-run after restoring placeholders. There is NO automatic resume-from-step-N in v0.5.0 (documented as a v0.5.1 candidate).
+- **User Ctrl-C mid-session** — partial progress persists (files written so far stay). The history entry (step 9) is NOT written if Ctrl-C fires before step 9 — which is exactly what lets step 1 recognize the partial run: simply re-invoke `/company-setup` and it resumes at the first incomplete step (resume-from-step-N).
 - **Founder requests "remove" for a dept in step 6/7** — print: "Department removal is a manual operation post-setup, not handled by company-setup (removing a starter dept cascades into its `.claude/agents/<dept>/` folder, breaks the example dept-nested `deploy` skill, and may strand cross-agent delegation references). After setup completes, run `git rm -r departments/<dept>/ .claude/agents/<dept>/` manually with full awareness, then verify with `bash ui/smoke.sh`." Continue with "keep" as the default for this step.
 
 ## Related
