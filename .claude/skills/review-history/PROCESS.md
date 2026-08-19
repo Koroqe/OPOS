@@ -50,7 +50,7 @@ Mirrors the 7-step procedure in SKILL.md:
 
 ## Rollback
 
-- **Undo a triage commit:** `git revert <sha>` (each applied delta is its own `chore(review-history):` commit).
+- **Undo a triage commit:** `git revert <sha>` (each applied delta is its own `chore(core): review-history — ...` commit).
 - **Withdraw an upstream proposal made this run:** `propose-to-core`'s rollback (close PR, `withdrawn` ledger line).
 - **Un-reject a delta:** edit the entry's `status:` back to `open` (and remove the `rejected-local` ledger row) — it re-enters triage next run.
 
