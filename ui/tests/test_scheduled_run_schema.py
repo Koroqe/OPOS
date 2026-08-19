@@ -2,8 +2,9 @@
 
 The .tmpl file holds substitution markers (`<<TOKEN>>`) that aren't valid
 YAML on their own. This test substitutes representative values, then parses
-the resulting frontmatter through PyYAML and asserts the 11 expected schema
-fields are present with the expected types.
+the resulting frontmatter through PyYAML and asserts the 13 expected schema
+fields (11 original + the two optional v0.9.0 fields, delta_target and
+upstream_pr) are present with the expected types.
 
 Mirrors `ui.scheduling.SCHEDULING_FIELDS` validation in spirit: catches
 template drift (renamed/dropped fields) before a release ships.
@@ -30,6 +31,8 @@ SUBSTITUTIONS = (
     ("<<VERIFICATION_STATE>>", "unverified"),
     ("<<PROPOSED_DELTA>>", '"none"'),
     ("<<STATUS>>", "open"),
+    ("<<DELTA_TARGET>>", '"none"'),
+    ("<<UPSTREAM_PR>>", '"none"'),
 )
 
 EXPECTED_FIELDS = {
@@ -44,6 +47,9 @@ EXPECTED_FIELDS = {
     "verification_state",
     "proposed_delta",
     "status",
+    # v0.9.0 self-improvement-loop fields (optional in real entries; present in the template)
+    "delta_target",
+    "upstream_pr",
 }
 
 
@@ -105,6 +111,15 @@ class TestScheduledRunSchema(unittest.TestCase):
         fm = _extract_frontmatter(rendered)
         self.assertIsInstance(fm["authority_declared"], list)
         self.assertIsInstance(fm["authority_used"], list)
+
+    def test_v090_optional_fields_are_strings(self) -> None:
+        # delta_target / upstream_pr (v0.9.0): string-typed in the template
+        # fixture; optional in real entries (writers omit the lines when
+        # not applicable), so only presence-in-template and type are asserted.
+        rendered = _render_fixture()
+        fm = _extract_frontmatter(rendered)
+        self.assertIsInstance(fm["delta_target"], str)
+        self.assertIsInstance(fm["upstream_pr"], str)
 
 
 if __name__ == "__main__":
