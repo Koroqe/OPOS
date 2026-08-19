@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.8.1] - 2026-08-19
+
+### Fixed
+
+- **Framework README no longer leaks into consumer scaffolds** (#20). The template root carried both `README.md` (the framework's own GitHub readme) and `README.md.jinja` (the consumer readme); both rendered to the same destination and the winner was filesystem-walk-order dependent — consumers scaffolded since v0.7.2 could receive the framework marketing readme verbatim (observed in practice on a fresh v0.8.0 scaffold). Adding `README.md` to `_exclude` is NOT a viable fix: Copier matches `_exclude` against the **rendered destination path**, so it would drop the `.jinja` output too (verified empirically). Instead the framework readme moved to `.github/README.md` — which GitHub prefers for repo display, so the repo homepage is unchanged — and the hero image to `.github/images/`; both are excluded in `copier.yml`, whose header now documents the collision hazard so a future bare-root file cannot reintroduce it. `.github/workflows/sync-opos.yml` still ships to consumers. Render-verified: `copier copy` on this commit produces the correct consumer README, no leaked framework files, no empty directories, Jinja substitution intact.
+
+### Notes
+
+No template content changes for consumers beyond the fix — existing consumers who already received a wrong `README.md` should re-render it from `README.md.jinja` (or take it via `copier update`). Patch bump; no breaking changes.
+
 ## [0.8.0] - 2026-06-26
 
 ### Added
