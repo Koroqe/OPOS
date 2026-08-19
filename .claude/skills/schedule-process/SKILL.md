@@ -17,6 +17,19 @@ This skill is a **wrapper around Claude Code's built-in `CronCreate` tool**. It 
 
 **Prerequisite:** the user must be logged into Claude Code (`claude login`). The built-in cron tools authenticate against the user's Claude Code subscription. No additional OPOS setup is required.
 
+## Persistence contract (v0.9.1 — surface this to the user at every registration)
+
+`CronCreate`'s persistence varies by Claude Code build. In current builds registrations are **session-scoped**: jobs live in the running session's memory, are not written to disk, die when the session exits, and recurring jobs auto-expire after 7 days. A "registered" process therefore silently stops firing when the founder's session ends — worse than RISKS Risk 20's silent-failure case, because even the registration disappears.
+
+Operating rules that follow:
+
+1. **Step 8a below is mandatory:** after `CronCreate` returns, inspect its response for the persistence markers (e.g. "session-only", "auto-expires") and print the contract to the user verbatim. Never let a registration look durable when the tool said otherwise.
+2. **Session-scoped mode → re-arm per session.** Re-running `/schedule-process <name>` is idempotent (step 7), so the standing remedy is simply to re-run it in each new session. The recommended self-healing setup is a `SessionStart` hook in the consumer's `.claude/settings.json` that emits a reminder when `.claude/scheduled-processes.json` lists processes (the session then re-registers silently — the original registration already supplied the human authorization for the same unchanged declaration; any DIFFERENT cron/authority still goes through step 7's confirm):
+   ```json
+   "hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "python3 -c \"import json,os; p='.claude/scheduled-processes.json'; rows=json.load(open(p)) if os.path.exists(p) else []; print('[opos-scheduler] ' + str(len(rows)) + ' scheduled process(es) declared (' + ', '.join(r['process_name'] for r in rows) + '). CronCreate registrations are session-scoped: re-run /schedule-process for each to re-arm this session (idempotent; previously authorized).') if rows else None\""}]}]}
+   ```
+3. **Durable path (v2, tracked in RISKS Risks 20/23):** `runtime: gha` or account-level cloud routines. Until one ships, the cache in `.claude/scheduled-processes.json` records the *intent*; the live registration is per-session.
+
 ## Inputs
 
 - `process-name` — kebab-case name of the target process. The skill globs `**/PROCESS.md` for a match against frontmatter `process_name:`. On zero matches: hard-fail. On multiple matches (same-named processes across departments): list each full path; ask the user to pick by full path.
@@ -51,6 +64,8 @@ This skill is a **wrapper around Claude Code's built-in `CronCreate` tool**. It 
    - **Different cron OR prompt:** surface the diff (declared cron vs live cron, declared authority vs live authority via the prelude string match) and require explicit confirmation before proceeding. On confirm → continue to step 8 (which will create a NEW routine; cleanup of the old happens at step 9b below).
 
 8. **Create the routine.** Invoke `CronCreate` with the cron expression from `schedule:` and the composed prompt from step 6. Capture the returned routine id.
+
+8a. **Surface the persistence contract.** Inspect `CronCreate`'s response for persistence markers ("session-only", "auto-expires", etc.) and print the contract to the user verbatim. If session-scoped, also print the re-arm rule and offer the `SessionStart` reminder-hook setup (see "Persistence contract" above). Never let a registration look durable when the tool said otherwise.
 
 9. **Persist locally + commit:**
    - **9a (always):** append a row to `.claude/scheduled-processes.json` (per-machine cache; gitignored + excluded from copier). Schema: `{"process_name": "...", "routine_id": "...", "cron": "...", "registered_at": "<ISO timestamp>"}`. Create the file with `[]` if absent.

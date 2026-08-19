@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.9.1] - 2026-08-20
+
+### Fixed
+
+- **`company-setup` resume-from-step-N** (#22 — the first consumer-proposed fix via the v0.9.0 loop). The step-1 guard is now step-aware: Mission set + the step-9 history entry present → populated repo, ABORT unchanged; Mission set + no history entry → PARTIAL run, detect per-step completion from each step's artifact and resume at the first incomplete step. Also fixes a stale "step 10" reference (the history entry is step 9).
+- **Scoped canonical commit messages** (#23 — also consumer-proposed). `chore: auto-sync OPOS core <tag>` → `chore(core): auto-sync OPOS core <tag>`; the partial-sync and review-history triage messages likewise move to the `core` scope. Consumers whose tooling enforces `type(scope):` with a scope allow-list no longer fail the scheduled runs' commit steps.
+- **`schedule-process` persistence contract surfaced** (from a consumer-recorded delta). `CronCreate`'s persistence varies by Claude Code build; current builds are session-scoped (in-memory, gone on session exit, 7-day auto-expiry on recurring jobs). New "Persistence contract" section + mandatory step 8a: print the tool's persistence markers to the user verbatim at registration; document the idempotent per-session re-arm rule and a `SessionStart` reminder-hook pattern for self-healing re-registration. Durable runtime (`runtime: gha` / account-level cloud routines) remains the tracked v2 path (Risks 20/23).
+
+### Notes
+
+All three changes originated from a consumer instance within hours of v0.9.0 shipping — two arrived as anonymized `[opos-core]` PRs through `propose-to-core`, the third as an open delta consumed directly by the maintainer. Patch bump; no template-structure changes; no Migration steps.
+
 ## [0.9.0] - 2026-08-19
 
 ### Added
@@ -511,6 +523,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.9.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.1
 [0.9.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.0
