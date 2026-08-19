@@ -25,7 +25,7 @@ For sessions opened inside a dept folder (e.g. `cd departments/finance && claude
 - **AI-native.** Every role is held by an agent defined in `.claude/agents/`. Humans review and authorize; agents draft and execute.
 - **Processes-as-code.** Repeatable work lives as skills (`.claude/skills/<name>/`) with a paired `PROCESS.md` declaring its owner and success criteria. New processes are designed deliberately via `.claude/skills/design-process/` (owned by `ops-manager`).
 - **Backlog-as-notebook.** Ideas and one-offs live in `backlog/` folders. Items don't auto-promote; when one is ready for formalization, it becomes an input to `design-process`.
-- **Self-improving.** Every process records each run in its `history/` folder. Owner agents review history and propose deltas to their own PROCESS.md.
+- **Self-improving.** Every process records each run in its `history/` folder. Open deltas are triaged by `/review-history` (owner: `coo`): fixes targeting consumer-owned (STARTER) files are applied or drafted locally; fixes targeting framework (CORE) files are proposed upstream via `/propose-to-core` — CORE files are never edited locally.
 
 ## Global rules
 
@@ -47,6 +47,8 @@ Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
 - `duration_min`: integer
 - `proposed_delta`: free text or "none"
 - `status`: `open` | `applied` | `rejected`
+- `delta_target`: repo-relative file path the delta concerns — OPTIONAL, added in v0.9.0; lets `/review-history` classify the delta mechanically (CORE vs STARTER)
+- `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL, added in v0.9.0; written by `/propose-to-core`; reconciled by later `/review-history` runs
 
 Followed by a free-form body with notes, links, and decisions.
 

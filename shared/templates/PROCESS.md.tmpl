@@ -74,6 +74,8 @@ Schema for each history entry (see root `CLAUDE.md` for the full description and
 - `duration_min`: integer
 - `proposed_delta`: free text describing a suggested change to SKILL.md/PROCESS.md, or "none"
 - `status`: `open` | `applied` | `rejected`
+- `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0); enables mechanical triage by `review-history`
+- `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0); written by `propose-to-core`
 
 The entry body is free-form prose: notes, links to artifacts, decisions.
 
@@ -96,5 +98,7 @@ Schema for each scheduled-run entry (template at `shared/templates/scheduled-run
 - `verification_state`: `unverified` on first run; human edits to `verified` after reviewing output
 - `proposed_delta`: free text, or `"none"`
 - `status`: `open` | `applied` | `rejected`
+- `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0)
+- `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0)
 
 **Distinguishing scheduled vs manual at run time:** the SKILL body should check the invoking prompt for the prelude string `"You are running as a scheduled routine"` (injected by `/schedule-process`). Present → write to `scheduled-runs/`; absent → write to `history/`.
