@@ -15,3 +15,15 @@ Framework-level terms used throughout this repository. Adopters extend this with
 **Department**: A scope under `departments/<name>/` with its own `CLAUDE.md` charter, agents (in `.claude/agents/<dept>/`), nested skills (`.claude/skills/`), backlog, and data.
 
 **Scope (CLAUDE.md)**: A folder whose CLAUDE.md scopes instructions to that subtree. Claude Code automatically cascades CLAUDE.md files from the session's working directory up to the repo root, with closer files taking priority.
+
+**Upstream**: The OPOS framework template repository this instance was scaffolded from (`_src_path` in `.copier-answers.yml`). Releases flow downstream from it via `copier update`; anonymized fix proposals flow back up to it via `propose-to-core`.
+
+**Consumer**: A company instance scaffolded from the upstream template (also "adopter"). Owns its STARTER files and runtime state; receives CORE updates on sync.
+
+**CORE**: A framework file synced from upstream on every `copier update` — the default for anything not in `copier.yml`'s `_skip_if_exists` or `_exclude`. Never edit CORE files locally (edits conflict on the next sync); propose fixes upstream via `propose-to-core` instead. Note: root/company/department `CLAUDE.md` files are consumer-owned but have upstream `.jinja` templates — improvements to the *template* are still upstreamable.
+
+**STARTER**: A file shipped once at initial scaffold and never overwritten by updates (`_skip_if_exists`) — consumer-owned; edit freely. Fixes to STARTER files are applied locally by `review-history`, never sent upstream.
+
+**Delta**: A `proposed_delta` recorded in a run's history/scheduled-run entry — the atomic unit of self-improvement. Optionally carries `delta_target` (the file it concerns) and, once proposed upstream, `upstream_pr`. Lifecycle: `open` → (`applied` | `rejected`), driven by the weekly `review-history` triage.
+
+**Redaction review**: The fail-closed gate every upstream proposal passes before leaving the machine: a deterministic blocklist/secret pre-gate, then an adversarial `redaction-reviewer` agent pass that must return the literal `REDACTION: PASS`. Any finding or uncertainty blocks the send and produces a local draft for human review instead.

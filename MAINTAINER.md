@@ -11,8 +11,8 @@ CORE files are synced from upstream to every consumer on `copier update`. They d
 To add a CORE file:
 
 1. Create the file at its destination path (e.g. `.claude/skills/new-thing/SKILL.md`).
-2. Use `<<COMPANY_NAME>>` (or other `<<TOKEN>>` placeholders) anywhere you need variable substitution. Copier's `_envops` in `copier.yml` swaps Jinja delimiters to `<< >>`, so these tokens substitute natively.
-3. If the file contains literal `<<...>>` patterns NOT meant as Jinja variables (e.g. regex documentation), wrap them in `<%raw%>...<%endraw%>` blocks.
+2. Variable substitution happens ONLY in `*.jinja` files (the default `_templates_suffix`) using standard `{{ COMPANY_NAME }}` delimiters — there is NO `_envops` in `copier.yml`, so `<<TOKEN>>` placeholders do NOT substitute via Copier. The `<<TOKEN>>` convention in `shared/templates/*.tmpl` is a separate, runtime substitution performed by skills, copied verbatim by Copier. A plain CORE `.md` file gets no substitution at all; if it needs the company name, it must become a `.jinja` file (mind the bare-file/`.jinja` collision CAUTION in `copier.yml`).
+3. In `.jinja` files, wrap literal `{{`/`{%` sequences (e.g. GitHub Actions `${{ ... }}` examples, regex docs) in `{% raw %}...{% endraw %}` blocks or the render breaks silently.
 4. Do NOT add the file to `_skip_if_exists` in `copier.yml` — CORE files are the default for everything not in `_skip_if_exists` or `_exclude`.
 5. Add an entry to `CHANGELOG.md` under `### Added` for the next release.
 
@@ -48,6 +48,18 @@ Two new runtime-state paths shipped with the scheduling family:
 ### Dependency on Claude Code internal tool names
 
 The three v0.6.0 wrappers reference `CronCreate` / `CronList` / `CronDelete` by exact name (in skill `tools:` allow-lists and in SKILL.md step bodies). These names were verified against https://code.claude.com/docs/en/routines.md at v0.6.0 release. If Anthropic renames these tools, the rename is a coordinated 3-file sed across `.claude/skills/schedule-process/SKILL.md`, `.claude/skills/unschedule-process/SKILL.md`, `.claude/skills/list-scheduled-processes/SKILL.md` (plus their `tools:` frontmatter). See RISKS Risk 26.
+
+## Reviewing incoming [opos-core] PRs (v0.9.0+)
+
+Consumer instances running the self-improvement loop open PRs titled `[opos-core] <file-slug>: <short title>` via their `propose-to-core` skill. Review checklist:
+
+1. **Genericity** — the Problem / Observed failure mode / Proposed change must make sense for EVERY consumer, not one company's workflow. Reject (politely, with the reason) proposals that encode one instance's conventions.
+2. **No leaked data or secrets** — the sender's redaction gate should have caught company names, person data, business numbers, customers, internal references, and credentials, but you are the last line: scan the diff, body, branch name, and commit message yourself. If you find a leak, do NOT merge and do NOT quote the leaked content in review comments — close with a generic note asking the sender to re-run their redaction pass.
+3. **`.jinja` correctness** — if the target is a `.jinja` file: literal `{{`/`{%` introduced by the diff must be wrapped in `{% raw %}`; render a scratch scaffold to confirm.
+4. **Scaffold smoke test** — run the "Testing locally" smoke test on the PR branch before merging; for template/schema changes also run `python3 -m unittest discover ui.tests`.
+5. **Three sync drivers** — if the PR touches update mechanics, remember they exist in three places that must stay consistent: `sync-from-core`, `auto-sync`, and `.github/workflows/sync-opos.yml`.
+
+Merged proposals ship to the whole fleet at the next release — the sender's consumer instance picks it up via its own `auto-sync`, which closes the loop (their `review-history` marks the source delta `applied` when it sees the PR merged).
 
 ## Releasing a new version
 

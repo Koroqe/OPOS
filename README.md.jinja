@@ -99,12 +99,27 @@ A typical user journey: (1) design a weekly metrics rollup via `/design-process`
 
 ## Updating from upstream
 
-Two ways to receive updates from `Koroqe/OPOS`:
+Three ways to receive updates from `Koroqe/OPOS` — **pick exactly one sync driver per repo** (they compete otherwise; `auto-sync` refuses to run when the Action's schedule is enabled):
 
-1. **Agent-driven (DEFAULT — no infrastructure).** `check-for-updates` is invoked automatically as step 1 of `task-register`, `task-update`, `task-complete`. When the upstream has a newer release, you see a one-line notice in the skill output. Run `/sync-from-core` when you're ready to apply.
-2. **Opt-in GitHub Actions (background PRs).** Edit `.github/workflows/sync-opos.yml` and uncomment the `schedule:` block to enable weekly auto-PRs (Mon 3am UTC). Runs on GitHub's servers; your laptop is uninvolved.
+1. **Autonomous (v0.9.0 — recommended once you trust the flow).** Register `auto-sync` as a daily cron routine: `/schedule-process auto-sync`. Clean updates are applied and committed with no human action; conflicts leave a work branch and file a GitHub issue in your repo for you to resolve. Rollback of any auto-committed sync: `git revert <sha>` (the sha is in the run record).
+2. **Agent-driven, human-reviewed (DEFAULT for new consumers).** `check-for-updates` is invoked automatically as step 1 of `task-register`, `task-update`, `task-complete`. When the upstream has a newer release, you see a one-line notice in the skill output. Run `/sync-from-core` when you're ready to apply and review the diff yourself.
+3. **Opt-in GitHub Actions (background PRs).** Edit `.github/workflows/sync-opos.yml` and uncomment the `schedule:` block to enable weekly auto-PRs (Mon 3am UTC). Runs on GitHub's servers; your laptop is uninvolved.
 
-See [`RISKS.md`](RISKS.md) Risks 9–13 for known limitations (manual conflict resolution, rollback, breaking-change migration).
+See [`RISKS.md`](RISKS.md) Risks 9–13 for known limitations (manual conflict resolution, rollback, breaking-change migration) and Risks 31–34 for the v0.9.0 loop.
+
+## The self-improvement loop (v0.9.0)
+
+OPOS is bidirectionally self-improving across every company that runs it, through three pure Claude Code mechanisms:
+
+- **PULL** — `auto-sync` (above): every consumer picks up each upstream release autonomously.
+- **PUSH** — every process run already records a `proposed_delta` (see "Self-improvement log schema"). The weekly `review-history` routine (owner: `coo`) triages the open ones: fixes to consumer-owned (STARTER) files are applied locally or drafted to the owning dept's backlog; defects in framework (CORE) files are routed to `propose-to-core` (owner: `chief-of-staff`), which drafts a **generic, fully anonymized** fix and opens a PR on the upstream repo. CORE files are never edited locally — that is what keeps your future syncs conflict-free.
+- **CLOSE** — the upstream maintainer reviews and merges `[opos-core]` PRs and cuts a release; every consumer's next `auto-sync` pulls the fix. A mistake observed in ONE company becomes a fix shipped to ALL of them.
+
+**Anonymization.** Before anything leaves your machine, the proposal passes a three-layer redaction gate: a deterministic blocklist-grep + secret-regex pre-gate, an adversarial `redaction-reviewer` agent pass (fail-closed: anything but a literal `REDACTION: PASS` blocks the send), and — on any failure — a local draft for human review instead of a PR. The PR content (diff, title, body, branch, commit message, commit identity) carries no company-identifying data and no secrets. **Disclosure:** your GitHub *account* is still visible as the PR author (and fork owner, for non-maintainer consumers — forks go to the user account, never a company org). Use a neutral GitHub account for `gh` if that matters to you.
+
+**Scheduled-run authority exception (governance).** Interactive sessions follow the chief-of-staff permission tiers unchanged. For scheduled routines, the human authorization happens **once, at `/schedule-process` registration** (itself a Confirm-tier action): every action inside the process's declared `authority:` list is thereby pre-authorized, including the branch-then-ff-merge integration to the default branch that `auto-sync` and `review-history` perform. Registration is the review-and-authorize moment; the run records (with `verification_state: unverified`) are the audit trail you review after the fact.
+
+**Permissions for non-interactive runs.** A cron-fired session cannot answer permission prompts. At registration, `/schedule-process` proposes the minimal `.claude/settings.json` allow entries the process's declared authority needs (narrowly scoped — e.g. `Bash(git push origin:*)`, never blanket `gh api`), and you confirm them. Nothing is pre-authorized in the scaffold default.
 
 ## Quickstart (legacy — no longer needed; Copier handles substitution)
 
