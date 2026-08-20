@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.13.1] - 2026-08-20
+
+### Fixed
+
+- **Maintainer backlog items no longer leak into consumer scaffolds.** The framework repo's own dated `company/backlog/` items (its roadmap-wave dogfood) shipped to consumers as new files under the `_skip_if_exists` path — observed live on the first v0.13.0 consumer sync and captured as the first counted `kind: lesson` item (mistake_class `maintainer-backlog-leaks-to-consumers`, root_cause_target `copier.yml`). Fix at the generator level: `copier.yml` `_exclude` gains `company/backlog/202[0-9]-*.md`, mirroring the `company/decisions/` precedent. Consumer-created backlog items are unaffected. Patch bump; nothing to migrate (consumers who received the four v0.1x wave items may delete them).
+
 ## [0.13.0] - 2026-08-20
 
 ### Added
@@ -594,6 +600,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.13.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.13.1
 [0.13.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.13.0
 [0.12.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.11.0
