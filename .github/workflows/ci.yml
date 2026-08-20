@@ -1,0 +1,89 @@
+# Framework-repo CI (v0.11) — runs on every PR to main, mechanizing MAINTAINER.md's
+# incoming-[opos-core] checklist items 2-4 so strangers' proposals get machine-checked
+# before a human reads them. Maintainer-repo-only: excluded from consumer scaffolds
+# via copier.yml.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements-dev.txt
+      - name: Unit tests
+        run: python3 -m unittest discover ui.tests
+      - name: Scheduling validators on shipped scheduled processes
+        run: |
+          python3 - <<'EOF'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, ".")
+          from ui.scheduling import validate_frontmatter as v
+          failed = False
+          for p in Path(".claude/skills").glob("*/PROCESS.md"):
+              ok, errors = v(p)
+              if not ok:
+                  print(p, errors); failed = True
+          sys.exit(1 if failed else 0)
+          EOF
+
+  scaffold-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet copier pyyaml
+      - name: Render a consumer scaffold and assert its shape
+        run: |
+          git config user.name ci && git config user.email ci@local
+          rm -rf /tmp/smoke
+          python3 -m copier copy . /tmp/smoke -d COMPANY_NAME=SmokeCo --defaults --vcs-ref=HEAD
+          test -f /tmp/smoke/.claude/skills/auto-sync/SKILL.md
+          test -f /tmp/smoke/shared/templates/opos-process.gha.yml.tmpl
+          test ! -e /tmp/smoke/docs
+          test ! -e /tmp/smoke/MAINTAINER.md
+          test ! -e /tmp/smoke/.github/workflows/ci.yml
+          grep -q "SmokeCo" /tmp/smoke/CLAUDE.md
+          # jinja render check: no broken/unsubstituted delimiters beyond the documented literals
+          for f in /tmp/smoke/CLAUDE.md; do
+            if grep -qE '\{\{|\{%' "$f"; then echo "residual jinja in $f"; exit 1; fi
+          done
+          find /tmp/smoke -name "*.rej" | grep -q . && exit 1 || true
+
+  redaction-lint:
+    # Machine half of MAINTAINER.md checklist item 2: secret-shaped strings and
+    # obviously-private material must never enter the framework repo via a PR.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret-shape sweep over the PR diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr.diff
+          # Same shapes propose-to-core's pre-gate uses; docs/qa fixtures are excluded upstream so no false positives from them.
+          if grep -nE 'gh[pousr]_[A-Za-z0-9]{36}|AKIA[0-9A-Z]{16}|xox[baprs]-|-----BEGIN [A-Z ]*PRIVATE KEY-----|postgres(ql)?://[^ ]*:[^ @]*@|[?&](api_?key|token|password)=' /tmp/pr.diff; then
+            echo "::error::secret-shaped content in PR diff — see lines above"; exit 1
+          fi

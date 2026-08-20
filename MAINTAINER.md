@@ -51,18 +51,20 @@ The three v0.6.0 wrappers reference `CronCreate` / `CronList` / `CronDelete` by 
 
 ## Reviewing incoming [opos-core] PRs (v0.9.0+)
 
-Consumer instances running the self-improvement loop open PRs titled `[opos-core] <file-slug>: <short title>` via their `propose-to-core` skill. Review checklist:
+Consumer instances running the self-improvement loop open PRs titled `[opos-core] <file-slug>/<defect-slug>: <short title>` via their `propose-to-core` skill. Review checklist:
 
 1. **Genericity** — the Problem / Observed failure mode / Proposed change must make sense for EVERY consumer, not one company's workflow. Reject (politely, with the reason) proposals that encode one instance's conventions.
 2. **No leaked data or secrets** — the sender's redaction gate should have caught company names, person data, business numbers, customers, internal references, and credentials, but you are the last line: scan the diff, body, branch name, and commit message yourself. If you find a leak, do NOT merge and do NOT quote the leaked content in review comments — close with a generic note asking the sender to re-run their redaction pass.
 3. **`.jinja` correctness** — if the target is a `.jinja` file: literal `{{`/`{%` introduced by the diff must be wrapped in `{% raw %}`; render a scratch scaffold to confirm.
 4. **Scaffold smoke test** — run the "Testing locally" smoke test on the PR branch before merging; for template/schema changes also run `python3 -m unittest discover ui.tests`.
-5. **Three sync drivers** — if the PR touches update mechanics, remember they exist in three places that must stay consistent: `sync-from-core`, `auto-sync`, and `.github/workflows/sync-opos.yml`.
+5. **Cluster by mistake class (v0.11).** Read the defect-slug and any `mistake_class` quoted in the body; check `triage-incoming-prs`' cluster ledger (or `gh pr list` history) for the same class from a DIFFERENT consumer. **On the 2nd distinct-consumer occurrence, fix the GENERATOR** (the template or design-* skill — e.g. a "Design constraints" line), not just the reported file — that is how one company's mistake becomes every company's prevention.
+6. **Three sync drivers** — if the PR touches update mechanics, remember they exist in three places that must stay consistent: `sync-from-core`, `auto-sync`, and `.github/workflows/sync-opos.yml`.
 
 Merged proposals ship to the whole fleet at the next release — the sender's consumer instance picks it up via its own `auto-sync`, which closes the loop (their `review-history` marks the source delta `applied` when it sees the PR merged).
 
 ## Releasing a new version
 
+0. **Cadence check (v0.11):** merged-but-unreleased consumer fixes should not sit longer than a week — consumers only receive what is RELEASED; an unreleased merge helps nobody.
 1. Ensure `feat/<branch>` is up to date with the work for the release.
 2. Update `CHANGELOG.md` with a new `## [vX.Y.Z] - YYYY-MM-DD` entry. Sections: `### Added`, `### Changed`, `### Removed`, `### Fixed`, `### Security`, and `### Migration` if breaking.
 3. Run the local smoke test (see "Testing locally" below). It MUST pass before tagging.
