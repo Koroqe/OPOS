@@ -18,7 +18,7 @@ Owns cashflow, budgeting, expense categorization, revenue forecasting, and prici
 
 ## Data scopes
 
-- `data/` (dept-internal): expense ledgers, monthly burn-rate reports, pricing analyses, budget projections. May contain redacted vendor data; full vendor PII goes in restricted MCP-gated stores per Risk 1.
+- `data/` (dept-internal): expense ledgers, monthly burn-rate reports, pricing analyses, budget projections. May contain redacted vendor data; full vendor PII belongs OUTSIDE this repo — an MCP-gated store is the PLANNED home (Risk 1 hardening path, not yet implemented; until then: keep raw PII out of the repo entirely).
 - Cross-dept references: `../../company/strategy/` (read for budget alignment — restricted-data convention applies) and `../../company/policies/` (read for spend-approval policies).
 
 ## Processes-as-skills convention
