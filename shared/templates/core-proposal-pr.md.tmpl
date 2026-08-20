@@ -11,8 +11,10 @@ Substitution tokens:
   <<HOW_VERIFIED>>     — how the change was checked (dry-run, fixture, template render, etc.)
 
 Title convention (set via `gh pr create --title`, not in this body):
-  [opos-core] <file-slug>: <short title>
-  — <file-slug> derives ONLY from the sanitized upstream file path, never from delta free text.
+  [opos-core] <file-slug>/<defect-slug>: <short title>
+  — <file-slug> derives ONLY from the sanitized upstream file path; <defect-slug> from the
+    mistake_class when present, else a 2-4 word kebab summary — both sanitized [a-z0-9-],
+    never raw delta free text.
 -->
 
 ## Problem

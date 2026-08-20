@@ -46,7 +46,7 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 
 ### 3. Dedupe (ledger first, then upstream)
 
-- `proposals/LEDGER.md`: a line with the same `delta_target` and outcome `pr-opened` or `draft` → skip with a note (and if the source entry lacks the `upstream_pr:` annotation, add it from the ledger).
+- `proposals/LEDGER.md` (v0.11): a line with the same `delta_target` AND the same `defect_slug` whose outcome is `pr-opened` or `draft` → skip with a note. A row for the same file with a DIFFERENT defect slug never suppresses — that was the v0.9 fix-loss shape; `merged`/`closed-unmerged`/`rejected-local` rows never suppress either (and if the source entry lacks the `upstream_pr:` annotation, add it from the ledger).
 - Upstream (v0.11 — fixed from the v0.9 fix-loss shape): `gh pr list --repo <owner>/<repo> --state open --json title,url --limit 100` plus, when 100 rows return, further pages — match the FULL `[opos-core] <file-slug>/<defect-slug>` prefix **locally** (server-side `in:title` search tokenizes on `/` and `.` — unreliable). Matching OPEN PR → skip, ledger line `skipped-duplicate`. Closed/merged PRs no longer suppress: a once-fixed file must not swallow every future DIFFERENT fix to it — the defect-slug (derived from the `mistake_class` when present, else a 2-4 word kebab summary of the defect, sanitized `[a-z0-9-]`) is what distinguishes fixes; merged sameness is the maintainer's call at triage, not the sender's.
 
 ### 4. Draft + canonical redaction checklist + deterministic pre-gate
