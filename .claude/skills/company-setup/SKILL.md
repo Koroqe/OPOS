@@ -97,6 +97,8 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
    Print a final summary: "Setup complete. Files written/modified: <list>. Next: run `/serve-console` to browse your new OS at http://127.0.0.1:8765/. Then ask Claude `List available subagents` in a fresh session to complete the framework smoke test. Commit when ready: `git add -A && git commit -m 'chore: initial company-setup'`."
 
+8a2. **Seed each department's backlog (v0.12 — from empty to self-building).** For each kept/customized dept, ask ONE question: "What are the 1-3 jobs <dept> will do most often?" For each answer, file a `kind: process-gap` counted backlog item (`BACKLOG-ITEM.md.tmpl`) in `departments/<dept>/backlog/` with `occurrences: 1` and the job description as the Goal. These seeds are what the weekly sweep counts — the second time a job actually happens, a draft process proposal appears without anyone deciding to build it. "skip" is accepted per dept.
+
 8b. **Activate the self-improvement loop (v0.10 — the step that makes the company autonomous).** Ask: "Your OS can update itself daily and review its own improvement signals weekly, unattended. Activate now? (yes/no — recommended yes)." On yes:
    - If the repo has a GitHub remote: run `/schedule-process auto-sync` and `/schedule-process review-history` (both declare `runtime: gha` by default — the durable path; the workflow files land in `.github/workflows/`, and the one manual prerequisite is `gh secret set ANTHROPIC_API_KEY`, which the registration reminds about).
    - No remote: register on `claude-schedule` with the session-scoped caveat printed, and offer the SessionStart re-arm hook.

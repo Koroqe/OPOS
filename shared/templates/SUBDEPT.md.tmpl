@@ -37,6 +37,16 @@ Inherits from `../CLAUDE.md` (the parent **<<PARENT_DEPT>>** dept's charter) and
 
 (Sub-roles can be added later via [`design-agent`](../../../.claude/skills/design-agent/) when the sub-dept load justifies splitting.)
 
+## Duties (self-building — v0.12)
+
+This department is a BUILDER, not a task-executor folder. Standing duties of its lead agent:
+
+- **Notice recurring work.** Any job executed twice with no covering process becomes (or increments) a `kind: process-gap` backlog item here — the weekly sweep turns twice-run items into draft process proposals automatically.
+- **Notice missing tools.** Any task blocked or degraded by missing access/tooling files (or increments) a `kind: resource-gap` item.
+- **Own the backlog's health.** No item sits `proposed` untouched past its staleness note without a decision (promote via the sweep, run it manually, or close it with a reason).
+- **Adopt what the sweep drafts.** Review proposal bundles for this dept via `/adopt-proposal` — the one human decision per new process.
+- **Grow knowledge.** Distill repeated run-history lessons into this dept's data/ notes so the next design run inherits them (the design family reads matched lessons automatically).
+
 ## Escalation
 
 <<ESCALATION>>

@@ -22,6 +22,19 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 - `job_description` — free-text description of the work to be formalized. Required if no `backlog_item_path` is supplied.
 - `backlog_item_path` — optional path to a `BACKLOG-ITEM.md` to use as additional input. When supplied, the item's frontmatter (`title`, `owner`, `intended_target`, labels) seeds the design; the item itself is converted to `state: designed` and gains a `designed_as: <new-skill-path>` field at the end.
 
+## Draft mode (v0.12 — the non-interactive builder path)
+
+`/design-process --draft --from <backlog-item-path>` runs the design END-TO-END with no human in the loop and writes a **proposal bundle** instead of live files — the double-gated shape that makes overnight self-building safe (bundle is inert text; adoption is a human Confirm via `/adopt-proposal`; scheduling, if any, is a second human gate at registration):
+
+- Steps 1–3 run normally (read framework, understand the job from the backlog item's Goal/Acceptance, enumerate depts).
+- Step 4 consultations run in **lite form**: consult only the single owning dept's lead (one `consult-agent` call), noting in the bundle which consultations a full run would have added.
+- Steps 5–6 draft the complete `SKILL.md` + `PROCESS.md` pair exactly as usual (lessons pass + provenance stamps included).
+- Steps 7–8 (present + iterate) are SKIPPED — their human judgment moves to adoption.
+- Step 9 writes the bundle to `<owning-dept>/backlog/proposals/<date>-<slug>/` (SKILL.md, PROCESS.md, and a PROPOSAL.md cover sheet: the source backlog item, consultations run/skipped, lessons applied, open questions) — NEVER into any `.claude/skills/` path. Update the source backlog item: `state: drafted`, Runs-log row.
+- Steps 10–11 (backlinks, history entry) run normally; the history entry notes `mode: draft`.
+
+Draft mode designs PROCESSES only — never agents, departments, or sub-depts (never-automate invariant 2: agent adoption stays fully interactive). Authority when invoked from a scheduled run: `write_proposal` + `commit` cover everything draft mode does.
+
 ## Steps
 
 0. **Lessons pass + provenance duty (v0.11, applies to every run).** Before designing: read the company's `kind: lesson` backlog items (glob `**/backlog/*.md`, filter frontmatter `kind: lesson`) whose `mistake_class`/`root_cause_target` matches this skill or the artifact class it produces, plus this skill's own `history/` entries with open `proposed_delta`s; apply every matching constraint to the draft and LIST the applied lessons in the proposal so the human sees the loop working. When writing the artifact: stamp provenance — frontmatter `derived_from: <template>@<framework-version>` + `designed_by: <this-skill>@<its version>` (framework version = `.copier-answers.yml` `_commit`; in the framework repo itself use the current release tag); charter files get the equivalent HTML comment stamp at file end.

@@ -23,7 +23,7 @@ kb-curator is a solo writer/researcher. If kb-curator surfaces a finding that re
 
 ## Inputs
 
-- Manual invocation via `/kb-review` (default trigger; per coo — KB staleness isn't urgent, manual cadence keeps a human in the loop).
+- **v0.12:** executed monthly as `review-history`'s knowledge phase (step 5d) — the sweep runs this agent's contract below verbatim; there is no separate `/kb-review` skill. Manual ad-hoc invocation via `consult-agent` remains possible.
 - A specific target: `--article <path>` to refresh one file, or no flag for a full sweep (read all of `company/knowledge-base/*.md` + the last N=50 history entries from across all skills).
 - Optional `--since YYYY-MM-DD` to scope history-feed analysis.
 
@@ -34,7 +34,7 @@ kb-curator is a solo writer/researcher. If kb-curator surfaces a finding that re
   - **Proposed new articles** — 1–2 paragraph stubs. **Each proposal MUST link to ≥1 specific history-entry path** that triggered it (defense against coo's hallucination concern; no "patterns" without evidence).
   - **Glossary diff** — additions / corrections in the same format as the existing `glossary.md`.
 - A one-line summary in chat with the proposals file path.
-- A history entry under `.claude/skills/<future-kb-review-skill>/history/` (the SKILL doesn't exist yet — kb-curator OWNS no processes at creation; a future `kb-review` skill designed via `design-process` would be owned by kb-curator).
+- The run is recorded by `review-history`'s own run record (the knowledge phase is part of that process; kb-curator owns no process of its own).
 
 ## Escalation rules
 
@@ -53,4 +53,4 @@ Escalates to `chief-of-staff` for:
 
 (Advisory — the binding-of-record is `owner:` in each PROCESS.md.)
 
-- None yet. A future `kb-review` skill designed via `design-process` would be owned by kb-curator.
+- None — the monthly knowledge phase of `review-history` (owner: coo) executes this agent's contract; kb-curator is its specification, not its owner.

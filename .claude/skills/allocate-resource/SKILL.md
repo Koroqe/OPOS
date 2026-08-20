@@ -31,14 +31,16 @@ Runs on the consumer's repo. All paths are rendered `.md` (no `.jinja` suffixes 
 
 1. **Resolve repo root + parse capability_gap.** Validate ≥20 chars; if too vague, re-prompt with: "Please describe the capability gap more specifically — at least one sentence about what the company needs to be able to do."
 
-2. **Coverage check (glob-based).** Use `Glob` to enumerate `.claude/agents/**/*.md` and `.claude/skills/*/SKILL.md`. For each file, use `Grep` to read the `description:` frontmatter line. Tokenize `capability_gap` (case-insensitive, whitespace split, drop stop-words). If ≥2 distinct tokens match an existing entity's description, STOP with `outcome: covered_by_existing` and print:
+1b. **Q0 — instrument or executor? (v0.12 pre-check).** Before the executor tree: is the gap actually a missing TOOL/ACCESS (an account, an API, credentials, browser-drivable capability) rather than a missing role? Signals: the gap names a system ("DNS", "Cloudflare", "email sending", "our CRM") or an access verb ("we can't log into / edit / publish X"). If instrument → route to **resource acquisition** (v0.13 ships `acquire-resource`; until it lands: file a `kind: resource-gap` counted backlog item in the owning dept and stop with `outcome: resource_gap_filed`). Mixed gaps (need a role AND its tools) → continue the tree AND file the resource-gap item.
+
+2. **Coverage check (glob-based, DEMOTED to confirm in v0.12 — never a silent dead-end).** Use `Glob` to enumerate `.claude/agents/**/*.md` and `.claude/skills/*/SKILL.md` (both `.claude/skills/` and `departments/*/.claude/skills/`). For each file, use `Grep` to read the `description:` frontmatter line. Tokenize `capability_gap` (case-insensitive, whitespace split, drop stop-words). If ≥2 distinct tokens match an existing entity's description, present the match and ASK: "Does <entity> already cover this? (y/n)" — `y` → stop with `outcome: covered_by_existing`; `n` → continue (a 2-token overlap is a hint, not proof; the v0.5 hard-STOP dead-ended real gaps). In non-interactive/draft contexts, note the candidate match and continue. On confirmed coverage print:
    ```
    Coverage check found existing capability: <agent_name> at <path>.
    Recommendation: invoke <agent_name> directly instead of designing a new agent.
    ```
    The skill exits here; people-lead reports back to the requester.
 
-3. **Present the AI-first decision tree (4 yes/no questions).** Ask the user (or auto-compute if requester pre-answered):
+3. **The AI-first decision tree (4 yes/no questions) — AUTO-COMPUTED first (v0.12).** Answer each question yourself from the gap description and repo evidence, presenting the four conclusions with one-line reasons for the human to veto rather than asking them cold (asking is the fallback when evidence is genuinely insufficient):
    - **Q1**: Is the core work text-based (reading documents, writing content, analyzing data)?
    - **Q2**: Does the work AVOID requiring physical-world action (driving, on-site presence, hands-on physical work)?
    - **Q3**: Does the work AVOID requiring legally-mandated human accountability (signing as a licensed professional, sworn testimony)?
@@ -46,9 +48,9 @@ Runs on the consumer's repo. All paths are rendered `.md` (no `.jinja` suffixes 
 
    Accept `yes` / `y` / `Y` / `no` / `n` / `N` for each. Re-prompt on any other input.
 
-4. **Compute the route.** **All 4 yes → AI route.** **Any no → Human route.** Capture which question(s) failed for the `why_not_ai:` field in the human route.
+4. **Compute the route (v0.12: THREE routes).** First: is the gap a RECURRING JOB (words like "every", "weekly", "each time", or a `kind: process-gap` backlog item with runs ≥ 2 behind it) rather than a standing role? **Recurring job → PROCESS route**: invoke `/design-process` for it (draft mode when running non-interactively) — a process, not a new agent, is the right artifact for repeatable work; an owning EXISTING agent is chosen during design. Otherwise: **all 4 yes → AI route** (new agent). **Any no → Human route.** Capture which question(s) failed for the `why_not_ai:` field in the human route.
 
-5. **AI route — EMIT a recommendation; do NOT auto-invoke.** The skill does NOT autonomously run `/design-agent` (the `Task` tool spawns subagents but doesn't execute slash commands; auto-invoke would be non-functional). Instead, print:
+5. **AI route — invoke `/design-agent` inline at Confirm tier (v0.12 reconciliation).** The historical claim that auto-invoke "would be non-functional" was contradicted by the framework's own practice (design-process's failure modes invoke sibling design skills inline); the emit-vs-invoke split is hereby reconciled: state the one-line intent, get the Confirm (chief-of-staff tier for design-agent), and run it in this session. Only when the human declines the inline run, fall back to printing the recommendation:
    ```
    ╔══════════════════════════════════════════════════════════════╗
    ║  ALLOCATE-RESOURCE: AI ROUTE                                  ║
