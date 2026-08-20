@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.11.0] - 2026-08-20
+
+### Added
+
+- **The counting spine — Target 1 goes derivation-level** (roadmap wave "One signal, one sweep"). `BACKLOG-ITEM.md.tmpl` becomes the framework's ONE counting primitive: new `kind: task | lesson | process-gap | resource-gap` + `occurrences`/`last_seen` fields; every self-improvement signal class is captured as a counted backlog item and routed by kind at threshold.
+- **Schema fields `root_cause_target` + `mistake_class`** (additive-optional, history/scheduled-run entries) — a delta can now say "the GENERATOR permitted this": the generator path and the mistake-class slug that keys occurrence counting. Plus the **additive-forever convention** (documented in `PROCESS.md.tmpl` + MAINTAINER.md): schema fields are additive-optional forever; sweeps tolerate absence; shipped fields are never renamed.
+- **`review-history` grows three phases:** a **derivation check** in triage (defects in derived artifacts — agents, dept skills, charters — additionally emit a generator-targeted `lesson`; at 2 occurrences it goes upstream against the GENERATOR, so the local fix and the upstream lesson are never mutually exclusive); a **backlog sweep** (counts + routes items by kind; twice-run jobs surface as formalization candidates); a **conditional re-lint** (when a sync changed `shared/templates/` or `design-*/`, derived artifacts are structure-checked against the improved generator — `write_proposal` drafts, never autonomous edits).
+- **Capture conventions** (chief-of-staff, Notice-tier): human corrections of agent output → `kind: lesson` items; steward executions of uncovered jobs → `kind: process-gap` items with run counting. The sensors that feed the sweep.
+- **Provenance stamps** — the design family stamps `derived_from: <template>@<version>` + `designed_by: <skill>@<version>` on every artifact it writes (templates carry the fields; charters get an HTML-comment stamp), and every design skill gained a step-0 **lessons pass**: matching `lesson` items are applied as constraints and listed in the proposal.
+- **Maintainer-side (framework repo only, copier-excluded):** `.github/workflows/ci.yml` — PR gates mechanizing the review checklist (unit tests, scheduling validators, scaffold smoke with exclusion assertions, jinja-render check, secret-shape redaction lint on the PR diff); `triage-incoming-prs` skill (scheduled weekly on `gha`) — clusters `[opos-core]` PRs by mistake class in `docs/triage/CLUSTERS.md`, and at **2 distinct consumers escalates the class to a generator fix**; MAINTAINER.md gains the clustering step + a release-cadence check (merged fixes ship within a week).
+
+### Fixed
+
+- **The v0.9 dedupe fix-loss bug**: `propose-to-core` matched `--state all` on file-slug alone, so one merged fix to a file permanently suppressed every future DIFFERENT fix to it fleet-wide. Now: open-state matching on the full `[opos-core] <file-slug>/<defect-slug>` prefix (defect-slug from `mistake_class`), with pagination.
+- Redaction checklist gains class 8: `root_cause_target`/`mistake_class` values quoted in public PR bodies must name generator (CORE) paths and generic slugs only — consumer-artifact paths leak org structure.
+
+### Migration
+
+Nothing required: all schema additions are additive-optional; existing backlog items without `kind:` parse as `task`. The new phases activate on the next scheduled `review-history` run.
+
 ## [0.10.0] - 2026-08-20
 
 ### Added
@@ -546,6 +566,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.11.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.10.0
 [0.9.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.1
 [0.9.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.0
