@@ -37,6 +37,8 @@ commands:
   - "Bash(gh issue create:*)"
   - "Bash(gh issue list:*)"
   - "Bash(gh repo view:*)"
+  - "Bash(gh repo fork:*)"
+  - "Bash(git -c:*)"
   - "Bash(grep:*)"
   - "Bash(date:*)"
   - "Read"

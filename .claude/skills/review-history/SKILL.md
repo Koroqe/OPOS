@@ -1,7 +1,7 @@
 ---
 name: review-history
 description: Weekly scheduled triage of open proposed_delta entries across all history/ and scheduled-runs/ folders — apply small local (STARTER) fixes, route CORE defects upstream via propose-to-core, reconcile upstream PR states
-version: 0.1.0
+version: 0.2.0
 tags: [meta, framework, self-improvement, scheduling]
 owner_agent: coo
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "Task"]
