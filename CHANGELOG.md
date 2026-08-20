@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.13.0] - 2026-08-20
+
+### Added
+
+- **The tooling registry — resources become first-class** (roadmap wave "Resources are first-class"; the leg that turns "the founder keeps mentioning agents can use his browser" into a framework primitive). New `company/resources/` (consumer-owned; README = the rules, `REGISTRY.md` = the index) + `shared/templates/RESOURCE.md.tmpl` with five kinds — `cli`, `mcp`, `browser-cdp`, `account`, `api`. The **`browser-cdp` kind** declares the operator's real logged-in browser as a drivable company resource under hard rules: non-headless (actions visible), per-machine `machines:`, try-it-first for account-bound work (DNS, domains, email, SaaS admin), payment actions never without per-action human go-ahead, the browser is used never harvested. Pointers only — no credential material anywhere in the folder.
+- **Tools first, humans last** — the canonical doctrine, carried in the chief-of-staff charter (CORE — reaches existing consumers): every agent checks the registry and TRIES the matching resource before delegating to a human; escalation requires the **tried-and-failed contract** (resource attempted, exact failure, smallest unblocking action). First-touch now surfaces active resources and pending grants.
+- **`acquire-resource`** (owner: people-lead — its charter's registry mandate, finally implemented): dedupe against registry + pending requests → pick the cheapest access kind (a declared browser often needs NO new grant — register the task class instead of new credentials) → spec the smallest human action into `company/resources/requests/` + a `[acquire-resource]` issue → **WAIT at the human grant gate** (never-automate invariant 1; the mcp kind's `.mcp.json` edit is performed/confirmed by the human) → on grant, register + index the resource and transition the source `resource-gap` item. `allocate-resource` Q0 now routes instrument-gaps here inline — "we need DNS access" finally has a route.
+- **Registry-aware everything:** `design-agent` derives tool grants from declared resources (never invention; missing access → a "requires acquisition" proposal line); PROCESS.md gains optional `requires_tools:` and `/schedule-process` refuses registration when a required resource is missing, pending, or machine-mismatched (a `browser-cdp` resource can never back a `gha` process); `propose-to-core`'s pre-gate blocklist is now assembled FROM the registry, and `review-history` gains the outbound quoting rule — nothing under `company/resources/` ever leaves the repo.
+- **Risk 39** — the registry as a map of the company's accounts: pointers-only, excluded requests, structurally-blocklisted content, browser-kind bounds; plus the gap-to-capability latency metric (target: exactly one operator decision per acquisition — the grant).
+
+### Migration
+
+Existing consumers: `company/resources/` (README + REGISTRY) arrives on your next sync as new files. Seed it in one sitting — declare your authed CLIs (`gh`, …) and, if you want agents driving account-bound work, your browser as a `browser-cdp` entry. Everything else activates by itself.
+
 ## [0.12.0] - 2026-08-20
 
 ### Added
@@ -580,6 +594,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.13.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.13.0
 [0.12.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.10.0
