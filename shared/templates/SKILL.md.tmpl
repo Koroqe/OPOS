@@ -2,6 +2,8 @@
 TEMPLATE: substitute the tokens listed below.
 
 Substitution tokens:
+  <<TEMPLATE_PATH_AT_VERSION>> — e.g. shared/templates/AGENT.md.tmpl@v0.11.0 (framework version from .copier-answers.yml _commit)
+  <<DESIGN_SKILL_AT_VERSION>>  — e.g. design-agent@0.1.0 (the generating skill and its version)
   <<SKILL_NAME>>       — kebab-case identifier (matches the parent folder name)
   <<SKILL_DESCRIPTION>>— one-line description; Claude uses this to decide whether to auto-invoke
   <<OWNER_AGENT>>      — agent name (must match a `name:` declared in some agent .md file)
@@ -14,6 +16,9 @@ description: <<SKILL_DESCRIPTION>>
 version: 0.1.0
 tags: <<TAGS>>
 owner_agent: <<OWNER_AGENT>>
+# provenance (v0.11 — stamped by the design skill at write time; makes derivation attribution + re-lint mechanical)
+derived_from: <<TEMPLATE_PATH_AT_VERSION>>
+designed_by: <<DESIGN_SKILL_AT_VERSION>>
 ---
 
 # <<SKILL_NAME>>

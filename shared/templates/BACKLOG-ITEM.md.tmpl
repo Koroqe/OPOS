@@ -2,10 +2,26 @@
 TEMPLATE: substitute the tokens listed below.
 
 Substitution tokens:
-  <<ITEM_TITLE>>         — short title describing the experiment / one-off task
+  <<ITEM_TITLE>>         — short title describing the experiment / one-off task / signal
   <<OWNER_AGENT>>        — agent name responsible for running this item and (when ready) feeding it to design-process
   <<CREATED_DATE>>       — ISO date (YYYY-MM-DD) when the item was filed
   <<INTENDED_TARGET>>    — intended skill path if/when this item informs a process design (e.g. "departments/rnd/.claude/skills/<new-skill>/")
+  <<KIND>>               — task | lesson | process-gap | resource-gap (v0.11 — see "The counted backlog item" below)
+
+The counted backlog item (v0.11): the backlog is the framework's ONE counting primitive.
+Every self-improvement signal class is captured as a backlog item of the right kind, and the
+weekly review-history sweep counts occurrences and routes by kind at threshold:
+  - `task`         — a plain one-off (the classic v0 item). Never auto-promoted.
+  - `lesson`       — a derivation lesson: something a GENERATOR (a template or design-* skill)
+                     should have prevented. At 2 occurrences → an upstream delta targeting the
+                     generator (root_cause_target), via propose-to-core.
+  - `process-gap`  — recurring work with no covering process. At 2+ runs/occurrences → a
+                     design-process draft proposal for the owning dept (v0.12 draft mode).
+  - `resource-gap` — a missing tool/access/account blocked or degraded work. At threshold →
+                     an acquire-resource candidate (v0.13); until then the count itself is the signal.
+Counting fields: `occurrences:` (integer, incremented by whoever re-observes the signal — capture
+conventions live in chief-of-staff.md) and `last_seen:` (ISO date). Both OPTIONAL and additive —
+v0 items without them remain valid (absent = occurrences: 1).
 -->
 
 ---
@@ -14,6 +30,9 @@ owner: <<OWNER_AGENT>>
 created: <<CREATED_DATE>>
 state: proposed
 runs: 0
+kind: <<KIND>>
+occurrences: 1
+last_seen: <<CREATED_DATE>>
 intended_target: <<INTENDED_TARGET>>
 ---
 
@@ -21,15 +40,15 @@ intended_target: <<INTENDED_TARGET>>
 
 ## Goal
 
-What outcome this backlog item is trying to produce. One short paragraph.
+What outcome this backlog item is trying to produce (for `lesson`/`process-gap`/`resource-gap`: what the signal was, and what would prevent or cover it). One short paragraph.
 
 ## Acceptance
 
-How we know a single run succeeded — concrete, observable criteria.
+How we know a single run succeeded — concrete, observable criteria. For signal kinds: what "resolved" looks like (generator constraint shipped / process adopted / resource granted).
 
 ## Runs log
 
-An audit trail of when this item was executed manually; informational only. When the owner decides this item is ready to formalize as a recurring process, they invoke the `design-process` skill (owned by `ops-manager`) — `design-process` is the path to formalization.
+An audit trail of executions and re-observations. When the owner decides a `task` item is ready to formalize, they invoke `design-process`; `lesson`/`process-gap`/`resource-gap` items are swept and routed automatically by the weekly `review-history` run at their thresholds.
 
 | date | actor | outcome | notes |
 |------|-------|---------|-------|

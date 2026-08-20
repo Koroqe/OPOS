@@ -2,6 +2,8 @@
 TEMPLATE: substitute the tokens listed below.
 
 Substitution tokens:
+  <<TEMPLATE_PATH_AT_VERSION>> — e.g. shared/templates/AGENT.md.tmpl@v0.11.0 (framework version from .copier-answers.yml _commit)
+  <<DESIGN_SKILL_AT_VERSION>>  — e.g. design-agent@0.1.0 (the generating skill and its version)
   <<AGENT_NAME>>       — kebab-case identifier (matches filename without .md)
   <<AGENT_DESCRIPTION>>— one-line description Claude uses to decide when to delegate
   <<DEPARTMENT>>       — owning department (e.g. "company", "engineering", "sales")
@@ -16,6 +18,9 @@ tools: ["Read", "Grep", "Glob"]
 model: opus
 department: <<DEPARTMENT>>
 owns_processes: []
+# provenance (v0.11 — stamped by the design skill at write time; makes derivation attribution + re-lint mechanical)
+derived_from: <<TEMPLATE_PATH_AT_VERSION>>
+designed_by: <<DESIGN_SKILL_AT_VERSION>>
 ---
 
 # <<AGENT_NAME>>

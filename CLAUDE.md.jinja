@@ -49,6 +49,8 @@ Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
 - `status`: `open` | `applied` | `rejected`
 - `delta_target`: repo-relative file path the delta concerns — OPTIONAL, added in v0.9.0; lets `/review-history` classify the delta mechanically (CORE vs STARTER)
 - `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL, added in v0.9.0; written by `/propose-to-core`; reconciled by later `/review-history` runs
+- `root_cause_target`: repo-relative path of the GENERATOR file (a template or design skill) whose missing constraint permitted the mistake — OPTIONAL, added in v0.11; routed as an independent CORE delta by `/review-history`'s derivation check
+- `mistake_class`: short kebab-case slug naming the mistake CLASS (e.g. `missing-null-guard-in-charter`) — OPTIONAL, added in v0.11; the occurrence-counting key across entries and backlog items
 
 Followed by a free-form body with notes, links, and decisions.
 

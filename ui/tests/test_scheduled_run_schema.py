@@ -2,9 +2,10 @@
 
 The .tmpl file holds substitution markers (`<<TOKEN>>`) that aren't valid
 YAML on their own. This test substitutes representative values, then parses
-the resulting frontmatter through PyYAML and asserts the 14 expected schema
+the resulting frontmatter through PyYAML and asserts the 16 expected schema
 fields (11 original + the optional v0.9.0 pair delta_target/upstream_pr +
-the optional v0.10 cost_estimate) are present with the expected types.
+the optional v0.10 cost_estimate + the optional v0.11 pair
+root_cause_target/mistake_class) are present with the expected types.
 
 Mirrors `ui.scheduling.SCHEDULING_FIELDS` validation in spirit: catches
 template drift (renamed/dropped fields) before a release ships.
@@ -34,6 +35,8 @@ SUBSTITUTIONS = (
     ("<<DELTA_TARGET>>", '"none"'),
     ("<<UPSTREAM_PR>>", '"none"'),
     ("<<COST_ESTIMATE>>", '"none"'),
+    ("<<ROOT_CAUSE_TARGET>>", '"none"'),
+    ("<<MISTAKE_CLASS>>", '"none"'),
 )
 
 EXPECTED_FIELDS = {
@@ -53,6 +56,9 @@ EXPECTED_FIELDS = {
     "upstream_pr",
     # v0.10 (optional): unattended-spend visibility
     "cost_estimate",
+    # v0.11 (optional): derivation-level attribution
+    "root_cause_target",
+    "mistake_class",
 }
 
 

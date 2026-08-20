@@ -16,6 +16,9 @@ inputs: []
 success_criteria: []
 slo: <<SLO>>
 version: 0.1.0
+# provenance (v0.11 — stamped by the design skill at write time; makes derivation attribution + re-lint mechanical)
+derived_from: <<TEMPLATE_PATH_AT_VERSION>>
+designed_by: <<DESIGN_SKILL_AT_VERSION>>
 # state_schema (OPTIONAL — list the named states this process transitions through; documentation only, no runtime enforcement in v0.2.0; pairs with the `## State transitions` body section below):
 # state_schema:
 #   - <state-name>: <one-line description>
@@ -79,8 +82,12 @@ Schema for each history entry (see root `CLAUDE.md` for the full description and
 - `status`: `open` | `applied` | `rejected`
 - `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0); enables mechanical triage by `review-history`
 - `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0); written by `propose-to-core`
+- `root_cause_target`: generator path whose missing constraint permitted the mistake — OPTIONAL (v0.11)
+- `mistake_class`: kebab-case mistake-class slug, the occurrence-counting key — OPTIONAL (v0.11)
 
 The entry body is free-form prose: notes, links to artifacts, decisions.
+
+**Additive-forever schema convention (v0.11):** all history/scheduled-run/backlog schema fields are additive-OPTIONAL forever — sweeping skills MUST tolerate absence, and a shipped field is never renamed or repurposed. This is what keeps every vintage of record parseable by every future sweep.
 
 ## Scheduled runs
 
@@ -103,5 +110,7 @@ Schema for each scheduled-run entry (template at `shared/templates/scheduled-run
 - `status`: `open` | `applied` | `rejected`
 - `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0)
 - `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0)
+- `root_cause_target`: generator path — OPTIONAL (v0.11)
+- `mistake_class`: mistake-class slug — OPTIONAL (v0.11)
 
 **Distinguishing scheduled vs manual at run time:** the SKILL body should check the invoking prompt for the prelude string `"You are running as a scheduled routine"` (injected by `/schedule-process`). Present → write to `scheduled-runs/`; absent → write to `history/`.
