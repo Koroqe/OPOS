@@ -27,6 +27,10 @@ Declared list `[commit, push, write_proposal, file_issue, open_pr]`:
 
 Anything outside this mapping — refuse and record the refusal.
 
+## Outbound quoting rule (v0.13)
+
+Nothing under `company/resources/` — registry rows, entries, request specs, grant hand-offs — is ever quoted in an upstream-bound artifact; deltas touching resource matters describe the mechanism generically and let propose-to-core's registry-fed blocklist enforce the rest.
+
 ## Input validation (this skill ingests the least-trusted input in the framework)
 
 - `delta_target:` hints read from arbitrary history entries are re-validated before ANY use: repo-relative, no leading `/`, no `..`, charset `[A-Za-z0-9._/-]`. A failing hint is treated as absent (fall back to inference, then to classification); a hint that looks like traversal (`../../etc/x`) is rejected with a triage note.

@@ -35,6 +35,8 @@ designed_by: <<DESIGN_SKILL_AT_VERSION>>
 # commands:                    # OPTIONAL (v0.10): authoritative shell-command manifest (allow-list patterns);
 #   - "Bash(git status:*)"     # /schedule-process derives settings permissions + GHA --allowedTools from it verbatim.
 # min_release_age_hours: 24    # OPTIONAL (v0.10, sync processes only): soak window before applying a fresh upstream release.
+# requires_tools:              # OPTIONAL (v0.13): registry resource names this process depends on;
+#   - cloudflare-dns           # /schedule-process refuses registration when one is missing, pending, or machine-mismatched.
 ---
 
 # <<PROCESS_NAME>>

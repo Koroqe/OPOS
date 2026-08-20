@@ -83,6 +83,10 @@ The steward chooses the right tier per action — not asked, just done.
 
 **Never-automate invariants (v0.10 — no tier reduction, no authority declaration, no future skill may waive these):** (1) credential/access grants, including any write to `.mcp.json`, `.claude/settings.json` permissions, or an agent's `tools:` frontmatter; (2) adoption of a designed AGENT (and no designed agent receives the design-* family or `Task`+`Write` together without explicit human sign-off); (3) scheduling of scheduling — registration is always human; no scheduled run may create or modify cron routines or workflow files; (4) outbound writes beyond the propose-to-core redaction gates (posts, email, telemetry — rejected); (5) money — payment-class actions and hire approvals. Full text: RISKS "Never-automate invariants".
 
+## Tools first, humans last (v0.13 — the canonical doctrine)
+
+Before ANY task is delegated to a human, the steward (and every agent it dispatches) checks `company/resources/REGISTRY.md` and TRIES the matching resource. The operator's browser declared as a `browser-cdp` resource means account-bound work — DNS, domains, email, SaaS admin — is agent work by default, driven through the operator's logged-in sessions under that entry's rules (non-headless, visible, no payment actions, no credential harvesting). **Escalation to a human is the LAST resort and must satisfy the tried-and-failed contract:** name the resource(s) attempted, the exact failure, and the smallest single action that unblocks (never "please handle X" — always "please click approve on Y" / "please run `gh secret set Z`"). A task with NO matching registry entry is a `kind: resource-gap` item first, a human errand second. Repeated hand-offs for the same missing access are exactly what the weekly sweep counts toward `/acquire-resource`.
+
 ## Capture conventions (v0.11 — the sensors that feed the self-improvement loop)
 
 Two standing duties, both Notice-tier (do it, mention it), both writing **counted backlog items** (`BACKLOG-ITEM.md.tmpl`, see its kind taxonomy):
@@ -102,6 +106,8 @@ When a session opens at the repo root AND the steward is the active posture (per
 2. Read `.claude/.paused-tasks`. **If the file does not exist**, set `paused_tasks = []` and continue.
 3. List the 5 most recent history entries across `.claude/skills/*/history/`. **If history folders are empty (fresh scaffold)**, set `recent_activity = []` and continue.
 4. For each task in `current_tasks` (was: ONE task in v0.6.x), read the open issue's current state via `gh issue view <n> --repo <repo> --json comments,state,labels`. Build a list of `(issue_num, title, state)` tuples. **If `gh` is unauthenticated or the network is down**, skip silently and note in the greeting ("GitHub state unavailable").
+
+4a2. **Resource awareness (v0.13).** Read `company/resources/REGISTRY.md` (absent → skip): the active resources and any `pending-grant` rows. Mention pending grants in the greeting's Loop line — a waiting grant is a human bottleneck the ops panel must surface.
 
 4b. **Loop health (v0.10 ops panel).** Read `.claude/scheduled-processes.json` (absent → `loop = unregistered`). For each registered process: the newest record in its `scheduled-runs/` (age vs. its declared cadence — a daily process with no record for >2 days is STALE; for `gha:` rows also best-effort `gh run list --workflow <file> --limit 1`), the count of records still `verification_state: unverified`, and open `[opos-auto-sync]`/`[opos-*]`/`[propose-to-core]`/`[review-history]` issues (`gh issue list --state open --json title`, local prefix match). All Auto-tier, all fresh-scaffold tolerant.
 5. Greet in ≤3 lines, omitting empty fields gracefully. Pluralization shifts based on the active-tasks count:

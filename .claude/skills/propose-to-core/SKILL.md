@@ -64,7 +64,7 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 7. **Secrets and credentials** — API keys, tokens, passwords, connection strings, private URLs/IPs, `.env`-style values, private key material.
 8. **Consumer paths in attribution fields (v0.11)** — `root_cause_target:`/`mistake_class:` values quoted in the PR body must name GENERATOR (CORE) paths and generic class slugs only; a consumer-artifact path in a public PR body leaks the company's org structure.
 
-**Deterministic pre-gate (hard-fails before any agent judgement):** assemble the identifier **blocklist** — the `COMPANY_NAME` value, department/agent/product names unique to the instance, the consumer repo's `nameWithOwner` (`gh repo view --json nameWithOwner`), and git author names/e-mails from recent log (`git log -20 --format='%an %ae' | sort -u`). Then:
+**Deterministic pre-gate (hard-fails before any agent judgement):** assemble the identifier **blocklist** — the `COMPANY_NAME` value, department/agent/product names unique to the instance, the consumer repo's `nameWithOwner` (`gh repo view --json nameWithOwner`), git author names/e-mails from recent log (`git log -20 --format='%an %ae' | sort -u`), **and (v0.13) every resource name, vendor, and hostname from `company/resources/` (REGISTRY rows + entry frontmatter + `access:` lines) — the registry is a map of the company's accounts and must never leak**. Then:
 - `grep -F -i -f <blocklist-file>` across the full bundle — any hit → FAIL.
 - Secret-shaped regex sweep, independent of the blocklist: `gh[pousr]_[A-Za-z0-9]{36}`, `AKIA[0-9A-Z]{16}`, `xox[baprs]-`, `-----BEGIN [A-Z ]*PRIVATE KEY-----`, `postgres(ql)?://[^ ]*:[^ @]*@`, `[?&](api_?key|token|password)=` — any hit → FAIL.
 

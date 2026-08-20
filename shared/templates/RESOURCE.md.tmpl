@@ -1,0 +1,58 @@
+<!--
+TEMPLATE: substitute the tokens listed below. One rendered file per resource, living in
+company/resources/ (consumer-owned). The REGISTRY.md index links to each.
+
+POINTERS ONLY — a resource entry NEVER contains credential material (no passwords, tokens,
+keys, cookies, session data). It records that a capability EXISTS, how an agent reaches it,
+and who owns the grant. The registry is redaction-SENSITIVE: its names/vendors/hostnames
+feed propose-to-core's blocklist and must never appear in outbound artifacts.
+
+Substitution tokens:
+  <<RESOURCE_NAME>>   — kebab-case identifier (e.g. cloudflare-dns, founder-chrome, company-email)
+  <<KIND>>            — cli | mcp | browser-cdp | account | api
+  <<OWNER_HUMAN>>     — the human who granted/owns this access (single-operator today; named per Risk 36)
+  <<STEWARD_AGENT>>   — agent responsible for the entry's accuracy (default: people-lead)
+  <<CREATED_DATE>>    — YYYY-MM-DD
+
+Kind-specific guidance:
+  cli          — an authenticated CLI on some machine (gh, wrangler, aws). `access:` = the command;
+                 `machines:` lists where it is authed.
+  mcp          — a registered MCP server. `access:` = the server name in .mcp.json (registering it
+                 is acquire-resource's register-mcp-server step — a human-gated settings change).
+  browser-cdp  — the operator's real browser driven via CDP, carrying their logged-in sessions.
+                 THE RULES: non-headless only (actions visible to the operator); per-machine
+                 (`machines:` required); TRY IT FIRST for any task an account can do (DNS, domains,
+                 email, SaaS admin) and escalate to the human only after a documented failed attempt;
+                 payment/checkout/billing actions are NEVER taken this way without explicit human
+                 go-ahead per action (never-automate invariant 5); no credential exfiltration —
+                 the browser is used, never harvested.
+  account      — a service account/login that exists but has no automated access path yet;
+                 `access:` describes the human process to use it.
+  api          — a direct API with auth from env/MCP; `access:` = base URL + auth source pointer
+                 (e.g. "env: CLOUDFLARE_API_TOKEN"), never the token itself.
+-->
+
+---
+resource: <<RESOURCE_NAME>>
+kind: <<KIND>>
+owner_human: <<OWNER_HUMAN>>
+steward_agent: <<STEWARD_AGENT>>
+created: <<CREATED_DATE>>
+machines: []            # kinds cli/browser-cdp: which machines have this live (per-machine, like scheduled-processes.json)
+allowed_agents: []      # empty = any agent may use it within the kind rules; else an allow-list
+status: active          # active | revoked | pending-grant
+---
+
+# <<RESOURCE_NAME>>
+
+## What it gives the company
+
+One paragraph: which task classes this resource unlocks (e.g. "DNS + domain management for all company domains via the operator's Cloudflare account").
+
+## Access
+
+How an agent actually uses it, per the kind guidance above. Pointers only.
+
+## Escalation
+
+Who to hand off to when using it fails (default: `owner_human`), and what a hand-off must include per the tried-and-failed contract (what was attempted, exact failure, the smallest unblocking action requested).

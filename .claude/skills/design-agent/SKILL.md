@@ -24,6 +24,10 @@ The skill is INTERACTIVE: it produces a proposal, iterates with the user, and on
 - `role_description` — free-text description of the new agent's responsibilities + scope + decisions it should make + what it does NOT do. Required if no `backlog_item_path` is supplied.
 - `backlog_item_path` — OPTIONAL. Path to a `BACKLOG-ITEM.md` whose `intended_target` is an agent. When supplied, the item's frontmatter seeds the proposal; the item is flipped to `state: designed` with a `designed_as: <new-agent-path>` field at the end.
 
+## Registry pass (v0.13)
+
+When drafting the `tools:` ladder AND the role's external-access needs: read `company/resources/REGISTRY.md`. Grants derive from DECLARED resources, never invention — a role needing an access no entry covers gets a "requires acquisition" line in the proposal (naming the `/acquire-resource` request to file) instead of a fabricated tool. If the role's core duty depends on a per-machine resource (`machines:` bound), say so in the proposal so the human knows where the agent can actually operate.
+
 ## Steps
 
 0. **Lessons pass + provenance duty (v0.11, applies to every run).** Before designing: read the company's `kind: lesson` backlog items (glob `**/backlog/*.md`, filter frontmatter `kind: lesson`) whose `mistake_class`/`root_cause_target` matches this skill or the artifact class it produces, plus this skill's own `history/` entries with open `proposed_delta`s; apply every matching constraint to the draft and LIST the applied lessons in the proposal so the human sees the loop working. When writing the artifact: stamp provenance — frontmatter `derived_from: <template>@<framework-version>` + `designed_by: <this-skill>@<its version>` (framework version = `.copier-answers.yml` `_commit`; in the framework repo itself use the current release tag); charter files get the equivalent HTML comment stamp at file end.

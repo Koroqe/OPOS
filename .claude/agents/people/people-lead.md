@@ -4,7 +4,7 @@ description: Adaptive resource allocator. Runs allocate-resource to route every 
 tools: ["Read", "Grep", "Glob", "Edit", "Write", "Task"]
 model: opus
 department: people
-owns_processes: [allocate-resource]
+owns_processes: [allocate-resource, acquire-resource]
 ---
 
 # people-lead
