@@ -33,7 +33,7 @@ _exclude:
   - MAINTAINER.md   # framework-developer guide; not for consumers
   - .github/README.md   # framework's own GitHub readme (see CAUTION above)
   - .github/images      # framework marketing assets (hero image) referenced only by the framework readme
-  - "docs/**"           # v0.9.0: framework-development SDLC docs (PRD, use cases, QA, architecture); never consumer-facing
+  - docs                 # v0.9.0 (pattern fixed v0.10): framework-development SDLC docs (PRD, use cases, QA, architecture, audits); never consumer-facing — excluding the dir itself avoids an empty docs/ in scaffolds
   - "**/proposals/202[0-9]-*.md"   # v0.9.0: per-adopter propose-to-core draft files — exist BECAUSE redaction failed, so they carry company data and must never ship to another consumer. README + LEDGER + .gitkeep DO ship (mirrors the company/decisions pattern).
 
 # Files shipped on initial scaffold only; never updated by `copier update`.
