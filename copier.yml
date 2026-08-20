@@ -25,7 +25,9 @@ _exclude:
   - "**/scheduled-runs/202[0-9]-*.md"   # v0.6.0: per-adopter scheduled-run records; runtime-only, never shipped
   - .claude/scheduled-processes.json    # v0.6.0: per-machine routine-id cache; gitignored + excluded
   - "company/decisions/202[0-9]-*.md"   # v0.6.1: per-adopter decision artifacts written by deliberate-decision; README + .gitkeep DO ship (not in _skip_if_exists)
-  - "company/backlog/202[0-9]-*.md"    # v0.13.1: the FRAMEWORK repo's own dated backlog items (maintainer dogfood, e.g. roadmap waves) must never ship; consumer-created items are unaffected (not in the template). README + .gitkeep DO ship.
+  - "company/backlog/*.md"           # v0.14.1: ALL maintainer backlog items (dated or not) stay in the framework repo —
+  - "!company/backlog/README.md"     #          the v0.13.1 dated-only pattern still leaked undated ones (2nd occurrence of
+                                     #          mistake_class: maintainer-backlog-leaks-to-consumers). README + .gitkeep DO ship.
   - "tasks/[0-9]*.md"       # framework's own dogfooded task files; consumers get empty tasks/ via .gitkeep
   - "tasks/closed/**"        # same as above for completed tasks
   - "ui/tests/**"           # framework-dogfooded tests asserting on OPOS's own agent/skill counts
