@@ -34,7 +34,6 @@ _exclude:
   - MAINTAINER.md   # framework-developer guide; not for consumers
   - .github/README.md   # framework's own GitHub readme (see CAUTION above)
   - .github/workflows/ci.yml   # v0.11: framework-repo CI (incoming-PR gates); consumers run their own CI
-  - .github/workflows/opos-triage-incoming-prs.yml   # v0.13: the maintainer's own gha registration; consumers register their own processes
   - .claude/skills/triage-incoming-prs   # v0.11: maintainer-side triage skill; meaningless in a consumer scaffold
   - .github/images      # framework marketing assets (hero image) referenced only by the framework readme
   - docs                 # v0.9.0 (pattern fixed v0.10): framework-development SDLC docs (PRD, use cases, QA, architecture, audits); never consumer-facing — excluding the dir itself avoids an empty docs/ in scaffolds

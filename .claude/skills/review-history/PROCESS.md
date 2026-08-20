@@ -16,7 +16,8 @@ authority:
   - file_issue
   - open_pr
 # commands (OPTIONAL, v0.10): authoritative shell-command manifest; /schedule-process derives the
-# settings allow-list and the GHA --allowedTools value from it verbatim.
+# settings allow-list and the GHA --allowedTools value from it verbatim; on the cloud runtime it becomes
+# both the coarse allowed_tools grant AND an in-prompt command allow-list (schedule-process step 4b).
 commands:
   - "Bash(git fetch origin:*)"
   - "Bash(git push origin:*)"

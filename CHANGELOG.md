@@ -19,6 +19,10 @@ In `0.x.y` releases breaking changes are allowed.
 - **Runtime guidance is now three-way and honest about billing** (README, `PROCESS.md.tmpl`, RISKS 37): `cloud` = durable, subscription-billed, recommended; `gha` = durable but a CI runner cannot use a subscription login, so it needs an `ANTHROPIC_API_KEY` secret and usage-based API billing; `claude-schedule` = session-scoped, same-machine testing only. RISKS 26 extends the tool-name dependency note to `RemoteTrigger`; RISKS 35's mitigations now read across all three runtimes.
 - The maintainer repo's own `triage-incoming-prs` registration moves from the GHA workflow (deleted) to a cloud routine, keeping the maintainer the first consumer of the recommended path. `ci.yml` (PR gates) is unaffected and needs no key.
 
+### Security note (cloud tool grants are coarser)
+
+The cloud API grants whole tools (`"Bash"`), not the fine-grained patterns `--allowedTools` accepts (`Bash(git push origin:*)`). Collapsing the `commands:` manifest into bare `Bash` would silently hand a cloud run unrestricted shell, so `/schedule-process`'s cloud branch **also embeds the manifest verbatim in the composed prompt as a declared command allow-list**, enforced in-band like the authority list (declared contract, not a sandbox — RISKS Risk 18 posture). `gha` remains the mechanically-enforced option for consumers who need that.
+
 ### Notes
 
 **This release is itself a derivation-level fix.** v0.10 shipped `gha` as *the* durable runtime, silently assuming every consumer has Anthropic API billing; the first real consumer had a Claude subscription and no API account, so the "autonomous company" was one unavailable prerequisite away from inert. The lesson landed in the generator — the runtime taxonomy and the guidance that surrounds it — rather than in a one-off workaround. Migration: none required; existing consumers can re-run `/schedule-process <name>` to move an existing registration onto `cloud` (the old driver must be removed first — one driver per process).

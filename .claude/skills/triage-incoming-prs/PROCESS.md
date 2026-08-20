@@ -14,6 +14,8 @@ authority:
   - file_issue
   - commit
   - push
+# On the cloud runtime the manifest becomes both the coarse allowed_tools grant AND an
+# in-prompt command allow-list (schedule-process step 4b).
 commands:
   - "Bash(gh pr list:*)"
   - "Bash(gh pr view:*)"

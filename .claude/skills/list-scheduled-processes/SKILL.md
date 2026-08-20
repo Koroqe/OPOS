@@ -1,6 +1,6 @@
 ---
 name: list-scheduled-processes
-description: Read-only inventory and drift detection. Cross-references PROCESS.md scheduling declarations against the live Claude Code CronList; classifies each row as OK / MISSING / ORPHAN / DRIFT / INVALID_INTENT; warns on overlapping cron times.
+description: Read-only inventory and drift detection. Cross-references PROCESS.md scheduling declarations against the live Claude Code CronList; classifies each row as OK / MISSING / DISABLED / ORPHAN / DRIFT / INVALID_INTENT; warns on overlapping cron times.
 version: 0.1.0
 tags: [meta, framework, scheduling, cron, drift-detection]
 owner_agent: ops-manager
@@ -36,6 +36,7 @@ None.
    |---|---|---|
    | **OK** | Declared (valid) AND in CronList AND declared cron == live cron | None — happy path. |
    | **MISSING** | Declared (valid) but NOT in CronList | Run `/schedule-process <name>` to register. |
+   | **DISABLED** | Declared (valid) and a matching registration exists but is switched off (v0.14: a cloud routine with `enabled: false`) | Deliberately unscheduled, not lost — re-enable with `/schedule-process <name>`. |
    | **ORPHAN** | In CronList but no declared (valid) PROCESS.md backs it | Run `/unschedule-process <name>` OR re-add the 4 scheduling frontmatter fields to a PROCESS.md. |
    | **DRIFT** | Declared (valid) AND in CronList BUT declared cron ≠ live cron | Re-run `/schedule-process <name>` — the skill detects the diff and confirms before overwriting. |
    | **INVALID_INTENT** | PROCESS.md has SOME scheduling fields but `validate_frontmatter` failed | Fix the frontmatter per the validator's error list (printed beneath the row); do NOT run any scheduling skill until fixed. |
