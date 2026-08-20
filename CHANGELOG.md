@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.10.0] - 2026-08-20
+
+### Added
+
+- **`runtime: gha` — the durable scheduling runtime** (roadmap wave "Runs while you sleep"; closes the deepest autonomy hole from the 2026-08-20 audit). `/schedule-process` now renders a hardened GitHub Actions workflow (`shared/templates/opos-process.gha.yml.tmpl`) into the consumer repo for any process declaring `runtime: gha`: cron fires server-side and survives closed laptops. Hardening baked into the template: least-privilege `GITHUB_TOKEN` permissions mapped from `authority:`, `timeout-minutes: 30` + `concurrency: cancel-in-progress` (unattended-spend and overlap bounds), the only secret is `ANTHROPIC_API_KEY` (workflow skips with a notice until `gh secret set ANTHROPIC_API_KEY`), per-consumer cron-minute jitter, and the prompt travels via env. `unschedule-process` (delete the workflow file) and `list-scheduled-processes` (workflow-file presence = live; `gh run list` conclusion; missing-secret warning) gained matching branches. `ui/scheduling.py` `ALLOWED_RUNTIMES` now `("claude-schedule", "gha")`.
+- **`commands:` manifest** (optional PROCESS.md field) — the authoritative shell-command allow-list per process; `/schedule-process` derives `.claude/settings.json` permissions AND the GHA `--allowedTools` value from it verbatim, with a pre-registration rehearsal that greps the SKILL.md for undeclared commands. `auto-sync` and `review-history` ship manifests and now declare `runtime: gha` by default.
+- **Soak window** — optional `min_release_age_hours` (default 24 on `auto-sync`): releases younger than the window are skipped with a `soaking` note; the maintainer's own instance (which runs these loops) is the fleet canary. Fleet rollback runbook documented in the README: yank the release; every consumer's probe no-ops on it.
+- **Both-direction CHANGELOG auto-resolution.** The step-11 predicate now handles the shape real syncs actually produce — `copier update` replaces the file and rejects the CONSUMER's day-block hunk — re-inserting the day-block section above the first version heading under the same two verification assertions. (Consumer-reported delta; both real v0.9.x syncs hit it.)
+- **Ops panel** — the chief-of-staff greeting now reads loop health: per-process last-run age vs cadence (STALE detection), `verification_state: unverified` count, open `[opos-*]` issues.
+- **Loop activation in `company-setup`** (new step 8b) — first-run onboarding offers to register `auto-sync` + `review-history` on the durable runtime and prints the residual-duties card (the complete list of what stays human).
+- **Never-automate invariants** (RISKS, constitutional): credential/access grants; adoption of a designed agent (+ anti-recursion rule); scheduling of scheduling (`schedule-process` refuses non-interactive invocation of itself); outbound writes beyond the redaction gates (telemetry explicitly rejected); money. Mirrored in the chief-of-staff Permission tiers.
+- **Risks 35–38**: fleet-wide auto-execution (soak+canary+hardened workflow), single-operator assumption, unattended token spend (+ optional `cost_estimate:` run-record field), prompt injection into authority-bearing scheduled runs (+ injection clause added to the scheduling prelude).
+
+### Changed
+
+- `auto-sync` probe failures now write a `partial` record (probe health visible in the record stream, no longer silent); PROCESS.md versions bumped to 0.2.0.
+- Dept charters (`finance`, `commercial`): "MCP-gated store" references reworded honestly — a PLANNED home (Risk 1 hardening path, unimplemented); keep raw PII/CRM out of the repo until it exists.
+- `copier.yml`: `docs` exclude now covers the directory itself (no empty `docs/` in scaffolds).
+
+### Migration
+
+Existing consumers: after syncing, re-run `/schedule-process auto-sync` and `/schedule-process review-history` once — they will offer the durable `gha` runtime (set `gh secret set ANTHROPIC_API_KEY` first) and replace any session-scoped registration. Nothing else to do; all new schema fields are additive-optional.
+
 ## [0.9.1] - 2026-08-20
 
 ### Fixed
@@ -523,6 +546,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.10.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.10.0
 [0.9.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.1
 [0.9.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.8.1
