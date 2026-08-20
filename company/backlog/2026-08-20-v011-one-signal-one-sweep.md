@@ -2,9 +2,10 @@
 title: v0.11 — one-signal-one-sweep
 owner: chief-of-staff
 created: 2026-08-20
-state: proposed
+state: designed
 runs: 0
 intended_target: multiple (see audit)
+designed_as: shipped (v0.10.0-v0.13.0 releases, 2026-08-20)
 labels: [framework, autonomy-audit, v0.11]
 ---
 
