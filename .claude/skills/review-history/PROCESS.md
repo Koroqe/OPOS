@@ -5,9 +5,9 @@ collaborators: [chief-of-staff, ops-manager]
 inputs: [dry_run]
 success_criteria: [all_open_deltas_triaged_or_noted, pr_states_reconciled, core_targets_never_edited_locally, run_record_written]
 slo: "20 minutes (scheduled, weekly)"
-version: 0.1.0
+version: 0.2.0
 schedule: "23 7 * * 1"
-runtime: claude-schedule
+runtime: gha
 non_interactive: true
 authority:
   - commit
@@ -15,6 +15,36 @@ authority:
   - write_proposal
   - file_issue
   - open_pr
+# commands (OPTIONAL, v0.10): authoritative shell-command manifest; /schedule-process derives the
+# settings allow-list and the GHA --allowedTools value from it verbatim.
+commands:
+  - "Bash(git fetch origin:*)"
+  - "Bash(git push origin:*)"
+  - "Bash(git checkout:*)"
+  - "Bash(git merge --ff-only:*)"
+  - "Bash(git branch:*)"
+  - "Bash(git add:*)"
+  - "Bash(git commit:*)"
+  - "Bash(git status:*)"
+  - "Bash(git rev-parse:*)"
+  - "Bash(git log:*)"
+  - "Bash(git clone:*)"
+  - "Bash(gh api repos/*)"
+  - "Bash(gh api /repos/*)"
+  - "Bash(gh pr create:*)"
+  - "Bash(gh pr list:*)"
+  - "Bash(gh pr view:*)"
+  - "Bash(gh issue create:*)"
+  - "Bash(gh issue list:*)"
+  - "Bash(gh repo view:*)"
+  - "Bash(grep:*)"
+  - "Bash(date:*)"
+  - "Read"
+  - "Edit"
+  - "Write"
+  - "Glob"
+  - "Grep"
+  - "Task"
 ---
 
 # review-history

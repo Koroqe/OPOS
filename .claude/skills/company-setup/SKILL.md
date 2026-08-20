@@ -97,6 +97,12 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
    Print a final summary: "Setup complete. Files written/modified: <list>. Next: run `/serve-console` to browse your new OS at http://127.0.0.1:8765/. Then ask Claude `List available subagents` in a fresh session to complete the framework smoke test. Commit when ready: `git add -A && git commit -m 'chore: initial company-setup'`."
 
+8b. **Activate the self-improvement loop (v0.10 — the step that makes the company autonomous).** Ask: "Your OS can update itself daily and review its own improvement signals weekly, unattended. Activate now? (yes/no — recommended yes)." On yes:
+   - If the repo has a GitHub remote: run `/schedule-process auto-sync` and `/schedule-process review-history` (both declare `runtime: gha` by default — the durable path; the workflow files land in `.github/workflows/`, and the one manual prerequisite is `gh secret set ANTHROPIC_API_KEY`, which the registration reminds about).
+   - No remote: register on `claude-schedule` with the session-scoped caveat printed, and offer the SessionStart re-arm hook.
+   - Either way, print the **residual-duties card** — the complete list of what stays human: *review `[opos-*]` issues when they appear (conflicts, drafts needing review); skim `verification_state: unverified` run records weekly (the chief-of-staff greeting counts them for you); approve upstream-proposal drafts that failed redaction; grant credentials/tools when asked. Everything else runs itself.*
+   On no: print the two commands to run later and note the OS is manual-update-only until then.
+
 9. **Write history entry** to `.claude/skills/company-setup/history/YYYY-MM-DD-<short-run-id>.md`. Convention: `<short-run-id>` = `setup-<COMPANY_NAME_lowercased>` (e.g., `setup-zipread`). Include `time: HH:MM` (v0.3.1 schema). Body captures every answer, every file written/modified, every policy-name conflict refusal (with which check fired), and every dept decision (keep/customize) across all 6 default depts.
 
 ## Outputs

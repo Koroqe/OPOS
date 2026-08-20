@@ -13,7 +13,7 @@ tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "CronList"]
 
 To inventory the current scheduling state of the company OR to detect drift between PROCESS.md declarations and Claude Code's live cron registrations. Invoke as `/list-scheduled-processes` (no arguments).
 
-Read-only. Does NOT modify cron registrations, the local cache, or any PROCESS.md. Safe to run on a fresh machine — `CronList` is the authoritative source of live registrations, NOT the local `.claude/scheduled-processes.json` cache.
+Read-only. Does NOT modify cron registrations, the local cache, or any PROCESS.md. Safe to run on a fresh machine — `CronList` is the authoritative source of live registrations for `runtime: claude-schedule`, NOT the local `.claude/scheduled-processes.json` cache. **For `runtime: gha` (v0.10) the authoritative source is the workflow file**: a declared-gha process is LIVE when `.github/workflows/opos-<process-name>.yml` exists (cross-check its cron against the declaration for DRIFT); best-effort, also surface the last run's conclusion via `gh run list --workflow opos-<name>.yml --limit 1` and warn when the `ANTHROPIC_API_KEY` secret is absent (`gh secret list`).
 
 **Prerequisite:** the user must be logged into Claude Code (`claude login`). `CronList` authenticates against the user's subscription.
 

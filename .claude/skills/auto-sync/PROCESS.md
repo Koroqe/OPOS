@@ -5,14 +5,43 @@ collaborators: [eng-lead]
 inputs: [dry_run, target_version]
 success_criteria: [probe_completed_or_guarded_stop, clean_sync_committed_and_pushed_or_escalated, run_record_written, pin_matches_default_branch_state]
 slo: "5 minutes (scheduled, non-interactive)"
-version: 0.1.0
+version: 0.2.0
 schedule: "17 6 * * *"
-runtime: claude-schedule
+runtime: gha
 non_interactive: true
 authority:
   - commit
   - push
   - file_issue
+# min_release_age_hours (OPTIONAL, v0.10): soak window — skip releases younger than this. Default 24.
+min_release_age_hours: 24
+# commands (OPTIONAL, v0.10): authoritative shell-command manifest; /schedule-process derives the
+# settings allow-list and the GHA --allowedTools value from it verbatim.
+commands:
+  - "Bash(git fetch origin:*)"
+  - "Bash(git push origin:*)"
+  - "Bash(git checkout:*)"
+  - "Bash(git merge --ff-only:*)"
+  - "Bash(git branch:*)"
+  - "Bash(git add:*)"
+  - "Bash(git commit:*)"
+  - "Bash(git status:*)"
+  - "Bash(git rev-parse:*)"
+  - "Bash(copier update:*)"
+  - "Bash(python3 -m copier update:*)"
+  - "Bash(gh api repos/*)"
+  - "Bash(gh api /repos/*)"
+  - "Bash(gh issue create:*)"
+  - "Bash(gh issue list:*)"
+  - "Bash(gh repo view:*)"
+  - "Bash(awk:*)"
+  - "Bash(grep:*)"
+  - "Bash(date:*)"
+  - "Read"
+  - "Edit"
+  - "Write"
+  - "Glob"
+  - "Grep"
 ---
 
 # auto-sync

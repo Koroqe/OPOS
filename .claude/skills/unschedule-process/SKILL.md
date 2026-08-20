@@ -15,6 +15,8 @@ When the user wants to stop a previously-scheduled process from firing. Invoke a
 
 The skill wraps Claude Code's built-in `CronDelete` tool. It does NOT edit the source `PROCESS.md`'s scheduling frontmatter — the declaration remains in place so the user can re-schedule later by re-running `/schedule-process`. To permanently retire the schedule, the user manually removes the 4 scheduling fields from PROCESS.md after unscheduling.
 
+**`runtime: gha` branch (v0.10):** for a process whose cache row (or workflow-file presence) shows the GHA runtime, unscheduling = delete `.github/workflows/opos-<process-name>.yml` and commit the deletion (`chore(core): unregister opos-<name> gha workflow`) — a sensitive-path change, confirmed with the user. `CronDelete` is not involved. Mixed states (both a workflow file and a live CronCreate routine) → remove both, noting the one-driver rule was violated.
+
 **Prerequisite:** same as `schedule-process` — the user must be logged into Claude Code (`claude login`).
 
 ## Inputs
