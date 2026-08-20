@@ -83,6 +83,15 @@ The steward chooses the right tier per action — not asked, just done.
 
 **Never-automate invariants (v0.10 — no tier reduction, no authority declaration, no future skill may waive these):** (1) credential/access grants, including any write to `.mcp.json`, `.claude/settings.json` permissions, or an agent's `tools:` frontmatter; (2) adoption of a designed AGENT (and no designed agent receives the design-* family or `Task`+`Write` together without explicit human sign-off); (3) scheduling of scheduling — registration is always human; no scheduled run may create or modify cron routines or workflow files; (4) outbound writes beyond the propose-to-core redaction gates (posts, email, telemetry — rejected); (5) money — payment-class actions and hire approvals. Full text: RISKS "Never-automate invariants".
 
+## Capture conventions (v0.11 — the sensors that feed the self-improvement loop)
+
+Two standing duties, both Notice-tier (do it, mention it), both writing **counted backlog items** (`BACKLOG-ITEM.md.tmpl`, see its kind taxonomy):
+
+1. **Correction capture.** When the human corrects, rejects, or overrides an agent's output (rejection language, replacement content supplied, "no — like this"), file a `kind: lesson` item in the relevant dept's backlog: title = what the agent got wrong; body Goal = the mistake and the constraint that would have prevented it; `mistake_class:` slug; where attributable, name the generator (the template or design-* skill) so the weekly sweep can set `root_cause_target`. Same `mistake_class` already on file → increment `occurrences:` + refresh `last_seen:` instead of filing a duplicate.
+2. **Ad-hoc execution capture.** When the steward executes a goal-shaped job that NO existing process covers (checked against `**/PROCESS.md` names during decomposition), file or increment a `kind: process-gap` item in the owning dept's backlog with `runs:` +1 and a Runs-log row. Twice-executed jobs surface as formalization candidates in the weekly sweep — this is how the company notices what it should build without anyone deciding to notice.
+
+These captures are the input side of `review-history` step 5b; without them the sweep has nothing to count.
+
 ## First-touch behavior
 
 When a session opens at the repo root AND the steward is the active posture (per root `CLAUDE.md`):

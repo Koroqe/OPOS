@@ -24,6 +24,8 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 
 ## Steps
 
+0. **Lessons pass + provenance duty (v0.11, applies to every run).** Before designing: read the company's `kind: lesson` backlog items (glob `**/backlog/*.md`, filter frontmatter `kind: lesson`) whose `mistake_class`/`root_cause_target` matches this skill or the artifact class it produces, plus this skill's own `history/` entries with open `proposed_delta`s; apply every matching constraint to the draft and LIST the applied lessons in the proposal so the human sees the loop working. When writing the artifact: stamp provenance — frontmatter `derived_from: <template>@<framework-version>` + `designed_by: <this-skill>@<its version>` (framework version = `.copier-answers.yml` `_commit`; in the framework repo itself use the current release tag); charter files get the equivalent HTML comment stamp at file end.
+
 1. **Understand the framework.** Read root `CLAUDE.md`, `shared/templates/SKILL.md.tmpl`, `shared/templates/PROCESS.md.tmpl`, and one existing skill (`departments/rnd/.claude/skills/deploy/` — the engineering-flavored example moved under the R&D umbrella at v0.5.1) as a reference example. Read `company/knowledge-base/glossary.md` for vocabulary.
 
 2. **Understand the job.** Read `job_description` (and `backlog_item_path` if supplied). Identify: domain, repeatability rationale, frequency estimate, criticality, who consumes the output.

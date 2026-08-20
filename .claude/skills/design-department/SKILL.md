@@ -43,6 +43,8 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
 
 ## Steps
 
+0. **Lessons pass + provenance duty (v0.11, applies to every run).** Before designing: read the company's `kind: lesson` backlog items (glob `**/backlog/*.md`, filter frontmatter `kind: lesson`) whose `mistake_class`/`root_cause_target` matches this skill or the artifact class it produces, plus this skill's own `history/` entries with open `proposed_delta`s; apply every matching constraint to the draft and LIST the applied lessons in the proposal so the human sees the loop working. When writing the artifact: stamp provenance — frontmatter `derived_from: <template>@<framework-version>` + `designed_by: <this-skill>@<its version>` (framework version = `.copier-answers.yml` `_commit`; in the framework repo itself use the current release tag); charter files get the equivalent HTML comment stamp at file end.
+
 1. **Understand the framework.** Read root `CLAUDE.md` (or `.jinja` source if in framework context), `shared/templates/DEPARTMENT.md.tmpl`, AND two reference dept charters: `departments/rnd/CLAUDE.md` (the umbrella case with sub-leads) AND `departments/finance/CLAUDE.md` (the simple single-lead case). **For each charter, try `.md` first, then `.md.jinja` if `.md` does not exist** — mirrors design-agent step 3's `(or .jinja source)` convention; the framework dogfood reads `.md.jinja` while consumers read `.md`. Read `company/knowledge-base/glossary.md` for vocabulary.
 
 2. **Understand the dept.** Parse `dept_description` (and `backlog_item_path` if supplied). Identify:

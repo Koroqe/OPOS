@@ -47,11 +47,11 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 ### 3. Dedupe (ledger first, then upstream)
 
 - `proposals/LEDGER.md`: a line with the same `delta_target` and outcome `pr-opened` or `draft` → skip with a note (and if the source entry lacks the `upstream_pr:` annotation, add it from the ledger).
-- Upstream: `gh pr list --repo <owner>/<repo> --state all --json title,url,state --limit 200`, match `[opos-core] <file-slug>` **locally** (server-side `in:title` search tokenizes on `/` and `.` — unreliable). Match → skip, ledger line `skipped-duplicate`.
+- Upstream (v0.11 — fixed from the v0.9 fix-loss shape): `gh pr list --repo <owner>/<repo> --state open --json title,url --limit 100` plus, when 100 rows return, further pages — match the FULL `[opos-core] <file-slug>/<defect-slug>` prefix **locally** (server-side `in:title` search tokenizes on `/` and `.` — unreliable). Matching OPEN PR → skip, ledger line `skipped-duplicate`. Closed/merged PRs no longer suppress: a once-fixed file must not swallow every future DIFFERENT fix to it — the defect-slug (derived from the `mistake_class` when present, else a 2-4 word kebab summary of the defect, sanitized `[a-z0-9-]`) is what distinguishes fixes; merged sameness is the maintainer's call at triage, not the sender's.
 
 ### 4. Draft + canonical redaction checklist + deterministic pre-gate
 
-**4a. Draft.** Fetch the upstream file content at HEAD (`gh api ... -H "Accept: application/vnd.github.raw"`). Draft the fix as a diff against THAT content — never against the consumer's local copy. For `.jinja` targets: any literal `{{` or `{%` the diff introduces MUST be wrapped in `{% raw %}…{% endraw %}` or the render breaks. Compose the PR body from `shared/templates/core-proposal-pr.md.tmpl` (Problem / Observed failure mode / Proposed change / How verified — all generic), the title `[opos-core] <file-slug>: <short title>`, the branch name `propose/<file-slug>-<YYYYMMDD>`, and the commit message.
+**4a. Draft.** Fetch the upstream file content at HEAD (`gh api ... -H "Accept: application/vnd.github.raw"`). Draft the fix as a diff against THAT content — never against the consumer's local copy. For `.jinja` targets: any literal `{{` or `{%` the diff introduces MUST be wrapped in `{% raw %}…{% endraw %}` or the render breaks. Compose the PR body from `shared/templates/core-proposal-pr.md.tmpl` (Problem / Observed failure mode / Proposed change / How verified — all generic), the title `[opos-core] <file-slug>/<defect-slug>: <short title>`, the branch name `propose/<file-slug>-<YYYYMMDD>`, and the commit message.
 
 **4b. Canonical redaction checklist (self-pass over the FULL bundle — diff, title, body, branch name, commit message, diff file paths).** This section is the policy artifact; the `redaction-reviewer` agent mirrors it. Remove or generalize, with zero exceptions:
 
@@ -62,6 +62,7 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 5. Industry specifics not needed by the fix.
 6. Internal references — private repo names/URLs, internal issue/PR numbers, hostnames, consumer-only file paths.
 7. **Secrets and credentials** — API keys, tokens, passwords, connection strings, private URLs/IPs, `.env`-style values, private key material.
+8. **Consumer paths in attribution fields (v0.11)** — `root_cause_target:`/`mistake_class:` values quoted in the PR body must name GENERATOR (CORE) paths and generic class slugs only; a consumer-artifact path in a public PR body leaks the company's org structure.
 
 **Deterministic pre-gate (hard-fails before any agent judgement):** assemble the identifier **blocklist** — the `COMPANY_NAME` value, department/agent/product names unique to the instance, the consumer repo's `nameWithOwner` (`gh repo view --json nameWithOwner`), and git author names/e-mails from recent log (`git log -20 --format='%an %ae' | sort -u`). Then:
 - `grep -F -i -f <blocklist-file>` across the full bundle — any hit → FAIL.
@@ -83,7 +84,7 @@ All git work happens in an **ephemeral scratch clone** under the session scratch
   - `true` (maintainer-consumer — e.g. the framework maintainer dogfooding via their own company): shallow-clone the **upstream** repo, branch `propose/<file-slug>-<YYYYMMDD>` directly on it, PR from the same repo. (Forking your own repo is impossible on GitHub.)
   - `false` (third-party consumer): `gh repo fork <owner>/<repo> --clone=false --default-branch-only` — the fork lands in the **user account, never a company org** (an org fork would publish the company name, the exact thing anonymization forbids). Then shallow-clone the fork and branch there.
 - **Commit with a neutral identity:** `git -c user.name="opos-consumer" -c user.email="opos-consumer@users.noreply.github.com" commit ...` — the commit message was part of the redaction bundle. (GitHub *account* attribution — PR author, fork owner — is inherent to GitHub and out of scope; the consumer README discloses it and suggests a neutral account where that matters.)
-- Push the branch, then `gh pr create --repo <owner>/<repo> --title "[opos-core] <file-slug>: <short title>" --body-file <rendered core-proposal-pr body>`.
+- Push the branch, then `gh pr create --repo <owner>/<repo> --title "[opos-core] <file-slug>/<defect-slug>: <short title>" --body-file <rendered core-proposal-pr body>`.
 - **Record:** append the `proposals/LEDGER.md` row (`pr-opened`, per the schema in `./proposals/README.md` — this skill APPENDS rows only) and commit it in the consumer repo; best-effort `upstream_pr:` annotation + note on the source entry (durable only for committed `history/` entries — for gitignored scheduled-run entries the ledger IS the record; the entry stays `status: open` either way — `review-history` transitions it when the PR merges).
 - Delete the scratch clone.
 

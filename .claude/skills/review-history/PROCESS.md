@@ -3,7 +3,7 @@ process_name: review-history
 owner: coo
 collaborators: [chief-of-staff, ops-manager]
 inputs: [dry_run]
-success_criteria: [all_open_deltas_triaged_or_noted, pr_states_reconciled, core_targets_never_edited_locally, run_record_written]
+success_criteria: [all_open_deltas_triaged_or_noted, pr_states_reconciled, core_targets_never_edited_locally, backlog_swept_and_routed_by_kind, derivation_check_applied_to_derived_targets, run_record_written]
 slo: "20 minutes (scheduled, weekly)"
 version: 0.2.0
 schedule: "23 7 * * 1"
@@ -70,6 +70,8 @@ Mirrors the 7-step procedure in SKILL.md:
 3. Select `status: open` deltas.
 4. Classify (validated `delta_target` hint → inference → runtime two-part test at the pinned `_commit`).
 5. Triage: CORE → `propose-to-core` (≤3 PR creations/run); STARTER within threshold (≤2 files, ≤20 lines, no sensitive path) → apply + commit; above threshold → `write_proposal` to dept backlog; stale/nonsense → `rejected` (+ ledger `rejected-local` for gitignored sources). Dated triage note on every touched entry.
+5b. Backlog sweep: count + route items by `kind` at threshold (lesson ≥2 → generator-targeted propose-to-core; process-gap ≥2 → design-process candidate note; resource-gap → acquire-resource note; task → never auto-promoted).
+5c. Conditional re-lint of derived artifacts when the last sync touched `shared/templates/` or `design-*/` (structural drift → `write_proposal` drafts, never autonomous edits).
 6. Zero open deltas → `success` record with note.
 7. ff-merge the dated work branch, push, run record (prelude routing).
 

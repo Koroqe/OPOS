@@ -27,6 +27,8 @@ Runs on the consumer's repo. All paths are rendered `.md` (no `.jinja` suffixes 
 
 ## Steps
 
+0. **Lessons pass + provenance duty (v0.11, applies to every run).** Before designing: read the company's `kind: lesson` backlog items (glob `**/backlog/*.md`, filter frontmatter `kind: lesson`) whose `mistake_class`/`root_cause_target` matches this skill or the artifact class it produces, plus this skill's own `history/` entries with open `proposed_delta`s; apply every matching constraint to the draft and LIST the applied lessons in the proposal so the human sees the loop working. When writing the artifact: stamp provenance — frontmatter `derived_from: <template>@<framework-version>` + `designed_by: <this-skill>@<its version>` (framework version = `.copier-answers.yml` `_commit`; in the framework repo itself use the current release tag); charter files get the equivalent HTML comment stamp at file end.
+
 1. **Resolve repo root + parse capability_gap.** Validate ≥20 chars; if too vague, re-prompt with: "Please describe the capability gap more specifically — at least one sentence about what the company needs to be able to do."
 
 2. **Coverage check (glob-based).** Use `Glob` to enumerate `.claude/agents/**/*.md` and `.claude/skills/*/SKILL.md`. For each file, use `Grep` to read the `description:` frontmatter line. Tokenize `capability_gap` (case-insensitive, whitespace split, drop stop-words). If ≥2 distinct tokens match an existing entity's description, STOP with `outcome: covered_by_existing` and print:
