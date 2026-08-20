@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.12.0] - 2026-08-20
+
+### Added
+
+- **Draft-mode design + `adopt-proposal` — a new process costs ONE human decision** (roadmap wave "Departments that build"). `design-process --draft --from <backlog-item>` runs the full design non-interactively (lite consultation, lessons pass, provenance stamps) and writes an inert proposal bundle to `<dept>/backlog/proposals/` — never into live skills. The new `adopt-proposal` skill (owner: ops-manager, interactive-only, refuses the scheduled prelude) is the one Confirm: adopt / adopt-with-edits / reject / defer; on adopt it moves the pair into place, validates scheduling frontmatter, backlinks `owns_processes:`, and transitions the source item. Double-gated by design: bundles are inert text, and scheduling (if any) is a second human gate at registration. Draft mode designs PROCESSES only — agent adoption stays fully interactive (never-automate invariant 2).
+- **`allocate-resource` grows up:** a **Q0 instrument-vs-executor pre-check** (missing tool/access → `kind: resource-gap` item now, `acquire-resource` in v0.13 — "we need DNS access" is finally expressible); a **third route** (recurring job → `/design-process`, draft mode when non-interactive — a process, not a new agent, is the right artifact for repeatable work); the 4-question tree is **auto-computed** from evidence with the human vetoing conclusions instead of being interrogated; the v0.5 coverage-check hard-STOP is demoted to a confirm (2-token overlap is a hint, not proof); and the AI route now **invokes `/design-agent` inline at Confirm tier**, reconciling the stale emit-vs-invoke contradiction.
+- **Departments carry a duty to build:** `DEPARTMENT.md.tmpl`/`SUBDEPT.md.tmpl` gain a `## Duties (self-building)` section (notice recurring work → process-gap items; notice missing tools → resource-gap items; own backlog health; adopt sweep drafts; grow knowledge) and `AGENT.md.tmpl` gains matching standing rules for every agent. Existing consumers receive these via the v0.11 re-lint phase's proposals (STARTER files don't sync).
+- **From empty to counting:** `company-setup` step 8a2 seeds each dept's backlog with its 1-3 most frequent jobs as counted `process-gap` items; `design-department` files every new dept's first self-review item at creation — a dept born empty is born counting.
+- **The knowledge leg lives:** `review-history` gains a monthly knowledge phase (step 5d) executing kb-curator's documented contract verbatim (propose-only staging files into `company/knowledge-base/proposals/`); kb-curator's dead `/kb-review` pointer corrected — the agent is the specification, the sweep is the executor.
+
+### Migration
+
+Nothing required. Existing consumers: the Duties/standing-rules sections reach you as re-lint proposals after your next sync (consumer-owned files are never overwritten); accept them per dept when proposed.
+
 ## [0.11.0] - 2026-08-20
 
 ### Added
@@ -566,6 +580,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.12.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.10.0
 [0.9.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.9.1
