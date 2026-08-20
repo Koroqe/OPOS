@@ -110,11 +110,10 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
 10. **Iterate.** The user proposes edits. Revise the proposal and re-present. Loop until the user gives an unambiguous approval phrase ("write it", "approve", "ship it", "ok do it"). Phrases like "I'd like to approve this but…" do NOT count — those are still iteration requests.
 
 11. **Write the files.** On unambiguous approval:
-
-   **v0.12 addition — first self-review seed:** immediately after writing the charter, file the new dept's first backlog item: `kind: process-gap`, title "<dept> self-review — what does this dept do weekly?", Goal = enumerate the dept's recurring jobs within its first two weeks so the sweep has material. A dept born empty must be born counting.
     - **Re-check name collision** (same checks as step 3 — TOCTOU close; single-machine only; cross-machine per Risk 15).
     - **Detect context** (per Path convention at top of file): `copier.yml` at repo root AND root `CLAUDE.md.jinja` present → framework context (write `.md.jinja`); otherwise consumer context (write `.md`).
-    - Write the charter to the context-detected path: `departments/<name>/CLAUDE.md.jinja` (framework) OR `departments/<name>/CLAUDE.md` (consumer). **This is the ONLY file the skill writes**; no `data/`, `backlog/`, or `.claude/skills/` subdirs are created (per the on-demand convention documented above).
+    - Write the charter to the context-detected path: `departments/<name>/CLAUDE.md.jinja` (framework) OR `departments/<name>/CLAUDE.md` (consumer). Besides the charter, the skill writes exactly ONE more file (v0.12, next bullet); no `data/` or `.claude/skills/` subdirs are created (per the on-demand convention documented above).
+    - **First self-review seed (v0.12):** immediately after the charter, file the new dept's first backlog item at `departments/<name>/backlog/<date>-self-review.md` (`BACKLOG-ITEM.md.tmpl`): `kind: process-gap`, title "<name> self-review — what does this dept do weekly?", Goal = enumerate the dept's recurring jobs within its first two weeks so the sweep has material. A dept born empty must be born counting.
     - If `design_lead_agent` was `yes` in step 5: print the `/design-agent` recommendation prominently — e.g., `**Next step (recommended):** /design-agent "<<LEAD_NAME>> — <role_description from step 5>"`. The user invokes it in the next turn; step 12's history captures the deferred agent creation.
     - If a `backlog_item_path` was supplied: edit it — flip `state:` from `active` to `designed`, add `designed_as: departments/<name>/`.
 

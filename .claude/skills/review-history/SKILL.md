@@ -60,7 +60,7 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
 6. **Zero open deltas** (normal on a fresh consumer): write a `success` run record with the note `no open deltas` — every run records (RISKS Risk 20 liveness).
 7. **Integrate:** commit any remaining record/annotation changes, ff-merge the work branch to the default branch, delete it, push (degraded no-remote mode: local only, noted). Write the run record — prelude present → `./scheduled-runs/`, absent → `./history/`.
 
-`--dry_run`: run steps 1–5c read-only, print the full triage table (entry → classification → intended action), act on nothing, write nothing.
+`--dry_run`: run steps 1–5d read-only (the knowledge phase prints its would-be proposals without writing), print the full triage table (entry → classification → intended action), act on nothing, write nothing.
 
 ## Outputs
 

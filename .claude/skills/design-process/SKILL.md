@@ -30,7 +30,7 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 - Step 4 consultations run in **lite form**: consult only the single owning dept's lead (one `consult-agent` call), noting in the bundle which consultations a full run would have added.
 - Steps 5–6 draft the complete `SKILL.md` + `PROCESS.md` pair exactly as usual (lessons pass + provenance stamps included).
 - Steps 7–8 (present + iterate) are SKIPPED — their human judgment moves to adoption.
-- Step 9 writes the bundle to `<owning-dept>/backlog/proposals/<date>-<slug>/` (SKILL.md, PROCESS.md, and a PROPOSAL.md cover sheet: the source backlog item, consultations run/skipped, lessons applied, open questions) — NEVER into any `.claude/skills/` path. Update the source backlog item: `state: drafted`, Runs-log row.
+- Step 9 writes the bundle to `<owning-dept>/backlog/proposals/<date>-<slug>/` (SKILL.md, PROCESS.md, and a PROPOSAL.md cover sheet: `intended_placement:` (the step-5 placement decision, e.g. `departments/<dept>/.claude/skills/<name>/` — REQUIRED; adoption reads it from here), the source backlog item, consultations run/skipped, lessons applied, open questions) — NEVER into any `.claude/skills/` path. Update the source backlog item: `state: drafted`, Runs-log row.
 - Steps 10–11 (backlinks, history entry) run normally; the history entry notes `mode: draft`.
 
 Draft mode designs PROCESSES only — never agents, departments, or sub-depts (never-automate invariant 2: agent adoption stays fully interactive). Authority when invoked from a scheduled run: `write_proposal` + `commit` cover everything draft mode does.
