@@ -27,7 +27,8 @@ designed_by: <<DESIGN_SKILL_AT_VERSION>>
 # scheduling (OPTIONAL — added v0.6.0; omit ALL FOUR to keep the process manual-only.
 # If you set any, you MUST set all four. Validated by ui/scheduling.py; activated by /schedule-process):
 # schedule: "0 9 * * 1"        # 5-field POSIX cron. Pick an OFF-minute (not :00/:30) — and /schedule-process re-rolls the minute per consumer anyway (fleet-jitter). Rejects '* * * * *' (every-minute).
-# runtime: gha                 # v0.10: `gha` (GitHub Actions — DURABLE, survives closed laptops; recommended for unattended processes) or `claude-schedule` (session-scoped; same-machine use).
+# runtime: cloud               # v0.14: `cloud` (Anthropic cloud routines — DURABLE, billed to the operator's Claude SUBSCRIPTION, no API key; RECOMMENDED),
+#                              # `gha` (GitHub Actions — durable, needs an ANTHROPIC_API_KEY secret + API billing), or `claude-schedule` (session-scoped; same-machine use).
 # non_interactive: true        # MUST be literal boolean true (no quotes). The runtime has no human to answer prompts.
 # authority:                   # Allow-list documenting what the scheduled runner is expected to do.
 #   - write_proposal           # Allowed values: commit, push, open_pr, file_issue, comment_issue, write_proposal, read_only.

@@ -125,6 +125,19 @@ class TestValidateFrontmatter(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("runtime:" in e and "not allowed" in e for e in errors))
 
+    # Fixture 8c: runtime=cloud accepted (v0.14 durable runtime, subscription-billed)
+    def test_cloud_runtime_accepted(self) -> None:
+        path = _write_process_md(
+            self.tmp,
+            'process_name: foo\nowner: bar\n'
+            'schedule: "0 9 * * 1"\n'
+            'runtime: cloud\n'
+            'non_interactive: true\n'
+            'authority:\n  - write_proposal',
+        )
+        ok, errors = validate_frontmatter(path)
+        self.assertTrue(ok, msg=str(errors))
+
     # Fixture 8b: runtime=gha accepted (v0.10 durable runtime)
     def test_gha_runtime_accepted(self) -> None:
         path = _write_process_md(

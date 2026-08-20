@@ -7,7 +7,7 @@ success_criteria: [all_open_deltas_triaged_or_noted, pr_states_reconciled, core_
 slo: "20 minutes (scheduled, weekly)"
 version: 0.2.0
 schedule: "23 7 * * 1"
-runtime: gha
+runtime: cloud
 non_interactive: true
 authority:
   - commit

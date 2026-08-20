@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.14.0] - 2026-08-20
+
+### Added
+
+- **`runtime: cloud` — durable scheduling on the operator's Claude subscription, no API key.** Each fire spawns an isolated Claude Code session in Anthropic's cloud with its own fresh checkout of the repo, on the declared cron; `/schedule-process` registers it through `RemoteTrigger` (self-contained prompt carrying the authority prelude, the injection clause, and an instruction to execute the repo's own SKILL.md), with in-place updates, name-based idempotency, and the routine URL printed on success. `/unschedule-process` disables the routine (cloud routines cannot be API-deleted — permanent removal is the operator's at https://claude.ai/code/routines); `/list-scheduled-processes` treats `RemoteTrigger list` as authoritative for cloud rows, reporting DISABLED distinctly from MISSING and pointing at `list_runs`/`get_run_log` for failure triage. Prerequisite: the operator's GitHub account connected to claude.ai (the Claude GitHub App); registration surfaces the connect message verbatim when it is missing.
+- **`auto-sync`, `review-history`, and `triage-incoming-prs` now default to `runtime: cloud`**, and `company-setup`'s activation step offers it — the out-of-the-box durable path for a consumer whose only Anthropic relationship is a Claude subscription.
+- **Durable-record rule** (applies to `cloud` and `gha`): a non-local runner is ephemeral and `scheduled-runs/` records are gitignored, so a durable-runtime run **force-adds** its record (`git add -f`) into the commit its steps make, or onto a `<process-name>/<date>` branch — otherwise the run happens and its liveness signal dies with the runner. Carried in both the cloud prompt composition and the GHA workflow template.
+
+### Changed
+
+- **Runtime guidance is now three-way and honest about billing** (README, `PROCESS.md.tmpl`, RISKS 37): `cloud` = durable, subscription-billed, recommended; `gha` = durable but a CI runner cannot use a subscription login, so it needs an `ANTHROPIC_API_KEY` secret and usage-based API billing; `claude-schedule` = session-scoped, same-machine testing only. RISKS 26 extends the tool-name dependency note to `RemoteTrigger`; RISKS 35's mitigations now read across all three runtimes.
+- The maintainer repo's own `triage-incoming-prs` registration moves from the GHA workflow (deleted) to a cloud routine, keeping the maintainer the first consumer of the recommended path. `ci.yml` (PR gates) is unaffected and needs no key.
+
+### Notes
+
+**This release is itself a derivation-level fix.** v0.10 shipped `gha` as *the* durable runtime, silently assuming every consumer has Anthropic API billing; the first real consumer had a Claude subscription and no API account, so the "autonomous company" was one unavailable prerequisite away from inert. The lesson landed in the generator — the runtime taxonomy and the guidance that surrounds it — rather than in a one-off workaround. Migration: none required; existing consumers can re-run `/schedule-process <name>` to move an existing registration onto `cloud` (the old driver must be removed first — one driver per process).
+
 ## [0.13.1] - 2026-08-20
 
 ### Fixed
@@ -600,6 +617,7 @@ See RISKS Risk 17 for the longer-form discussion of the trade-off.
 - `0.x.y` releases may contain breaking changes per semver. Each breaking-change release will include a `### Migration` subsection in its CHANGELOG entry.
 - Future breaking changes after v1.0 will bump the major version.
 
+[0.14.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.14.0
 [0.13.1]: https://github.com/Koroqe/OPOS/releases/tag/v0.13.1
 [0.13.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.13.0
 [0.12.0]: https://github.com/Koroqe/OPOS/releases/tag/v0.12.0

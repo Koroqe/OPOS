@@ -7,7 +7,7 @@ success_criteria: [probe_completed_or_guarded_stop, clean_sync_committed_and_pus
 slo: "5 minutes (scheduled, non-interactive)"
 version: 0.2.0
 schedule: "17 6 * * *"
-runtime: gha
+runtime: cloud
 non_interactive: true
 authority:
   - commit

@@ -7,7 +7,7 @@ success_criteria: [every_open_opos_core_pr_clustered, two_consumer_classes_escal
 slo: "30 minutes (weekly)"
 version: 0.1.0
 schedule: "41 8 * * 2"
-runtime: gha
+runtime: cloud
 non_interactive: true
 authority:
   - comment_issue

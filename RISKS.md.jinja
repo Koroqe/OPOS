@@ -365,7 +365,7 @@ A user could edit the live routine directly via Claude Code's native UI, bypassi
 
 **Status:** HIGH impact, LOW likelihood; documented; rename is a 3-file sed.
 
-The three v0.6.0 wrappers (`schedule-process` / `unschedule-process` / `list-scheduled-processes`) call `CronCreate` / `CronDelete` / `CronList` by name. These are Claude Code-internal tool names verified against official docs at https://code.claude.com/docs/en/routines.md as of v0.6.0 release. If Anthropic renames these tools in a future Claude Code release, all three wrapper skills will fail at first invocation.
+The three v0.6.0 wrappers (`schedule-process` / `unschedule-process` / `list-scheduled-processes`) call `CronCreate` / `CronDelete` / `CronList` by name, and their v0.14 cloud branches call `RemoteTrigger` (actions `create`/`update`/`list`/`list_runs`/`get_run_log`) by name. These are Claude Code-internal tool names verified against official docs at https://code.claude.com/docs/en/routines.md as of v0.6.0 release. If Anthropic renames these tools in a future Claude Code release, all three wrapper skills will fail at first invocation.
 
 **Mitigations:**
 
@@ -481,7 +481,7 @@ Every consumer can now open PRs on the upstream. Unbounded, a large fleet could 
 
 With `runtime: gha`, every consumer applies each upstream release automatically on GitHub's servers with an API key in env — a compromised upstream release would become code execution across the fleet within a day.
 
-**Mitigations:** `min_release_age_hours` soak window (default 24) before any consumer applies a release; the maintainer repo runs the same loops and is therefore the canary during the window; the generated workflow pins least-privilege `GITHUB_TOKEN` permissions derived from `authority:`, sets `timeout-minutes` + `concurrency: cancel-in-progress`, and exposes no secret beyond `ANTHROPIC_API_KEY`; fleet rollback = yank the release (the probe reads live releases and no-ops on a deleted one). Residual: a malicious release that survives the soak window; accepted at current fleet size, revisit with signed releases post-launch.
+**Mitigations (all three durable runtimes):** `min_release_age_hours` soak window (default 24) before any consumer applies a release; the maintainer repo runs the same loops and is therefore the canary during the window; the generated workflow pins least-privilege `GITHUB_TOKEN` permissions derived from `authority:`, sets `timeout-minutes` + `concurrency: cancel-in-progress`, and exposes no secret beyond `ANTHROPIC_API_KEY`; fleet rollback = yank the release (the probe reads live releases and no-ops on a deleted one). Residual: a malicious release that survives the soak window; accepted at current fleet size, revisit with signed releases post-launch.
 
 ## Risk 36 — Single-operator assumption (v0.10)
 
@@ -493,7 +493,7 @@ Every human gate in the framework assumes ONE operator: "the founder's" browser 
 
 **Status:** LOW-MEDIUM impact; bounded.
 
-Always-on loops spend real API tokens with nobody watching: daily headless `claude -p` runs, weekly sweeps, retries. **Mitigations:** the generated workflow's `timeout-minutes: 30` and `cancel-in-progress` bound each fire; probe-failure and no-update paths exit in minutes; `scheduled-run.md.tmpl` carries an optional `cost_estimate:` field so records surface spend; the ops-panel greeting makes a runaway visible within a day. No hard budget enforcement in v1 — GitHub Actions usage limits and Anthropic billing alerts are the backstops.
+Always-on loops spend real budget with nobody watching: daily headless runs, weekly sweeps, retries. **Which budget depends on the runtime — and this is why `cloud` is the recommended default (v0.14):** `cloud` fires are billed to the operator's existing Claude subscription (the failure mode is throttling, not a surprise invoice), while `gha` fires consume usage-based Anthropic API credit. **Mitigations:** cloud fires are bounded by the cloud session's own limits and visible per-run at https://claude.ai/code/routines; the generated GHA workflow's `timeout-minutes: 30` and `cancel-in-progress` bound each fire; probe-failure and no-update paths exit in minutes; `scheduled-run.md.tmpl` carries an optional `cost_estimate:` field so records surface spend; the ops-panel greeting makes a runaway visible within a day. No hard budget enforcement in v1 — GitHub Actions usage limits and Anthropic billing alerts are the backstops.
 
 ## Risk 38 — Prompt injection into authority-bearing scheduled runs (v0.10)
 

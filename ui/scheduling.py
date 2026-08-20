@@ -20,7 +20,7 @@ from typing import Any
 import yaml
 
 SCHEDULING_FIELDS = ("schedule", "runtime", "non_interactive", "authority")
-ALLOWED_RUNTIMES = ("claude-schedule", "gha")
+ALLOWED_RUNTIMES = ("claude-schedule", "gha", "cloud")
 ALLOWED_AUTHORITY = (
     "commit",
     "push",
