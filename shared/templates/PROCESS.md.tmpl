@@ -23,12 +23,15 @@ version: 0.1.0
 #
 # scheduling (OPTIONAL — added v0.6.0; omit ALL FOUR to keep the process manual-only.
 # If you set any, you MUST set all four. Validated by ui/scheduling.py; activated by /schedule-process):
-# schedule: "0 9 * * 1"        # 5-field POSIX cron; honored by Claude Code's CronCreate. Rejects '* * * * *' (every-minute).
-# runtime: claude-schedule     # v1: only `claude-schedule` allowed. v2 may add `gha` or `launchd`.
+# schedule: "0 9 * * 1"        # 5-field POSIX cron. Pick an OFF-minute (not :00/:30) — and /schedule-process re-rolls the minute per consumer anyway (fleet-jitter). Rejects '* * * * *' (every-minute).
+# runtime: gha                 # v0.10: `gha` (GitHub Actions — DURABLE, survives closed laptops; recommended for unattended processes) or `claude-schedule` (session-scoped; same-machine use).
 # non_interactive: true        # MUST be literal boolean true (no quotes). The runtime has no human to answer prompts.
 # authority:                   # Allow-list documenting what the scheduled runner is expected to do.
 #   - write_proposal           # Allowed values: commit, push, open_pr, file_issue, comment_issue, write_proposal, read_only.
                                # read_only is mutually exclusive with all other values.
+# commands:                    # OPTIONAL (v0.10): authoritative shell-command manifest (allow-list patterns);
+#   - "Bash(git status:*)"     # /schedule-process derives settings permissions + GHA --allowedTools from it verbatim.
+# min_release_age_hours: 24    # OPTIONAL (v0.10, sync processes only): soak window before applying a fresh upstream release.
 ---
 
 # <<PROCESS_NAME>>

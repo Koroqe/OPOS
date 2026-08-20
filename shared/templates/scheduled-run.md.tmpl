@@ -14,6 +14,7 @@ Substitution tokens:
   <<STATUS>>                — open | applied | rejected
   <<DELTA_TARGET>>          — repo-relative file path the proposed_delta concerns, or "none" (OPTIONAL — added v0.9.0; lets review-history classify the delta mechanically; omit the line entirely when there is no delta)
   <<UPSTREAM_PR>>           — URL of the upstream PR opened for this delta, or "none" (OPTIONAL — added v0.9.0; written by propose-to-core; omit the line until a PR exists)
+  <<COST_ESTIMATE>>         — rough spend for this run, e.g. "~40k tokens" or "gha 6 min", or "none" (OPTIONAL — added v0.10; makes unattended spend visible in the record stream; omit when unknown)
 
 Convention:
   Scheduled runs write to `<skill-folder>/scheduled-runs/` — NEVER to `history/`.
@@ -37,6 +38,7 @@ proposed_delta: <<PROPOSED_DELTA>>
 status: <<STATUS>>
 delta_target: <<DELTA_TARGET>>
 upstream_pr: <<UPSTREAM_PR>>
+cost_estimate: <<COST_ESTIMATE>>
 ---
 
 # scheduled run — <<SKILL>> @ <<DATE>>

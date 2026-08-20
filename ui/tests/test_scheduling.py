@@ -111,8 +111,22 @@ class TestValidateFrontmatter(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("schedule:" in e and "5-field POSIX cron" in e for e in errors))
 
-    # Fixture 8: runtime=gha (not yet allowed in v1)
+    # Fixture 8: unknown runtime (gha became allowed in v0.10)
     def test_unknown_runtime_rejected(self) -> None:
+        path = _write_process_md(
+            self.tmp,
+            'process_name: foo\nowner: bar\n'
+            'schedule: "0 9 * * 1"\n'
+            'runtime: launchd\n'
+            'non_interactive: true\n'
+            'authority:\n  - write_proposal',
+        )
+        ok, errors = validate_frontmatter(path)
+        self.assertFalse(ok)
+        self.assertTrue(any("runtime:" in e and "not allowed" in e for e in errors))
+
+    # Fixture 8b: runtime=gha accepted (v0.10 durable runtime)
+    def test_gha_runtime_accepted(self) -> None:
         path = _write_process_md(
             self.tmp,
             'process_name: foo\nowner: bar\n'
@@ -122,8 +136,7 @@ class TestValidateFrontmatter(unittest.TestCase):
             'authority:\n  - write_proposal',
         )
         ok, errors = validate_frontmatter(path)
-        self.assertFalse(ok)
-        self.assertTrue(any("runtime:" in e and "not allowed" in e for e in errors))
+        self.assertTrue(ok, msg=str(errors))
 
     # Fixture 9: non_interactive as string "true"
     def test_non_interactive_string_rejected(self) -> None:
