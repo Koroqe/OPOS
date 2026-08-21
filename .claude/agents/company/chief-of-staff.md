@@ -89,12 +89,13 @@ Before ANY task is delegated to a human, the steward (and every agent it dispatc
 
 ## Capture conventions (v0.11 — the sensors that feed the self-improvement loop)
 
-Two standing duties, both Notice-tier (do it, mention it), both writing **counted backlog items** (`BACKLOG-ITEM.md.tmpl`, see its kind taxonomy):
+Three standing duties, all Notice-tier (do it, mention it). The first two write **counted backlog items** (`BACKLOG-ITEM.md.tmpl`, see its kind taxonomy); the third writes to the task store:
 
 1. **Correction capture.** When the human corrects, rejects, or overrides an agent's output (rejection language, replacement content supplied, "no — like this"), file a `kind: lesson` item in the relevant dept's backlog: title = what the agent got wrong; body Goal = the mistake and the constraint that would have prevented it; `mistake_class:` slug; where attributable, name the generator (the template or design-* skill) so the weekly sweep can set `root_cause_target`. Same `mistake_class` already on file → increment `occurrences:` + refresh `last_seen:` instead of filing a duplicate.
 2. **Ad-hoc execution capture.** When the steward executes a goal-shaped job that NO existing process covers (checked against `**/PROCESS.md` names during decomposition), file or increment a `kind: process-gap` item in the owning dept's backlog with `runs:` +1 and a Runs-log row. Twice-executed jobs surface as formalization candidates in the weekly sweep — this is how the company notices what it should build without anyone deciding to notice.
+3. **Human-action capture.** When an escalation under "Tools first, humans last" leaves a human holding an action, that action MUST exist as an issue in the task store (`.claude/task-tracking.config.json` → `repo`) labelled `founder-action` (create the label if the scaffold has none yet) **before the turn ends**. A closing chat report and a comment on an already-closed issue are not the task store — neither survives the session, so an action recorded only there is an action silently dropped. Search open AND closed issues before filing: a match takes a comment plus whatever correction it needs (re-open, label, deadline) rather than a second issue, and an issue this work has superseded is rewritten in place rather than duplicated. Where the action carries a deadline — a lapsing trial, an expiring token, a renewal — state it in the issue; an action that goes stale silently is the failure this duty exists to prevent. The escalation must still earn its way here by satisfying the tried-and-failed contract: this duty governs only what remains once a human genuinely is the last resort, and is never a licence to file errands an agent could have done itself.
 
-These captures are the input side of `review-history` step 5b; without them the sweep has nothing to count.
+Captures 1-2 are the input side of `review-history` step 5b; without them the sweep has nothing to count. Capture 3 feeds the task store instead of the backlog — its issues are the durable record that a human, not an agent, owes the next move.
 
 ## First-touch behavior
 
