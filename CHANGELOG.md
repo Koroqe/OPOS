@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.14.2] - 2026-08-21
+
+### Fixed
+
+- **Human escalations now have to be recorded, not just well-phrased.** `chief-of-staff`'s "Tools first, humans last" (v0.13) specified HOW an escalation must be worded — the tried-and-failed contract — but never that it must be written anywhere durable, so a perfectly-formed sentence in a closing chat report satisfied the doctrine in full and then evaporated with the session. Observed on a real consumer: at the end of a long autonomous deploy session the steward correctly escalated three human-only actions (a payment method needed on an infrastructure account before a trial lapsed, a provider spend cap, generated credentials to move into a password manager); all three lived only in the closing message and in comments on an issue the same session had already closed, so none reached the task store and the next session's first-touch protocol had nothing to surface. One carried a hard deadline whose lapse takes the consumer's production offline — a deadline held by nobody. The human asking "did you file those?" is the only reason they were recovered.
+
+  Fix: "Capture conventions" gains a **third standing duty — human-action capture** — modelled on the two already there rather than inventing a mechanism. An action left with a human MUST exist as a task-store issue labelled `founder-action` before the turn ends; chat reports and comments on closed issues are named explicitly as *not* the task store; dedupe is stated in the existing shape (search open AND closed issues, comment on and correct a match, rewrite a superseded issue in place) because the naive fix — file everything at session end — produces duplicates on the next session over the same ground; deadlines must be stated where they exist, since silent staleness is the case that costs something. The duty is scoped explicitly downstream of the tried-and-failed contract so it cannot be read as licence to file errands an agent should have done itself.
+
+  Note for adopters: `founder-action` is **not** in the shipped `_label_palette`, so the text instructs creating the label if absent. Nothing to migrate.
+
 ## [0.14.1] - 2026-08-20
 
 ### Fixed
