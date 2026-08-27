@@ -5,7 +5,7 @@ collaborators: [eng-lead]
 inputs: [target_version, branch, check_only]
 success_criteria: [working_tree_clean_at_start, copier_update_completed, diff_surfaced_to_user, history_entry_written]
 slo: "2 minutes (interactive)"
-version: 0.1.0
+version: 0.2.0
 ---
 
 # sync-from-core
@@ -28,7 +28,7 @@ Mirrors the 10-step procedure in SKILL.md:
 1. Clean-tree check; abort if dirty.
 2. Read `.copier-answers.yml`; parse `_src_path`.
 3. Resolve target version (input or latest non-prerelease).
-4. If `--check_only`: dry-run + print + return.
+4. If `--check_only`: preview on a throw-away branch (Copier has no dry-run) + print + reset + return.
 5. Create update branch.
 6. Run `copier update`.
 7. Inspect changes (changed files, `.rej` count, diff stat).
@@ -39,7 +39,7 @@ Mirrors the 10-step procedure in SKILL.md:
 ## Done when
 
 - `working_tree_clean_at_start` — `git status --porcelain` was empty at step 1.
-- `copier_update_completed` — `copier update` exit code was 0 at step 6 (or step 4 for dry-run).
+- `copier_update_completed` — `copier update` exit code was 0 at step 6 (or step 4 for the `--check_only` preview).
 - `diff_surfaced_to_user` — the user saw the list of changed files, `.rej` count, and instructions at step 8.
 - `history_entry_written` — a file exists under `./history/` for this invocation, regardless of whether the user committed or aborted.
 

@@ -82,7 +82,7 @@ Schema for each history entry (see root `CLAUDE.md` for the full description and
 - `outcome`: `success` | `partial` | `failure`
 - `duration_min`: integer
 - `proposed_delta`: free text describing a suggested change to SKILL.md/PROCESS.md, or "none"
-- `status`: `open` | `applied` | `rejected`
+- `status`: `open` | `applied` | `rejected` | `n/a` (`n/a` REQUIRED when `proposed_delta` is `none`)
 - `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0); enables mechanical triage by `review-history`
 - `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0); written by `propose-to-core`
 - `root_cause_target`: generator path whose missing constraint permitted the mistake — OPTIONAL (v0.11)
@@ -110,7 +110,7 @@ Schema for each scheduled-run entry (template at `shared/templates/scheduled-run
 - `authority_used`: bracketed list of actions actually taken (best-effort; v1 may equal declared)
 - `verification_state`: `unverified` on first run; human edits to `verified` after reviewing output
 - `proposed_delta`: free text, or `"none"`
-- `status`: `open` | `applied` | `rejected`
+- `status`: `open` | `applied` | `rejected` | `n/a` (`n/a` REQUIRED when `proposed_delta` is `none`)
 - `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0)
 - `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0)
 - `root_cause_target`: generator path — OPTIONAL (v0.11)

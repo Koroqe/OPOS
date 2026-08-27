@@ -239,7 +239,7 @@ Every process records each run in its own `history/` folder. Files are named `YY
 - `outcome`: `success` | `partial` | `failure`
 - `duration_min`: integer
 - `proposed_delta`: free text describing a proposed SKILL.md/PROCESS.md change, or "none"
-- `status`: `open` | `applied` | `rejected`
+- `status`: `open` | `applied` | `rejected` | `n/a` (`n/a` is REQUIRED when `proposed_delta` is `none` — v0.14.3)
 - `delta_target`: repo-relative file path the delta concerns — OPTIONAL (v0.9.0); lets `review-history` classify the delta mechanically
 - `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL (v0.9.0); written by `propose-to-core`, reconciled by later `review-history` runs
 
