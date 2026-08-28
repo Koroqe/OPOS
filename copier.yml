@@ -35,6 +35,7 @@ _exclude:
   - copier.yml
   - MAINTAINER.md   # framework-developer guide; not for consumers
   - .github/README.md   # framework's own GitHub readme (see CAUTION above)
+  - LICENSE              # framework's own MIT license — a generated company is not MIT-licensed by default
   - .github/workflows/ci.yml   # v0.11: framework-repo CI (incoming-PR gates); consumers run their own CI
   - .claude/skills/triage-incoming-prs   # v0.11: maintainer-side triage skill; meaningless in a consumer scaffold
   - .github/images      # framework marketing assets (hero image) referenced only by the framework readme
