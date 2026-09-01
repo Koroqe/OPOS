@@ -28,6 +28,18 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
 4. **If `--check_only` is true** (v0.8.1 rewrite — Copier has no `--dry-run`, and `--pretend` is ignored by `copier update`'s patch-apply step, so a real preview needs a throw-away branch): `git checkout -b opos-preview-<tag>` → `copier update --vcs-ref <tag> --defaults --conflict rej` → print `git status --porcelain` (flag `.rej` files) and `git diff --stat` → `git reset --hard && git clean -fd` → `git checkout -` → `git branch -D opos-preview-<tag>`. Nothing is committed and the tree is left exactly as found. Skip steps 5–9.
 5. Create the update branch: `git checkout -b <branch>` (default `opos-update-<tag>`).
 6. Run `copier update --vcs-ref <tag> --conflict rej --defaults`. The `--defaults` flag is safe because `copier.yml`'s only question (`COMPANY_NAME`) was answered at initial scaffold and persists in `.copier-answers.yml`; updates reuse the stored answer without re-prompting. `--trust` is NOT used today because `copier.yml` has no `_tasks` or `_migrations`. If future versions add tasks, add `--trust` in all THREE sync drivers: here, the `auto-sync` skill, and the Actions workflow (`.github/workflows/sync-opos.yml`).
+6b. **Reconcile consumer-owned settings (the `_skip_if_exists` delivery hole).** `copier update` cannot
+   touch `.claude/settings.json` — it is `_skip_if_exists`, so every framework settings change is otherwise
+   undeliverable to an existing consumer, permanently. Run
+   `python3 shared/scripts/reconcile-settings.py --apply` from the repo root. It applies only what
+   `shared/templates/required-settings.json` (CORE, and therefore freshly updated by step 6) declares:
+   `managed` keys are set to the framework value, `additive` keys are added only when absent so a
+   consumer's own value always wins. **Anything under `permissions` is never written** — never-automate
+   invariant 1 — the script reports such gaps instead, and they are applied only on a Confirm-tier
+   approval from the user. Include the script's change lines verbatim in the step-8 summary so the user
+   reviews them alongside the file diff. A non-zero exit other than 2 (unparseable settings.json) is
+   surfaced, not swallowed: the script refuses to rewrite a file it cannot parse.
+
 7. `git status --porcelain` — list changed files. Count `.rej` files (conflicts).
 8. Surface to the user in chat:
    - The list of changed files.

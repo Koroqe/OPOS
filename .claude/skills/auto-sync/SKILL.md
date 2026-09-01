@@ -48,6 +48,17 @@ Anything outside this mapping (e.g. hand-editing files beyond the CHANGELOG rule
 8. **No update** (latest tag equals `_commit`): write a `success` run record with the one-line note `no update — pinned <tag> is current` and stop. (Unlike `check-for-updates`, whose documented conditional-history rule is scoped to that probe skill, every `auto-sync` run records — the run records are the only liveness signal for scheduled execution; see RISKS Risk 20.)
 9. **If `--dry_run`:** print what would happen (current pin, available tag, the branch/copier/commit sequence that would run) and stop. In dry-run mode skip step 7's cache refresh too — a dry run must be a pure read.
 10. **Apply the update on a work branch:** `git checkout -b opos-auto-sync-<tag>`, then `copier update --vcs-ref <tag> --conflict rej --defaults` (`--defaults` is safe: the sole question `COMPANY_NAME` persists in `.copier-answers.yml`; `--trust` is not used because `copier.yml` has no `_tasks`/`_migrations` — if upstream ever adds them, this is one of THREE sync drivers to update: `sync-from-core`, this skill, and `.github/workflows/sync-opos.yml`).
+10b. **Reconcile consumer-owned settings.** Run
+   `python3 shared/scripts/reconcile-settings.py --apply` from the repo root — same contract as
+   `sync-from-core` step 6b, and the reason this runs in the scheduled driver too: a consumer whose only
+   sync path is the nightly routine would otherwise never receive a framework settings change at all.
+   Permitted without a fresh human gate because the manifest's `managed`/`additive` keys are framework
+   posture, not privilege: **`permissions` is on the manifest's `never_write` list and is never written by
+   any mode of this script**, so nothing here can grant an access the operator did not grant. Record the
+   change lines in the run record's body; they are part of what the `verification_state` review checks. If
+   the script exits non-zero for an unparseable `settings.json`, note it in the record and continue — a
+   malformed consumer settings file is not a reason to abandon an otherwise clean upstream sync.
+
 11. **CHANGELOG-only auto-resolution (mechanical predicate, BOTH directions — apply exactly, else treat as an ordinary conflict):** applies **iff** exactly one `.rej` exists and it is `CHANGELOG.md.rej`, AND every hunk in it has zero `-` lines. Then classify the `+` lines into exactly one of two shapes (mixed or neither → fail the predicate):
     - **Upstream-version shape:** the `+` lines are solely (i) at most one contiguous block whose first line matches `^## \[[0-9]+\.[0-9]+\.[0-9]+\]` and/or (ii) link-reference lines matching `^\[[0-9]+\.[0-9]+\.[0-9]+\]: https://`. Resolution: insert the version block immediately **before the first line matching `^## \[`** in `CHANGELOG.md` (no such line → fail); append link-ref lines to the end of the link-ref block (or file end).
     - **Consumer-day-block shape (v0.10 — the direction real syncs actually produce: `copier update` REPLACES the file with the upstream version and rejects the consumer's local hunk):** the `+` lines form one contiguous section whose first line matches `^## [0-9]{4}-[0-9]{2}-[0-9]{2}$` and whose remaining lines are only `### ` entry headings, `**Summary:**` / `**Details:**` / `**Technical details:**` lines, and blanks. Resolution: re-insert that section immediately **before the first line matching `^## \[`** (merging under an existing identical day heading if one is already present).
