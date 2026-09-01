@@ -7,3 +7,6 @@
 **/scheduled-runs/202[0-9]-*.md
 __pycache__/
 *.pyc
+.claude/debug/
+.claude/tmp/
+.vscode/

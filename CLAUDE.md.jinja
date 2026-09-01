@@ -1,10 +1,19 @@
 # {{ COMPANY_NAME }} — Company OS (Constitution)
 
-This is the root CLAUDE.md for {{ COMPANY_NAME }}. Anything written here is automatically in scope for every Claude Code session opened anywhere in this repo. Keep it short — every line is loaded into context on every call.
+This is the root CLAUDE.md for {{ COMPANY_NAME }}. It is **yours** — Copier
+never overwrites it, so anything you write here survives every framework
+update. Keep it short: every line loads into context on every call.
+
+Framework mechanics — the steward posture, operating principles, global rules,
+the self-improvement log schema — live in
+[`.claude/CLAUDE.md`](.claude/CLAUDE.md), which is framework-owned and updates
+automatically. Don't restate them here; if the two ever disagree,
+`.claude/CLAUDE.md` is newer and wins (it loads after this file).
 
 ## Mission
 
-{{ COMPANY_NAME }} exists to <one short sentence>. The company is operated by humans and AI agents working from this repository.
+{{ COMPANY_NAME }} exists to <one short sentence>. The company is operated by
+humans and AI agents working from this repository.
 
 ## Values
 
@@ -14,65 +23,24 @@ This is the root CLAUDE.md for {{ COMPANY_NAME }}. Anything written here is auto
 - Value 4 — one-line restatement.
 - Value 5 — one-line restatement.
 
-## Default posture for sessions opened at this repo root
+## How to work here
 
-When a Claude Code session opens at the repository root (not inside a specific dept folder), act as the **chief-of-staff** — the OPOS steward (v0.5.2). Read [`.claude/agents/company/chief-of-staff.md`](.claude/agents/company/chief-of-staff.md) in full before responding to the user's first message. Read `.claude/.current-task` (if present), the 5 most recent entries across `.claude/skills/*/history/`, and the open task's GitHub state via `gh issue view <n>`. Greet the user briefly with current state per the chief-of-staff's "First-touch behavior" section (≤3 lines, status + open question, no setup prompts). The user does NOT need to invoke `/anything` — they state goals; you decompose and execute, asking permission only at the gates documented in chief-of-staff's "Permission tiers" section.
+Open Claude Code at the repo root and state a goal in plain language. The
+session runs as your **chief-of-staff** — the OPOS steward — which decomposes
+the goal, invokes the right skills and agents itself, handles git, and asks
+permission only at the gates. You do not need to invoke `/anything`.
 
-For sessions opened inside a dept folder (e.g. `cd departments/finance && claude`), act as that dept's lead agent instead (`finance-lead`, `legal-lead`, etc.). The cascade gives you the dept charter context automatically.
+Everything the steward knows and every gate it honors:
+[`.claude/agents/company/chief-of-staff.md`](.claude/agents/company/chief-of-staff.md).
 
-## Operating principles
+## Company-specific rules
 
-- **AI-native.** Every role is held by an agent defined in `.claude/agents/`. Humans review and authorize; agents draft and execute.
-- **Processes-as-code.** Repeatable work lives as skills (`.claude/skills/<name>/`) with a paired `PROCESS.md` declaring its owner and success criteria. New processes are designed deliberately via `.claude/skills/design-process/` (owned by `ops-manager`).
-- **Backlog-as-notebook.** Ideas and one-offs live in `backlog/` folders. Items don't auto-promote; when one is ready for formalization, it becomes an input to `design-process`.
-- **Self-improving.** Every process records each run in its `history/` folder. Open deltas are triaged by `/review-history` (owner: `coo`): fixes targeting consumer-owned (STARTER) files are applied or drafted locally; fixes targeting framework (CORE) files are proposed upstream via `/propose-to-core` — CORE files are never edited locally.
+Add rules that apply to {{ COMPANY_NAME }} specifically — domain constraints,
+regulatory obligations, house style, anything an agent should treat as binding.
+Framework-wide rules are already covered in `.claude/CLAUDE.md`.
 
-## Global rules
-
-- No hardcoded secrets in this repo. Use environment variables or an MCP secrets server.
-- Folders marked `restricted: true` in their CLAUDE.md are honored by convention. Real enforcement is documented in `RISKS.md`.
-- Every process RUN MUST write a history entry following the schema in the "Self-improvement log" section below. This applies to runs, not to creations — a newly-designed process starts with an empty `history/`.
-- Branch and commit per the standard git workflow: feature branches, conventional commits, one slice per commit.
-
-## Self-improvement log schema
-
-Files in any `history/` named `YYYY-MM-DD-<run-id>.md` with frontmatter:
-
-- `date`: YYYY-MM-DD
-- `time`: HH:MM (24-hour, local) — OPTIONAL, added in v0.3.1; secondary sort key in the console activity feed so multiple runs on the same date order chronologically. New entries SHOULD include it; older entries without `time` fall back to `run_id` alphabetic.
-- `run_id`: short identifier
-- `skill`: skill name
-- `actor`: agent name or "human"
-- `outcome`: `success` | `partial` | `failure`
-- `duration_min`: integer
-- `proposed_delta`: free text or "none"
-- `status`: `open` | `applied` | `rejected` | `n/a` — **`n/a` is REQUIRED when `proposed_delta` is `none`.** The other three all assert a delta exists, so a no-delta run marked `open` can never be closed and lingers in review reports forever (v0.14.3; observed downstream as two entries sitting `open` for 41 days).
-- `delta_target`: repo-relative file path the delta concerns — OPTIONAL, added in v0.9.0; lets `/review-history` classify the delta mechanically (CORE vs STARTER)
-- `upstream_pr`: URL of the upstream PR opened for this delta — OPTIONAL, added in v0.9.0; written by `/propose-to-core`; reconciled by later `/review-history` runs
-- `root_cause_target`: repo-relative path of the GENERATOR file (a template or design skill) whose missing constraint permitted the mistake — OPTIONAL, added in v0.11; routed as an independent CORE delta by `/review-history`'s derivation check
-- `mistake_class`: short kebab-case slug naming the mistake CLASS (e.g. `missing-null-guard-in-charter`) — OPTIONAL, added in v0.11; the occurrence-counting key across entries and backlog items
-
-Followed by a free-form body with notes, links, and decisions.
-
-**Scheduled runs (v0.6.0+):** processes that opt into cron-based scheduling (via the 4 scheduling frontmatter fields in `PROCESS.md` + `/schedule-process`) write each scheduled invocation to a **separate** `scheduled-runs/` folder, sibling to `history/`. Manual interactive invocations continue writing to `history/`. The split keeps the rare manual-improvement signal from drowning in the steady scheduled-run cadence. Schema is a superset of the history schema (adds `triggered_by: schedule`, `authority_declared`, `authority_used`, `verification_state`); template at `shared/templates/scheduled-run.md.tmpl`.
+- (none yet)
 
 ## Glossary
 
 See `company/knowledge-base/glossary.md`.
-
-## Config files in this repo
-
-- `.mcp.json` — MCP server registry. **Strict JSON, no inline comments.** Per-agent MCP access is restricted via the `tools:` allow-list in each agent's frontmatter.
-- `.claude/settings.json` — Permissions and Claude Code settings. **Strict JSON, no inline comments.** Per-department settings are not supported (see `RISKS.md`); all permission policy is repo-root only.
-
-Any explanatory commentary about either file lives here in this `CLAUDE.md` or in `README.md` — never inline in the JSON.
-
-## How CLAUDE.md cascades
-
-Claude Code automatically walks the directory tree from the session's working directory upward, loading every `CLAUDE.md` it finds. A session opened in `departments/rnd/` sees this root constitution, then `company/CLAUDE.md` (if it ends up in the cascade), then `departments/rnd/CLAUDE.md`. Files closer to the working directory load last and have the highest priority.
-
-## Subscopes
-
-- `company/` — non-departmental company-wide knowledge (strategy, policies, knowledge base, company backlog)
-- `departments/` — one folder per department, each with its own CLAUDE.md charter, skills, backlog, and data
-- `shared/` — templates and cross-company resources reused across scopes
