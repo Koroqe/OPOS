@@ -56,7 +56,7 @@ The calling agent's `tools:` frontmatter MUST include `Task`. Most company-tier 
 ## Outputs
 
 - The consulted agent's response (text), returned to the caller.
-- A history entry under `./history/` per the root `CLAUDE.md` schema.
+- A history entry under `./history/` per the `.claude/CLAUDE.md` schema.
 
 ## Failure modes
 

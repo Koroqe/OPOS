@@ -23,6 +23,15 @@ gh repo create my-company-os --private --source=. --push
 
 That gives you a fresh OPOS instance with all CORE files (agents, skills, templates) pre-installed and {% raw %}`{{ COMPANY_NAME }}`{% endraw %} substituted to your company name. The STARTER files (example departments, configs) ship once for you to customize — `copier update` will never overwrite them. **As of v0.5.0**, root `CLAUDE.md` is also consumer-owned post-scaffold (so your edits to Mission and Values survive future `copier update` runs).
 
+The constitution is split across two files, and the split is what makes framework updates work:
+
+| File | Owner | Updates? | Holds |
+|---|---|---|---|
+| `CLAUDE.md` (root) | you | never | Mission, Values, company-specific rules |
+| `.claude/CLAUDE.md` | framework | every `copier update` | steward posture, operating principles, global rules, log schema |
+
+Claude Code loads both, root first. Before this split, framework posture lived in the consumer-owned root file, which meant it could never be updated — a defect visible in this changelog as repeated "existing consumers must copy this line by hand" notes.
+
 ## First steps after scaffold
 
 After `copier copy` finishes, your repo is structurally complete but content-blank in six places: Mission, Values, strategic priorities, dept missions (the 6 v0.5.1 default depts: rnd, finance, people, legal, commercial, pr), and the policies folder. Run the `company-setup` skill (owned by `coo`) to fill these in conversationally:
@@ -37,7 +46,9 @@ If you re-run `/company-setup` on a populated repo it will refuse — to re-do, 
 
 ## How to use OPOS day-to-day
 
-After `/company-setup`, open Claude Code at the repo root and **talk to your `chief-of-staff`** — the OPOS steward (NEW in v0.5.2). The steward is the single conversational entry point. You state goals; the steward decomposes and executes:
+After `/company-setup`, open Claude Code at the repo root and just talk. **The session IS your `chief-of-staff`** — the OPOS steward. `.claude/settings.json` sets `"agent": "chief-of-staff"`, so Claude Code loads the steward's system prompt, tools and model onto the main thread; becoming the steward is not something you or the model has to remember to do.
+
+You state goals; the steward decomposes and executes — it runs the skills itself, drives git itself, opens and closes the GitHub issues itself, and asks permission only at its documented gates. You never type a `/command` unless you want to:
 
 - **"Let's ship a new feature for [thing]"** → steward proposes a slice plan, runs `task-register`, paces through commits, runs `release-from-changelog`, closes the issue.
 - **"Audit our company state"** → steward reads `.claude/.current-task`, recent history, open issues; reports a 1-page state summary.
@@ -248,7 +259,7 @@ Every process records each run in its own `history/` folder. Files are named `YY
 ## Conventions
 
 - **Agent → process binding** lives in `PROCESS.md` `owner:` (single source of truth). Agent `owns_processes:` is advisory — keep it in sync but trust the PROCESS.md.
-- **JSON config files** carry no inline comments. `.mcp.json` and `.claude/settings.json` are strict JSON; commentary about them lives in root `CLAUDE.md` and this README.
+- **JSON config files** carry no inline comments. `.mcp.json` and `.claude/settings.json` are strict JSON; commentary about them lives in `.claude/CLAUDE.md` and this README.
 - **Restricted folders** (e.g. `company/strategy/`) are honored by convention only. See [`RISKS.md`](RISKS.md) for hardening paths.
 
 ## Known limitations

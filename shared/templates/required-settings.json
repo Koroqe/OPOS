@@ -1,0 +1,35 @@
+{
+  "_purpose": "Framework-required keys for a consumer's .claude/settings.json. That file is _skip_if_exists (it holds consumer permissions), so copier update can never deliver a framework settings change on its own. sync-from-core and auto-sync read this manifest after copier update and reconcile the difference. This file IS CORE and does update.",
+  "_classes": {
+    "managed": "Framework owns the VALUE. Reconciliation overwrites a differing value and reports the change at Notice tier. These encode framework posture, not consumer preference.",
+    "additive": "Framework owns only the DEFAULT. Reconciliation adds the key when absent and never touches a value the consumer already set.",
+    "never_write": "Reconciliation MUST NOT write these under any circumstance, in any tier, for any reason. Never-automate invariant 1 (credential/access grants). A missing or wrong value here is surfaced to the human as a Confirm-tier prompt and applied only on their approval."
+  },
+  "managed": {
+    "agent": "chief-of-staff",
+    "enabledPlugins.claude-code-sdlc@claude-code-sdlc": false
+  },
+  "additive": {
+    "hooks.SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json,os; p='.claude/scheduled-processes.json'; rows=[r for r in (json.load(open(p)) if os.path.exists(p) else []) if not str(r.get('routine_id','')).startswith('gha:')]; print('[opos-scheduler] ' + str(len(rows)) + ' session-scoped registration(s) (' + ', '.join(r['process_name'] for r in rows) + ') need re-arming: re-run /schedule-process for each (idempotent; previously authorized). gha registrations are durable and need nothing.') if rows else None\""
+          }
+        ]
+      }
+    ]
+  },
+  "never_write": [
+    "permissions",
+    "permissions.allow",
+    "permissions.deny",
+    "permissions.ask"
+  ],
+  "_rationale": {
+    "agent": "Makes chief-of-staff the main-thread agent so the steward posture is loaded as a system prompt rather than hoped for from prose. Before this key existed in a scaffold, routing to the steward was a single paragraph in a consumer-owned CLAUDE.md that a competing user-level instruction could and did override.",
+    "enabledPlugins.claude-code-sdlc@claude-code-sdlc": "OPOS repos have their own execution model. Running the SDLC pipeline alongside it produces two competing answers to 'what do I do first' and the steward loses. Scoped to this project only; other repos on the machine are unaffected.",
+    "hooks.SessionStart": "Scheduled routines registered on the claude-schedule runtime are session-scoped and die on session exit. This prints a re-arm reminder. Additive because a consumer may have their own SessionStart hooks worth preserving."
+  }
+}

@@ -117,7 +117,7 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
     - If `design_lead_agent` was `yes` in step 5: print the `/design-agent` recommendation prominently — e.g., `**Next step (recommended):** /design-agent "<<LEAD_NAME>> — <role_description from step 5>"`. The user invokes it in the next turn; step 12's history captures the deferred agent creation.
     - If a `backlog_item_path` was supplied: edit it — flip `state:` from `active` to `designed`, add `designed_as: departments/<name>/`.
 
-12. **Write design-department's own history entry.** Append to `.claude/skills/design-department/history/YYYY-MM-DD-<short-run-id>.md` per the root `CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1). Convention: `<short-run-id>` = `dept-<dept-name>` (e.g., `dept-customer-success` — the `dept-` prefix disambiguates when both `design-agent` and `design-department` histories are browsed via `find .claude/skills/*/history/`).
+12. **Write design-department's own history entry.** Append to `.claude/skills/design-department/history/YYYY-MM-DD-<short-run-id>.md` per the `.claude/CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1). Convention: `<short-run-id>` = `dept-<dept-name>` (e.g., `dept-customer-success` — the `dept-` prefix disambiguates when both `design-agent` and `design-department` histories are browsed via `find .claude/skills/*/history/`).
     - `actor: ops-manager`
     - `outcome: success` (charter written) OR `partial` (user did not approve)
     - `proposed_delta:` — note any tension surfaced during consultation, mismatches between consulted recommendations and the final proposal, or template/tooling friction. Use "none" only when the session was smooth.

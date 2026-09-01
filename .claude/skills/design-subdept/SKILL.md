@@ -133,7 +133,7 @@ Same minimal-scaffolding default as `design-department`. Charter only; subdirs c
     - **If `design_lead_agent` was `yes` in step 5:** first ensure `.claude/agents/<<PARENT_DEPT>>/` exists (`mkdir -p` if absent — parent agents folder may not exist yet for parents with no agents today). Then print the `/design-agent` recommendation prominently — e.g., `**Next step (recommended):** /design-agent "<<LEAD_NAME>> — <role description from step 5>"`. The user invokes it in the next turn; step 12 history captures the deferred agent creation.
     - **If a `backlog_item_path` was supplied:** edit it — flip `state:` from `active` to `designed`, add `designed_as: departments/<<PARENT_DEPT>>/<<SUB_NAME>>/`.
 
-12. **Write design-subdept's own history entry.** Append to `.claude/skills/design-subdept/history/YYYY-MM-DD-<short-run-id>.md` per the root `CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1). Convention: `<short-run-id>` = `subdept-<parent>-<sub>` (the conceptual `/` separator in the path is encoded as `-` for filename safety; e.g., `subdept-legal-compliance` for `legal/compliance`).
+12. **Write design-subdept's own history entry.** Append to `.claude/skills/design-subdept/history/YYYY-MM-DD-<short-run-id>.md` per the `.claude/CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1). Convention: `<short-run-id>` = `subdept-<parent>-<sub>` (the conceptual `/` separator in the path is encoded as `-` for filename safety; e.g., `subdept-legal-compliance` for `legal/compliance`).
 
     - `actor: ops-manager`
     - `outcome: success` (charter written) OR `partial` (user did not approve)

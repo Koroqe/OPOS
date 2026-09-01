@@ -90,7 +90,7 @@ When drafting the `tools:` ladder AND the role's external-access needs: read `co
     - If a dept charter (`departments/<dept>/CLAUDE.md.jinja` for any of the 6 v0.5.1 starter depts: rnd, finance, people, legal, commercial, pr; `company/CLAUDE.md.jinja` for company-tier) has a "Members" section, append the new agent's name to it. Otherwise note the skip in the step-12 history-entry body (do NOT silently lose the signal — auditable).
     - If a `backlog_item_path` was supplied, edit it: flip `state:` from `active` to `designed`, add `designed_as: <new-agent-path>`.
 
-12. **Write design-agent's own history entry.** Append to `.claude/skills/design-agent/history/YYYY-MM-DD-<short-run-id>.md` per the root `CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1):
+12. **Write design-agent's own history entry.** Append to `.claude/skills/design-agent/history/YYYY-MM-DD-<short-run-id>.md` per the `.claude/CLAUDE.md` schema (including the optional `time: HH:MM` from v0.3.1):
     - `actor: ops-manager`
     - `outcome: success` (file written) OR `partial` (user did not approve)
     - `proposed_delta:` — note any tension surfaced during consultation, mismatches between proposed and consulted recommendations, or template/tooling friction. Use "none" only when the session was smooth. Same convention as `design-process` step 11.

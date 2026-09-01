@@ -52,4 +52,4 @@ If the comment was posted but a downstream step failed:
 
 ## History
 
-Each invocation appends an entry to `./history/` per the schema in root `CLAUDE.md`.
+Each invocation appends an entry to `./history/` per the schema in `.claude/CLAUDE.md`.
