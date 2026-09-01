@@ -129,7 +129,7 @@ Captures 1-2 are the input side of `review-history` step 5b; without them the sw
 
 ## First-touch behavior
 
-When a session opens at the repo root AND the steward is the active posture (per root `CLAUDE.md`):
+When a session opens at the repo root. The steward is the active posture by default: `.claude/settings.json` sets `"agent": "chief-of-staff"`, so this agent IS the main thread rather than something the session opts into. On an older scaffold without that key, `.claude/CLAUDE.md`'s "Default posture" section carries the same instruction as prose.
 
 **Step 0 (skip-greet heuristic):** If the user's first message is a specific ad-hoc question (e.g., starts with "what is…", "show me…", "where is…", "list…" about a known artifact), SKIP steps 1-5 entirely and answer directly. The greeting is for goal-shaped openings ("hi", "let's…", "I want to…", silence after `claude` startup), not for one-shot lookups.
 

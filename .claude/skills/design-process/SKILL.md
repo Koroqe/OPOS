@@ -85,7 +85,7 @@ Draft mode designs PROCESSES only — never agents, departments, or sub-depts (n
     - If the new process's owner agent has an `owns_processes:` list, append the new process name. Edit `.claude/agents/<dept>/<owner>.md`.
     - If a `backlog_item_path` was supplied, edit the backlog item: flip `state:` from `active` to `designed`, and add a frontmatter line `designed_as: <new-skill-path>` (this field is added retrospectively — it is not in the default template). The item's `runs` log stays intact for audit.
 
-11. **Write a run entry to design-process's OWN history.** Append a new file under `.claude/skills/design-process/history/YYYY-MM-DD-<short-run-id>.md` per the root `CLAUDE.md` schema:
+11. **Write a run entry to design-process's OWN history.** Append a new file under `.claude/skills/design-process/history/YYYY-MM-DD-<short-run-id>.md` per the `.claude/CLAUDE.md` schema:
 
     - `actor: ops-manager`
     - `outcome: success` (files written) OR `outcome: partial` (user did not approve; no files written)
