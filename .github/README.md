@@ -108,6 +108,9 @@ The chief-of-staff steward follows a graduated permission ladder — auto (reads
 - **[OPOS vs CrewAI vs AutoGen vs Lindy](docs/opos-vs-crewai-autogen-lindy.md)** — where a git-based company OS sits among agent frameworks and no-code AI employees.
 - **[OPOS FAQ](docs/faq.md)** — running a one-person company with AI agents, departments as markdown, and oversight via pull requests.
 - **[How to run a company as one person with AI agents](docs/run-a-company-as-one-person.md)** — six approaches compared, from no-code AI employees to company-as-code.
+- **[MetaGPT vs CrewAI](docs/metagpt-vs-crewai.md)** — simulation vs orchestration for AI agent teams, and where company-as-code fits.
+- **[Alternatives to MetaGPT in 2026](docs/alternatives-to-metagpt.md)** — CrewAI, AutoGen's successors, no-code platforms, and company-as-code operating systems.
+- **[Top AI agent frameworks for solo founders](docs/ai-agent-frameworks-for-solo-founders.md)** — six options across four categories, matched to how much code you want to write.
 
 ---
 
