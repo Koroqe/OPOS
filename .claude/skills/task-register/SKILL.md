@@ -10,7 +10,11 @@ owner_agent: chief-of-staff
 
 ## When to use
 
-At the start of a NEW task — NOT a fix or continuation of in-flight work. The user explicitly invokes `/task-register "<title>" --depts <comma-list> [--plan-file <path>] [--goal "<text>"]`. If a task is already in flight (the repo-root `.claude/.current-task` exists), this skill refuses to start and asks the user to complete or abandon first.
+At the start of a NEW task — NOT a fix or continuation of in-flight work.
+
+**The steward invokes this itself; it is not a command the user is expected to type.** When `chief-of-staff` goal-decomposition classifies an opening message as a NEW task, it runs this skill at Notice tier (do it, mention it) — see the steward's "Goal decomposition pattern" step 2. A user MAY still invoke `/task-register "<title>" --depts <comma-list> [--plan-file <path>] [--goal "<text>"]` directly, but nothing depends on them doing so.
+
+**Multi-active tasks are first-class (v0.7.0).** An existing `.claude/.current-task` does NOT block a new registration — the pre-v0.7.0 refuse-guard was removed (see step 4); parallel sessions each open their own task without colliding.
 
 **Inputs may be gathered conversationally** over multiple AskUserQuestion turns before the GitHub call — the skill doesn't require them all in one CLI invocation. In practice, the calling agent (chief-of-staff) often clarifies title, depts, and goal interactively before making the actual `gh issue create` call.
 
