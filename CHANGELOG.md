@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.16.4] - 2026-09-23
+
+### Fixed
+
+- **The framework constitution has never reached a single existing consumer, and this is why.** `_skip_if_exists` listed `CLAUDE.md` unanchored. Copier matches those patterns with gitwildmatch, where a pattern containing no slash matches a file of that name **at any depth** — so the entry intended to protect the founder-owned ROOT constitution also froze `.claude/CLAUDE.md`, the CORE file introduced in v0.15.0 for the sole purpose of carrying framework posture to consumers who already exist. Its own header promises exactly that. Every operating principle, global rule and schema line added to it since v0.15.0 propagated to nobody; a consumer on v0.16.3 still had the v0.15.0 text. Found because a rule shipped in v0.16.0 was verifiably absent from a consumer that had just synced four releases in a row. The pattern is now anchored (`/CLAUDE.md`), which leaves the root file consumer-owned and unfreezes the framework one. `company/CLAUDE.md` and `departments/**` are listed separately and are unaffected.
+- **Regression guard: `ui/tests/test_copier_config.py`.** A single unanchored pattern silently disabled the framework’s whole delivery mechanism and nothing in the suite noticed. Five assertions now pin the intent: the framework constitution must keep updating, the root one must not, deliberately-frozen `CLAUDE.md` files stay frozen, CORE skills and templates are never frozen, and consumer-owned config stays owned. The first assertion fails against v0.16.3.
+
+### Migration
+
+- Consumers scaffolded before v0.16.4 will receive the accumulated `.claude/CLAUDE.md` delta on their next `copier update` — for most, that is every framework rule added since v0.15.0 arriving at once. Read that hunk rather than accepting it blind; it is the file that governs agent behaviour.
 ## [0.16.3] - 2026-09-23
 
 ### Fixed

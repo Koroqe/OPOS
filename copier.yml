@@ -51,7 +51,7 @@ _exclude:
 # Consumers own these post-scaffold and may edit freely without losing edits.
 _skip_if_exists:
   - CHANGELOG.md   # v0.15: consumer-owned after scaffold. The dual-section layout (consumer day blocks above framework `## [x.y.z]` sections) means copier REPLACES this file on every update and rejects the consumer's day-block hunk — a conflict every consumer hits on every sync, forever. Framework release notes live on the GitHub releases page and in the sync summary, so consumers lose nothing by freezing their copy at scaffold time.
-  - CLAUDE.md      # v0.5.0: root constitution becomes consumer-owned (Mission and Values are founder-content written by /company-setup). Trade-off: framework changes to root CLAUDE.md no longer auto-propagate.
+  - /CLAUDE.md     # v0.16.4: ANCHORED. Unanchored, gitwildmatch matched CLAUDE.md at ANY depth, so this entry also froze .claude/CLAUDE.md — the CORE constitution that exists precisely to carry framework posture to EXISTING consumers. Every rule added there since v0.15.0 reached nobody. Guarded by ui/tests/test_copier_config.py. v0.5.0: root constitution becomes consumer-owned (Mission and Values are founder-content written by /company-setup). Trade-off: framework changes to root CLAUDE.md no longer auto-propagate.
   - .mcp.json
   - .claude/settings.json
   - .claude/task-tracking.config.json
