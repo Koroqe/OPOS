@@ -18,6 +18,14 @@
             "command": "python3 -c \"import json,os; p='.claude/scheduled-processes.json'; rows=[r for r in (json.load(open(p)) if os.path.exists(p) else []) if not str(r.get('routine_id','')).startswith('gha:')]; print('[opos-scheduler] ' + str(len(rows)) + ' session-scoped registration(s) (' + ', '.join(r['process_name'] for r in rows) + ') need re-arming: re-run /schedule-process for each (idempotent; previously authorized). gha registrations are durable and need nothing.') if rows else None\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/skills/lease/session-init.mjs"
+          }
+        ]
       }
     ]
   },
@@ -30,6 +38,6 @@
   "_rationale": {
     "agent": "Makes chief-of-staff the main-thread agent so the steward posture is loaded as a system prompt rather than hoped for from prose. Before this key existed in a scaffold, routing to the steward was a single paragraph in a consumer-owned CLAUDE.md that a competing user-level instruction could and did override.",
     "enabledPlugins.claude-code-sdlc@claude-code-sdlc": "OPOS repos have their own execution model. Running the SDLC pipeline alongside it produces two competing answers to 'what do I do first' and the steward loses. Scoped to this project only; other repos on the machine are unaffected.",
-    "hooks.SessionStart": "Scheduled routines registered on the claude-schedule runtime are session-scoped and die on session exit. This prints a re-arm reminder. Additive because a consumer may have their own SessionStart hooks worth preserving."
+    "hooks.SessionStart": "Scheduled routines registered on the claude-schedule runtime are session-scoped and die on session exit; the first entry prints a re-arm reminder. The second (v0.16.0) mints this session's identity for the lease protocol and prints one line of current occupancy read from the committed projection — zero API calls. Additive because a consumer may have their own SessionStart hooks worth preserving. KNOWN HOLE: because this class never overwrites a value the consumer already set, a consumer that already has a SessionStart array does NOT receive the second entry automatically; `sync-from-core` reports it and the consumer appends it by hand."
   }
 }

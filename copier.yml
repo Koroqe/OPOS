@@ -21,6 +21,9 @@ _exclude:
   - .claude/.paused-tasks
   - .claude/.last-update-check
   - .claude/scratchpad.md
+  - .claude/skills/lease/.state    # v0.16.0: per-clone lease cache + would-block log; runtime-only, never shipped
+  - .claude/.clone-id              # v0.16.0: per-clone identity, minted on first run
+  - .claude/.sessions              # v0.16.0: per-session identity files written by the SessionStart hook
   - "**/history/202[0-9]-*.md"
   - "**/scheduled-runs/202[0-9]-*.md"   # v0.6.0: per-adopter scheduled-run records; runtime-only, never shipped
   - .claude/scheduled-processes.json    # v0.6.0: per-machine routine-id cache; gitignored + excluded
@@ -52,6 +55,7 @@ _skip_if_exists:
   - .mcp.json
   - .claude/settings.json
   - .claude/task-tracking.config.json
+  - .claude/lease.config.json   # v0.16.0: lease protocol config — holds the consumer's registry issue number, TTLs and enforcement mode. Consumer-owned after scaffold; an upstream edit would otherwise reset a live registry pointer on every sync.
   - .claude/agents/engineering/**
   - .claude/agents/rnd/**
   - company/CLAUDE.md
