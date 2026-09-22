@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.16.3] - 2026-09-23
+
+### Fixed
+
+- **Identity resolution failed under a GitHub Actions `GITHUB_TOKEN`, and the failure was invisible.** `ghLogin()` called `gh api user`, which an App installation token cannot read — it returns `403 Resource not accessible by integration`. Every scheduled lease-maintenance run therefore exited 6 before doing anything; because such a job is reasonably wrapped in `continue-on-error` (protocol correctness does not depend on reaping), the job reported **success** while performing no work at all. A green check that did nothing is the precise failure class this skill exists to prevent, so it must not be the skill’s own behaviour. In Actions the login now comes from `GITHUB_TRIGGERING_ACTOR`/`GITHUB_ACTOR`; `gh api user` is never called there. Found by dispatching a real scheduled run and reading its step output rather than its conclusion.
+
+### Changed
+
+- **PROCESS.md scheduling guidance:** a maintenance job wrapped in `continue-on-error` must still surface step failures. A job whose conclusion is green while its steps failed is worse than a red one — nobody investigates a green check.
 ## [0.16.2] - 2026-09-23
 
 ### Fixed
