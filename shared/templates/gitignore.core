@@ -15,7 +15,6 @@
 .claude/scratchpad.md
 .claude/scheduled-processes.json
 .claude/settings.local.json
-**/scheduled-runs/202[0-9]-*.md
 __pycache__/
 *.pyc
 .claude/debug/
@@ -28,3 +27,14 @@ __pycache__/
 .claude/.clone-id
 .claude/.sessions/
 .claude/skills/lease/.state/
+
+# NOT shipped as a framework rule, on purpose:
+#
+#   **/scheduled-runs/202[0-9]-*.md
+#
+# The framework repo ignores its own dogfooded run records, and consumers never receive
+# them (copier.yml `_exclude` handles that). But a CONSUMER must TRACK its own run
+# records: the constitution requires one per scheduled run, and observers look for them
+# with `git ls-files`. A consumer that ignores them has processes whose traces never
+# reach git, so its detectors find zero by construction and report health while the
+# company is blind. That is a real incident, not a hypothetical.

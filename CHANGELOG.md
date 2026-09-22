@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.16.2] - 2026-09-23
+
+### Fixed
+
+- **`shared/templates/gitignore.core` no longer ships a framework-repo-only rule to consumers.** The manifest introduced in v0.16.1 was seeded from the framework’s own `.gitignore`, which ignores its dogfooded `scheduled-runs/` records. For a CONSUMER that rule is actively harmful: the constitution requires one run record per scheduled run, and observers find them with `git ls-files`, so a consumer that ignores them has processes whose traces never reach git — detectors then find zero by construction and report health while the company is blind. Caught within minutes of shipping v0.16.1, by the very drift report v0.16.1 added: it dutifully told a consumer it was "missing" the one rule it had deleted on purpose. The rule is now absent from the manifest, with the reasoning inline so it is not re-added by someone tidying up.
+- **`lease acquire` now widens the scope of a lease you already hold.** Re-acquiring your own lease with a wider `--scope` silently kept the original scope, so a holder who legitimately needed one more path got a `commit-gate` refusal (exit 7) for a lease it already held, fixable only by releasing and re-acquiring. A gate that cannot be satisfied by doing the right thing teaches people to bypass the gate. Widening only — paths are added, never dropped, so this cannot quietly shrink a scope another step depends on.
 ## [0.16.1] - 2026-09-23
 
 ### Fixed

@@ -238,9 +238,27 @@ function cmdAcquire(args) {
     const live = pre.claims.filter((c) => isLive(c.rec, ctx.nowMs) && conflicts(c.rec.key, k));
     const mine = live.find((c) => sameHolder(c.rec.holder, ctx.id.holder) && c.rec.key === k.norm);
     if (mine) {
+      /*
+       * Re-acquiring my own lease with a WIDER --scope must widen it. The first cut silently
+       * kept the original scope, so a holder who legitimately needed one more path got a
+       * commit-gate refusal (exit 7) for a lease it already held, with no way to fix it short
+       * of release-then-reacquire. A gate that cannot be satisfied by doing the right thing
+       * teaches people to bypass the gate.
+       *
+       * Widening only: paths are added, never dropped, so this can never quietly shrink the
+       * scope another step is relying on.
+       */
+      const merged = Array.from(new Set([...(mine.rec.scope ?? []), ...effScope]));
+      const widened = merged.length !== (mine.rec.scope ?? []).length;
+      if (widened) {
+        mine.rec.scope = merged;
+        mine.rec.t.heartbeat = new Date(ctx.nowMs).toISOString();
+        if (args.intent) mine.rec.intent = String(args.intent);
+        patchClaim(target.repo, mine.id, renderRecord(mine.rec));
+      }
       cacheHeld(ctx, k, target, mine);
-      out(args.json ? JSON.stringify({ ok: true, key: k.norm, already: true, comment_id: mine.id, expires: mine.rec.t.expires }, null, 2)
-                    : `ALREADY HELD ${k.norm} until ${mine.rec.t.expires.slice(11, 16)} UTC`);
+      out(args.json ? JSON.stringify({ ok: true, key: k.norm, already: true, widened, scope: mine.rec.scope, comment_id: mine.id, expires: mine.rec.t.expires }, null, 2)
+                    : `ALREADY HELD ${k.norm} until ${mine.rec.t.expires.slice(11, 16)} UTC${widened ? ` (scope widened to ${merged.length} path(s))` : ''}`);
       return EXIT.OK;
     }
     if (live.length) {
