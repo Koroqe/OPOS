@@ -101,7 +101,7 @@ A typical user journey: (1) design a weekly metrics rollup via `/design-process`
 
 Two ways to receive updates from `Koroqe/OPOS`:
 
-1. **Agent-driven (DEFAULT — no infrastructure).** `check-for-updates` is invoked automatically as step 1 of `task-register`, `task-update`, `task-complete`. When the upstream has a newer release, you see a one-line notice in the skill output. Run `/sync-from-core` when you're ready to apply.
+1. **Agent-driven (DEFAULT — no infrastructure).** `check-for-updates` is invoked automatically as step 1 of `task-register`, `task-update`, `task-complete`, and (v0.8.1) on session open as step 3b of the `chief-of-staff` First-touch protocol — so you get the notice even if your daily rhythm never routes through the task-lifecycle skills. When the upstream has a newer release, you see a one-line notice in the skill output. Run `/sync-from-core` when you're ready to apply.
 2. **Opt-in GitHub Actions (background PRs).** Edit `.github/workflows/sync-opos.yml` and uncomment the `schedule:` block to enable weekly auto-PRs (Mon 3am UTC). Runs on GitHub's servers; your laptop is uninvolved.
 
 See [`RISKS.md`](RISKS.md) Risks 9–13 for known limitations (manual conflict resolution, rollback, breaking-change migration).

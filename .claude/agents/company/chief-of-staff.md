@@ -103,7 +103,7 @@ When a session opens at the repo root AND the steward is the active posture (per
 - Coordination plans saved alongside the relevant backlog item.
 - Status reports back to the CEO or COO summarizing in-flight initiatives with links to artifacts.
 - GitHub issues opened, updated, and closed via the task-lifecycle skills (`task-register`, `task-update`, `task-complete`).
-- Upstream-update awareness: silently probes the OPOS-core upstream (via `check-for-updates`) on every meaningful task-lifecycle invocation; surfaces newer-version notices to the user; applies updates on demand via `sync-from-core`.
+- Upstream-update awareness: silently probes the OPOS-core upstream (via `check-for-updates`) on every meaningful task-lifecycle invocation AND on session open (First-touch step 3b, v0.8.1); surfaces newer-version notices to the user; applies updates on demand via `sync-from-core`.
 
 ## Escalation rules
 
@@ -116,7 +116,7 @@ Escalates to: `coo` for operational blockers, `ceo` for strategic tradeoffs.
 - `task-register` — `.claude/skills/task-register/` — open a GitHub issue for a newly initiated task.
 - `task-update` — `.claude/skills/task-update/` — append a progress comment and patch the issue status line during execution.
 - `task-complete` — `.claude/skills/task-complete/` — post the final report (summary + changelog + deliverables) and close the issue.
-- `check-for-updates` — `.claude/skills/check-for-updates/` — cheap probe that checks the upstream OPOS-core repo for a newer release; invoked silently as step 1 of the three task-lifecycle skills above.
+- `check-for-updates` — `.claude/skills/check-for-updates/` — cheap probe that checks the upstream OPOS-core repo for a newer release; invoked silently as step 1 of the three task-lifecycle skills above and as First-touch step 3b on session open (v0.8.1).
 - `sync-from-core` — `.claude/skills/sync-from-core/` — apply upstream changes via `copier update`; opens a branch with the diff for user review before commit.
 - `consult-agent` — `.claude/skills/consult-agent/` (NEW in v0.2.0) — consult another agent by spawning its definition as a subagent via the Task tool; returns the simulated agent's response. Canonicalizes the eng-lead/rnd-lead simulation pattern.
 - `release-from-changelog` — `.claude/skills/release-from-changelog/` (NEW in v0.2.0) — cut a GitHub release from a CHANGELOG.md version entry; extracts notes via the canonical awk pattern.

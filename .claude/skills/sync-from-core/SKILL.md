@@ -16,7 +16,7 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
 
 - `target_version` (optional; default: latest non-prerelease release tag from upstream).
 - `branch` (optional; default: `opos-update-<tag>`).
-- `check_only` (optional bool; default false): if true, runs `copier update --dry-run` and prints the diff without creating a branch or modifying files. Useful for previewing changes.
+- `check_only` (optional bool; default false): if true, previews the update on a throw-away branch (Copier has no `--dry-run` — see step 4), prints the would-be changes, then resets the tree and deletes the preview branch. No update branch is created and no file is left modified. Useful for previewing changes.
 
 ## Steps
 
@@ -39,7 +39,7 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
 
 ## Outputs
 
-- A new local branch with the update applied (or aborted; or just the dry-run printout if `--check_only`).
+- A new local branch with the update applied (or aborted; or just the preview printout if `--check_only` — its throw-away branch is deleted before returning).
 - A history entry on every invocation (this skill is meaningful — the user wanted the run).
 
 ## Failure modes

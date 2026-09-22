@@ -56,4 +56,4 @@ Schema for each history entry (see root `CLAUDE.md` for the full description):
 - `outcome`: `success` | `partial` | `failure`
 - `duration_min`: integer
 - `proposed_delta`: free text or "none"
-- `status`: `open` | `applied` | `rejected`
+- `status`: `open` | `applied` | `rejected` | `n/a` (`n/a` REQUIRED when `proposed_delta` is `none`)
