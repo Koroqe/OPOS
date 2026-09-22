@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.16.1] - 2026-09-23
+
+### Fixed
+
+- **`.gitignore` is now `_skip_if_exists` — `copier update` was reverting consumers own ignore rules.** Found by applying v0.16.0 to a live consumer and reading the diff before committing. The update replaced `.gitignore` wholesale and silently removed every consumer-added rule: their `.env` line (a live secret-leak risk), per-tool `.state/` caches, draft folders — and re-introduced a run-record ignore pattern the consumer had deleted on purpose, because it hid exactly the scheduled-run files their constitution requires and left a detector finding zero by construction. `.gitignore` is the one CORE file every consumer inevitably edits, so it cannot be framework-owned. The framework set now ships as **`shared/templates/gitignore.core`** (which does update), and both sync drivers **report** missing framework rules rather than applying them — a consumer may have deleted a rule deliberately, and re-adding it behind their back is how an observer goes blind.
+- **Sync drivers verify the update by its RESULT, not by copier exit code.** `copier update` was observed exiting 1 on Windows (`WinError 206`, from a subprocess spawned after the work is done) having applied every file correctly and advanced the pin. An unattended `auto-sync` that trusts the exit code escalates a successful sync as a failure while the pin has already moved — the worst of both states. Both `sync-from-core` and `auto-sync` now check pin-equals-target, expected files changed, and `.rej` count: a non-zero exit with a moved pin and no rejects is success-with-warning; a zero exit with an unmoved pin is a failure. New RISKS **42**.
 ## [0.16.0] - 2026-09-22
 
 ### Added
