@@ -1,0 +1,30 @@
+# CORE manifest of the ignore rules the framework itself needs.
+#
+# This file always updates; `.gitignore` does not (it is `_skip_if_exists`, because a
+# consumer inevitably adds rules of their own and `copier update` would otherwise revert
+# them wholesale on every sync — which is exactly what v0.16.0 did to a live consumer,
+# silently removing its `.env` rule among others).
+#
+# The sync drivers diff a consumer’s `.gitignore` against this list and REPORT missing
+# framework rules. They do not apply them: a consumer may have deleted a rule deliberately,
+# and re-adding it behind their back is how an observer goes blind (a run-record ignore rule
+# re-introduced by an update once hid exactly the files a detector was looking for).
+.claude/.current-task
+.claude/.paused-tasks
+.claude/.last-update-check
+.claude/scratchpad.md
+.claude/scheduled-processes.json
+.claude/settings.local.json
+**/scheduled-runs/202[0-9]-*.md
+__pycache__/
+*.pyc
+.claude/debug/
+.claude/tmp/
+.vscode/
+
+# v0.16.0 (lease protocol): per-clone and per-session identity, plus the local cache of
+# back-pointers to claim comments. The authoritative record lives on GitHub, not here, so
+# losing this cache is safe: the lease still expires on its TTL and anyone can pick it up.
+.claude/.clone-id
+.claude/.sessions/
+.claude/skills/lease/.state/

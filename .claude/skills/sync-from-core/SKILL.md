@@ -40,7 +40,22 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
    reviews them alongside the file diff. A non-zero exit other than 2 (unparseable settings.json) is
    surfaced, not swallowed: the script refuses to rewrite a file it cannot parse.
 
+6c. **Verify the update by its RESULT, not by copier's exit code.** After
+   `copier update` returns, check three things: `_commit` in `.copier-answers.yml` equals the
+   target tag, the expected files changed, and the `.rej` count. A non-zero exit whose pin DID
+   move and which produced no `.rej` is a **success with a warning** — record the warning, do
+   not escalate it as a failed sync. Observed in the wild: on Windows, `copier update` exits 1
+   with `WinError 206 "The filename or extension is too long"` from a subprocess it spawns
+   AFTER every file has been applied correctly. Treating that exit code as authoritative makes
+   the unattended driver escalate a sync that in fact succeeded, and — worse — leaves the pin
+   advanced while the run is recorded as failed.
+   Conversely a ZERO exit is not sufficient either: confirm the pin actually moved.
 7. `git status --porcelain` — list changed files. Count `.rej` files (conflicts).
+7b. **Report `.gitignore` drift.** `.gitignore` is `_skip_if_exists` (v0.16.1), so framework
+   additions do not arrive on their own. Diff the consumer’s file against
+   `shared/templates/gitignore.core` (which does update) and list any framework rule that is
+   missing locally. **Report only — never apply.** A consumer may have deleted a rule
+   deliberately, and silently re-adding it is how an observer goes blind.
 8. Surface to the user in chat:
    - The list of changed files.
    - Count of `.rej` files (conflicts) — if non-zero, prominently warn that consumer-side edits to CORE files were lost and need manual resolution.

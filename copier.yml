@@ -55,6 +55,7 @@ _skip_if_exists:
   - .mcp.json
   - .claude/settings.json
   - .claude/task-tracking.config.json
+  - .gitignore   # v0.16.1: consumer-owned after scaffold. It is the one CORE file every consumer edits (local state, .env, per-tool caches), and `copier update` replaced it wholesale — silently reverting a live consumer's `.env` rule and re-introducing a run-record ignore that had been deleted on purpose to stop a detector going blind. The framework set now ships as shared/templates/gitignore.core and the sync drivers REPORT missing rules instead of applying them.
   - .claude/lease.config.json   # v0.16.0: lease protocol config — holds the consumer's registry issue number, TTLs and enforcement mode. Consumer-owned after scaffold; an upstream edit would otherwise reset a live registry pointer on every sync.
   - .claude/agents/engineering/**
   - .claude/agents/rnd/**

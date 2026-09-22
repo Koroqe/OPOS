@@ -48,6 +48,22 @@ Anything outside this mapping (e.g. hand-editing files beyond the CHANGELOG rule
 8. **No update** (latest tag equals `_commit`): write a `success` run record with the one-line note `no update — pinned <tag> is current` and stop. (Unlike `check-for-updates`, whose documented conditional-history rule is scoped to that probe skill, every `auto-sync` run records — the run records are the only liveness signal for scheduled execution; see RISKS Risk 20.)
 9. **If `--dry_run`:** print what would happen (current pin, available tag, the branch/copier/commit sequence that would run) and stop. In dry-run mode skip step 7's cache refresh too — a dry run must be a pure read.
 10. **Apply the update on a work branch:** `git checkout -b opos-auto-sync-<tag>`, then `copier update --vcs-ref <tag> --conflict rej --defaults` (`--defaults` is safe: the sole question `COMPANY_NAME` persists in `.copier-answers.yml`; `--trust` is not used because `copier.yml` has no `_tasks`/`_migrations` — if upstream ever adds them, this is one of THREE sync drivers to update: `sync-from-core`, this skill, and `.github/workflows/sync-opos.yml`).
+10a. **Verify the update by its RESULT, not by copier's exit code.** After
+   `copier update` returns, check three things: `_commit` in `.copier-answers.yml` equals the
+   target tag, the expected files changed, and the `.rej` count. A non-zero exit whose pin DID
+   move and which produced no `.rej` is a **success with a warning** — record the warning, do
+   not escalate it as a failed sync. Observed in the wild: on Windows, `copier update` exits 1
+   with `WinError 206 "The filename or extension is too long"` from a subprocess it spawns
+   AFTER every file has been applied correctly. Treating that exit code as authoritative makes
+   the unattended driver escalate a sync that in fact succeeded, and — worse — leaves the pin
+   advanced while the run is recorded as failed.
+   Conversely a ZERO exit is not sufficient either: confirm the pin actually moved.
+
+10a-bis. **`.gitignore` drift (v0.16.1).** Diff the consumer’s `.gitignore` against
+   `shared/templates/gitignore.core` and note any missing framework rule in the run record.
+   **Never apply it automatically** — an ignore rule re-added behind the operator’s back can
+   hide the very files another process is looking for.
+
 10b. **Reconcile consumer-owned settings.** Run
    `python3 shared/scripts/reconcile-settings.py --apply` from the repo root — same contract as
    `sync-from-core` step 6b, and the reason this runs in the scheduled driver too: a consumer whose only
