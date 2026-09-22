@@ -77,7 +77,10 @@ adding cron of their own:
 
 - **reap** — attach to whichever scheduled job in your company demonstrably fires unattended.
   Prefer one that already serialises itself (a GitHub Actions `concurrency` group), so two reaps
-  cannot race. Mark the step `continue-on-error`: protocol correctness does not depend on it.
+  cannot race. Protocol correctness does not depend on it, so the step may be non-fatal — **but a
+  job whose conclusion is green while its steps failed is worse than a red one**, because nobody
+  investigates a green check. If you mark the step `continue-on-error`, add a final step that
+  fails the job when maintenance did not actually run.
 - **render** — attach to whichever job regenerates your other `company/ops/` projections, and use
   `render --out <path>` rather than a shell redirect. `--out` leaves the file untouched when
   occupancy has not changed, so the bot does not commit a fresh timestamp every day.

@@ -79,6 +79,18 @@ function detectRuntime() {
 /** gh login, cached 24h — one API call per day per clone, not one per acquire. */
 function ghLogin(root) {
   if (process.env.OPOS_LOGIN) return { login: process.env.OPOS_LOGIN, ok: true };
+  /*
+   * GitHub Actions: take the login from the environment, never from `gh api user`.
+   * GITHUB_TOKEN is an App installation token and CANNOT read /user — it returns
+   * 403 'Resource not accessible by integration'. Calling it there made every
+   * scheduled maintenance run fail identity resolution and exit 6 while the job,
+   * wrapped in continue-on-error, still reported success: a green check that did
+   * nothing at all, which is the exact failure class this skill exists to prevent.
+   */
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    const actor = process.env.GITHUB_TRIGGERING_ACTOR || process.env.GITHUB_ACTOR;
+    if (actor) return { login: actor, ok: true, source: 'gha-env' };
+  }
   const cacheFile = path.join(stateDir(root), 'identity.json');
   const cached = readJson(cacheFile);
   if (cached?.login && cached.at && (Date.now() - Date.parse(cached.at)) < 24 * 3600 * 1000) {
