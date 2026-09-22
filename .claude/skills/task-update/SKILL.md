@@ -38,11 +38,11 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
    ```bash
    NEW_STATUS=review
    gh issue view <number> --repo <repo> --json body --jq '.body' \
-     | python3 -c "import re,sys,os; b=sys.stdin.read(); new=re.sub(r'^\*\*Status:\*\* .+$', f'**Status:** {os.environ[\"NEW_STATUS\"]}', b, count=1, flags=re.M); print(new, end=''); sys.exit(0 if new != b else 1)" \
+     | node shared/scripts/task-state.mjs patch-status --status "$NEW_STATUS" \
      | gh issue edit <number> --repo <repo> --body-file -
    ```
 
-   The Python helper exits non-zero if the regex didn't match (body was hand-edited and lost the canonical line) — the pipeline then short-circuits before the `gh issue edit` runs. Treat non-zero exit as ABORT with the message: `issue body no longer has the canonical Status line — restore the line or skip --status`.
+   The helper exits non-zero if the regex didn't match (body was hand-edited and lost the canonical line) — the pipeline then short-circuits before the `gh issue edit` runs. Treat non-zero exit as ABORT with the message: `issue body no longer has the canonical Status line — restore the line or skip --status`.
 
    `sed` and `perl` work too (the regex is portable); Python is the most portable across macOS/Linux without flag quirks. The pipeline captures the new status via `os.environ['NEW_STATUS']` rather than f-string-interpolating the value into the shell command — this avoids any shell-quoting issues if the status string contains spaces or special characters.
 

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.16.5] - 2026-09-23
+
+### Fixed
+
+- **Three task-lifecycle steps and the SessionStart hook were silently dead on Windows.** They ran `python3 -c "..."`. On a stock Windows machine `python3` resolves to the Microsoft Store app-execution alias, which prints "Python was not found" and exits 49 — so `task-update`’s status-line patch, `task-complete`’s active-list prune, `task-pause`’s prune and the scheduler re-arm notice all did nothing while the skills read as working. Measured on a real machine: `python3 -c` exits 49 while `python` (3.8.6) and `py -3` (3.12.10) both work.
+- **The fix is a file, not a third one-liner.** These steps were shell `grep -v … > tmp && mv` chains before v0.7.2 (failed reproducibly on first invocation) and `python3` one-liners after. Two interpreter choices failing the same way is a pattern, not bad luck: logic embedded in a JSON- or shell-escaped string is logic nothing can test or review. The work now lives in **`shared/scripts/task-state.mjs`** (`remove-active`, `add-active`, `list-active`, `patch-status`) and **`shared/scripts/scheduler-rearm-notice.mjs`**, both plain Node, which other shipped skills already require. Behaviour verified directly: non-numeric lines dropped, duplicates collapsed, the file deleted when the last entry goes, a no-op exit 0 when it is already absent, and exit 1 when the canonical `**Status:**` line is missing so the pipeline short-circuits before `gh issue edit`.
 ## [0.16.4] - 2026-09-23
 
 ### Fixed
