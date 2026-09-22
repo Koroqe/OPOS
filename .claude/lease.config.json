@@ -1,0 +1,36 @@
+{
+  "_purpose": "Configuration for the OPOS lease protocol (.claude/skills/lease). Every company-specific value lives HERE so the skill itself stays generic. Strict JSON, no inline comments — commentary belongs in .claude/skills/lease/SKILL.md or your own concurrency policy.",
+  "_setup": "First run: `node .claude/skills/lease/lease.mjs init-ledger --create` opens and pins the lease-registry issue and writes its number below. `ledger.repo` null means: use `repo` from .claude/task-tracking.config.json.",
+  "ledger": {
+    "repo": null,
+    "issue": null
+  },
+  "index_label": "leased",
+  "ledger_label": "lease-ledger",
+  "settle_ms": 1500,
+  "enforce": "warn",
+  "clock_skew_warn_s": 120,
+  "clock_skew_fail_s": 600,
+  "fetch_max_age_s": 600,
+  "dirty_mtime_window_s": 1800,
+  "hard_cap_ttl_s": 14400,
+  "prune_after_days": 7,
+  "rotate_at_comments": 400,
+  "max_staged_files": 40,
+  "acquire_retries": 2,
+  "ttl_s": {
+    "interactive": 2700,
+    "scheduler": 1800,
+    "gha": 1200,
+    "cloud": 3600,
+    "bot": 1800
+  },
+  "max_behind": {
+    "path": 0,
+    "branch": 0,
+    "issue": 50,
+    "process": 20
+  },
+  "cross_post_repos": [],
+  "projection_path": "company/ops/ops-leases.md"
+}

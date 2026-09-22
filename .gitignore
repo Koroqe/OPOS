@@ -10,3 +10,10 @@ __pycache__/
 .claude/debug/
 .claude/tmp/
 .vscode/
+
+# v0.16.0 (lease protocol): per-clone and per-session identity, plus the local cache of
+# back-pointers to claim comments. The authoritative record lives on GitHub, not here, so
+# losing this cache is safe: the lease still expires on its TTL and anyone can pick it up.
+.claude/.clone-id
+.claude/.sessions/
+.claude/skills/lease/.state/

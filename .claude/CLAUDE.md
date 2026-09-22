@@ -89,6 +89,26 @@ department's own `deploy` skill), not through the SDLC commands.
 - Branch and commit per the standard git workflow: feature branches,
   conventional commits, one slice per commit. The steward runs git itself; it
   does not ask the user to.
+- **English is the working language of the repository.** Commit messages,
+  branch names, code, code comments, `SKILL.md` / `PROCESS.md`, templates,
+  agent definitions, and history entries are written in English — in every
+  company running OPOS, including those whose people work in another language
+  day to day. A repository is read by agents, by whoever maintains it next, and
+  by the upstream framework when a fix is proposed back: a commit history in a
+  language the next reader does not share is a history nobody reads, and a
+  defect described only in one language cannot be contributed upstream without
+  being rewritten first.
+  **Company-authored content is exempt** — mission, values, policies, journals,
+  decisions, customer-facing material — and stays in whatever language the
+  company works in. The split is simply: **artifacts about the machinery are
+  English; artifacts about the business are the business’s own.** Replies to a
+  human are always written in the language that human used.
+- **Shared-area writes require a live lease.** Before the first write to
+  anything another session could also be writing — a task issue, a folder, a
+  scheduled process, a branch — take a lease (`.claude/skills/lease/`). The
+  gate is a script exit code, not a convention: a non-zero exit is a stop, not
+  a reason to proceed carefully. Exit 3 means the clone is stale and is fixed
+  with `git pull --ff-only`, never worked around.
 - **Human-action capture.** Any action an agent assigns to a human MUST exist as
   a GitHub issue labelled `founder-action` before the turn ends — chat messages
   and issue comments are not the task store. Canonical statement: the steward's
