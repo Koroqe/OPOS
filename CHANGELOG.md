@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.17.1] - 2026-09-23
+
+### Fixed
+
+- **A lapsed lease no longer stops its own holder.** `check` returns `5` both when a lease was taken by someone else and when it simply lapsed during a long pause. The callers' rule was "stop writing immediately", which is right for the first case and pointless friction for the second. Callers now `acquire` again: `0` means it had merely lapsed and nobody took it, so carry on; `2` means someone else holds it, so stop and report who. This is safe because `acquire` performs the full conflict check. It is also what makes arming `issue:` enforcement reasonable for a company whose sessions routinely go quiet for longer than the TTL.
+- **`stage2.mjs` scenario A no longer assumes an empty repository.** Run against a live consumer, the whole-tree lease was — correctly — refused because a real session was editing another folder at that moment. The test counted that as a failure. It now fails only if the whole-tree lease is blocked by the test's *own* already-released lease. A live editor elsewhere blocking `path:**` is exactly the protection the lease exists for.
+
 ## [0.17.0] - 2026-09-23
 
 Stage 2 of the lease protocol: the framework now takes leases itself, instead of relying on agents to follow a rule in prose. This is also the release that makes the claims v0.16.6 retracted true — each one is now implemented and tested, rather than described.
