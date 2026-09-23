@@ -10,7 +10,7 @@ This folder holds **APPROVE'd decision artifacts** written by the `deliberate-de
 ## What does NOT live here
 
 - **REJECT'd or DEFER'd decisions** — the deliberation IS recorded (in the `deliberate-decision/history/` entry) but the artifact is NOT written. The artifact is reserved for decisions the human explicitly approved at step 12.
-- **Routine tactical choices** — those go through the chief-of-staff dispatcher or a single `consult-agent` call. Reserved for decisions whose stakes justify the deliberation cost (~15 subagent invocations per default 2-round run).
+- **Routine tactical choices** — those go through the chief-of-staff dispatcher or a single `consult-agent` call. A deliberation (~15 subagent invocations per default 2-round run) is spent with purpose: on decisions that are R3 or hard to reverse, where a full panel of critics changes the outcome.
 
 ## Workflow
 
