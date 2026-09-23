@@ -1,7 +1,8 @@
 /** node --test shared/scripts/opos-auto-update.test.mjs — the decision logic of the unattended updater. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyTouched, pickLatest, pinOf, srcRepoOf, isOwnIssue } from './opos-auto-update.mjs';
+import { classifyTouched, pickLatest, pinOf, srcRepoOf, isOwnIssue, blockingLeases } from './opos-auto-update.mjs';
+import { matchesAny } from '../../.claude/skills/lease/lib/keys.mjs';
 
 test('a release touching a workflow file is separated out — it must never be auto-pushed', () => {
   const c = classifyTouched(['.claude/skills/lease/lease.mjs', '.github/workflows/sync-opos.yml', 'RISKS.md']);
@@ -55,4 +56,18 @@ test('dedupe is per tag', () => {
   assert.equal(isOwnIssue('[opos-auto-sync] v0.18.2: workflow files', 'v0.18.2'), true);
   assert.equal(isOwnIssue('[opos-auto-sync] v0.18.2: workflow files', 'v0.18.20'), false, 'v0.18.20 is not v0.18.2');
   assert.equal(isOwnIssue('[opos-auto-sync] v0.18.20: x', 'v0.18.2'), false);
+});
+
+test('only leases on files the release changes block it', () => {
+  const claims = [
+    { key: 'path:departments/commercial/**', scope: ['departments/commercial/**'], intent: 'sales' },
+    { key: 'path:company/journal/ACTION-LOG.md', scope: [], intent: 'log' },
+    { key: 'process:auto-sync', scope: [], intent: 'driver' },
+  ];
+  const release = ['.claude/skills/lease/lease.mjs', 'shared/scripts/verify-sync.mjs', 'CHANGELOG.md'];
+  assert.deepEqual(blockingLeases(claims, release, matchesAny), [], 'busy folders the release does not touch must not block it');
+  const hit = blockingLeases(claims, [...release, 'departments/commercial/CLAUDE.md'], matchesAny);
+  assert.deepEqual(hit.map((c) => c.intent), ['sales']);
+  assert.equal(blockingLeases([{ key: 'path:**', scope: ['**'] }], release, matchesAny).length, 1, 'a whole-tree lease still blocks');
+  assert.equal(blockingLeases([{ key: 'path:x/y.md', scope: ['shared/scripts/**'] }], release, matchesAny).length, 1, 'scope counts, not just the key');
 });

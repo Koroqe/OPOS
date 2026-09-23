@@ -21,8 +21,10 @@
  *     without `workflows` permission" — verified 2026-09-23), and never-automate invariant 3
  *     forbids a scheduled run from writing workflow files in any case. That release goes to a
  *     human; every other release is applied automatically.
- *   - Leases: take `process:auto-sync` and `path:**` when the company has opted in, so the update
- *     stands down while anyone is editing and two drivers never run at once.
+ *   - Leases: take `process:auto-sync` so two drivers never run at once, and stand down while
+ *     anyone holds a path lease on a file THIS release changes. (Before v0.19.1 it took `path:**`,
+ *     which conflicts with every path lease in the repo: a company that always has someone
+ *     editing somewhere, which is the normal state of a busy one, never got an update at all.)
  *   - Escalations turn the run red AND file (or refresh) one issue per tag. A green run that did
  *     nothing is the failure mode this framework keeps paying for.
  *
@@ -32,6 +34,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { matchesAny } from '../../.claude/skills/lease/lib/keys.mjs';   // CORE since v0.16.0
 
 // ------------------------------------------------------------------ pure logic (unit-tested)
 
@@ -55,6 +58,20 @@ export function isOwnIssue(title, tag = null) {
   const t = String(title ?? '');
   if (!t.startsWith(PREFIX)) return false;
   return tag === null ? true : t.startsWith(`${PREFIX} ${tag}:`);
+}
+
+/**
+ * Which live path leases cover a file this update changes? `claims` are lease records
+ * (`lease.mjs list --json`); a claim blocks when any changed file matches its key glob or any
+ * of its scope globs. Leases on files the release does not touch never block it.
+ */
+export function blockingLeases(claims, files, matchesAny) {
+  return (claims ?? []).filter((c) => {
+    const key = String(c?.key ?? '');
+    if (!key.startsWith('path:')) return false;
+    const globs = [key.slice(5), ...(c.scope ?? [])];
+    return files.some((f) => matchesAny(f, globs));
+  });
 }
 
 /** Latest stable release, or null. */
@@ -117,7 +134,7 @@ function main() {
   const leasesHeld = [];
   const lease = (args) => (fs.existsSync(LEASE) ? run(process.execPath, [LEASE, ...args]) : { code: 9, out: '', err: '' });
   const releaseAll = () => { for (const k of leasesHeld) lease(['release', '--key', k, '--reason', 'auto-update run finished']); };
-  for (const [key, extra] of [['process:auto-sync', []], ['path:**', ['--scope', '**', '--paranoid']]]) {
+  for (const [key, extra] of [['process:auto-sync', ['--paranoid']]]) {
     const r = lease(['acquire', '--key', key, '--ttl', '30m', '--intent', `automatic OPOS update ${pin} -> ${rel.tag}`, ...extra]);
     if (r.code === 0) { leasesHeld.push(key); continue; }
     if (r.code === 9) break;
@@ -155,6 +172,21 @@ function main() {
         '',
         '**One-time human step:** apply this release with the `sync-from-core` skill (on Windows: under WSL), review, commit, push with your own credentials. The next automatic run finds it up to date and carries on by itself.',
       ].join('\n'));
+    }
+
+    // ---- stand down while someone is editing a file this release changes
+    if (fs.existsSync(LEASE)) {
+      const ls = lease(['list', '--json', '--key-prefix', 'path:']);
+      if (ls.code === 0) {
+        const blockers = blockingLeases(JSON.parse(ls.out || '[]'), cls.other, matchesAny);
+        if (blockers.length) {
+          say(`Deferred: ${blockers.length} live lease(s) cover files this release changes — someone is editing them. Retrying on the next run.\n\n${blockers.map((c) => `- \`${c.key}\` (${c.intent || 'no intent'})`).join('\n')}`);
+          return 0;
+        }
+        say(`Leases: none of the ${cls.other.length} changed file(s) is being edited.`);
+      } else if (ls.code !== 9) {
+        return escalate(rel.tag, `could not read the live leases (exit ${ls.code})`, `\`\`\`\n${(ls.err || ls.out).trim()}\n\`\`\``);
+      }
     }
 
     // ---- commit and push
