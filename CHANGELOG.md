@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.17.0] - 2026-09-23
+
+Stage 2 of the lease protocol: the framework now takes leases itself, instead of relying on agents to follow a rule in prose. This is also the release that makes the claims v0.16.6 retracted true — each one is now implemented and tested, rather than described.
+
+### Added
+
+- **The task lifecycle holds leases.** `task-register` acquires an `issue:` lease on the new issue; `task-update` and `task-complete` refuse to write without one (`check`), and `task-update` renews it as a heartbeat; `task-pause` yields it and sets the `paused` label; `task-resume` re-acquires it **before** touching any local state, and refuses — naming the holder — when the task was resumed on another machine. `.current-task` is demoted to a local cache. Verified across two clones against real GitHub (`lease/test/stage2.mjs` scenario L, 15 checks).
+- **Scheduled runs are serialised.** `auto-sync` takes `process:auto-sync` and a `path:**` lease after its fast-forward (not before: the freshness gate would otherwise refuse a clone that is behind only because it has not pulled yet) and releases both on every exit path. A losing run writes a `partial` record naming the holder. Because `path:**` conflicts with any path lease, a sync now stands down while any session is editing files. `review-history` takes `process:review-history`, plus `process:propose-to-core` around each upstream proposal, so two machines cannot open duplicate PRs. The guards are verified by scenario A; a full scheduled run under real contention has not been exercised end to end.
+- **Exit 9 — not configured — is the upgrade guarantee.** A company that has not run `lease.mjs init-ledger` has not opted in; every lease command exits `9`, and every caller then skips its gate and behaves exactly as before. Pulling this release changes nothing for such a company until it chooses to opt in (scenario N).
+- **Registry rotation, and closed-registry detection** — both described in v0.16.0 and retracted in v0.16.6, now built. Past `rotate_at_comments` records, `reap` opens a successor with a `prev` link, points the old registry at it, and closes it. The order is chosen so that running `reap` again repairs a crash at any point. Live leases survive a rotation through the predecessor link; comment ids are repo-global, so the lowest-id tiebreak still holds across the two issues. A registry closed **by hand** makes every command exit `1` with the repair command, because GitHub still accepts comments on a closed issue and the protocol would otherwise keep working against a registry nobody watches (scenarios R, C).
+- **`--offline-ok` does what it said.** It is honoured only by `check`, `commit-gate` and `list`; only an unexpired cached lease opens a gate; nothing that writes a claim works offline. It also works in the case it exists for — a cached login makes identity look healthy while the network is down, so the first failing call is the registry read or the claim verify, and both now degrade to offline mode instead of exiting 6 (scenario O, with the registry cache both warm and cold).
+- **`shared/scripts/verify-sync.mjs`**, run by all three sync drivers after `copier update`: pin equals target, no rejects, and **no file changed that upstream did not change** — i.e. no local customisation silently thrown away. Tested on a real destructive Windows run (caught) and a clean Linux run of the same update (passed).
+- **CI runs the Node tests.** The lease and `task-state` unit tests existed since v0.16.0 but CI never ran them.
+- The steward's first-touch reads occupancy (zero network calls) and adds a **Leases:** clause to the greeting; `lease` operations are Auto-tier and `lease steal` is Confirm-tier.
+
+### Fixed
+
+- **`copier update` on Windows silently reverts local customisations — and v0.16.1 told the drivers to accept it.** Found this release by reading a sync diff before committing. It was about to delete a department lead's seven adopted process registrations, committed that same day. Copier re-applies local edits with one `git apply --exclude` per consumer file under a `_skip_if_exists` pattern. At around 1,300 such files the command line overruns the Windows 32K limit, `CreateProcess` fails with `WinError 206`, and copier exits 1 having written the new template but not the local edits. v0.16.1 called that exit "success with a warning". **That is withdrawn:** the exit code was reporting precisely the failure that mattered, and the v0.16.1 `.gitignore` incident was this same bug. All three drivers now treat a non-zero exit as a failure and verify by result; `sync-from-core` documents the WSL route on Windows. RISKS 42 is rewritten accordingly.
+- **All five task-skill `PROCESS.md` files rewritten.** They still described v0.6.x single-task semantics and contradicted their own `SKILL.md`; the v0.7.0 array conversion had never been backported. PROCESS.md is the owner-binding-of-record, so the wrong version misled every reader.
+- Leftover prose saying these steps use "a portable Python one-liner" — false since v0.16.5 — is removed.
+
+### Changed — risk register
+
+- **RISKS 15** mitigated for opted-in companies · **22** mitigated for opted-in companies (guards tested; full contended run not exercised) · **23** MEDIUM → LOW (double-firing is now harmless) · **30** closed · **41** rotation built, sharding still not · **42** rewritten.
+
+### Migration
+
+- Nothing changes until you opt in. To opt in: `node .claude/skills/lease/lease.mjs init-ledger --create`, then `doctor`.
+- On Windows, run `sync-from-core` under WSL (or use the `gha`/`cloud` runtime) once your `departments/`/`company/` tree is large. `verify-sync` will stop the sync otherwise, which is the point.
 ## [0.16.6] - 2026-09-23
 
 ### Fixed

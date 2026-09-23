@@ -29,6 +29,14 @@ jobs:
       - run: pip install --quiet -r requirements-dev.txt
       - name: Unit tests
         run: python3 -m unittest discover ui.tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Node unit tests (lease protocol, task-state)
+        # v0.17.0: these guard the concurrency protocol and the task-lifecycle state helpers.
+        # They existed since v0.16.0 but CI never ran them, so a regression would only have
+        # surfaced at a consumer.
+        run: node --test .claude/skills/lease/lib/keys.test.mjs .claude/skills/lease/lib/claims.test.mjs shared/scripts/task-state.test.mjs
       - name: Scheduling validators on shipped scheduled processes
         run: |
           python3 - <<'EOF'
