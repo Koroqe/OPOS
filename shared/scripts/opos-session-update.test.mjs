@@ -1,7 +1,15 @@
 /** node --test shared/scripts/opos-session-update.test.mjs */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isDue, noticeFor } from './opos-session-update.mjs';
+import { isDue, noticeFor, withExcludes, RUNTIME_FILES } from './opos-session-update.mjs';
+
+test('runtime files are excluded per clone, once, without touching existing lines', () => {
+  const first = withExcludes('# git ls-files --others --exclude-from=.git/info/exclude\n*.swp');
+  assert.ok(first.startsWith('# git ls-files --others --exclude-from=.git/info/exclude\n*.swp\n'), 'existing content kept');
+  for (const f of RUNTIME_FILES) assert.ok(first.includes(`\n${f}\n`), f);
+  assert.equal(withExcludes(first), null, 'idempotent: nothing to add the second time');
+  assert.ok(withExcludes('').includes(RUNTIME_FILES[0]), 'works on an empty exclude file');
+});
 
 const at = (s) => new Date(s);
 

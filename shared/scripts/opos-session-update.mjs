@@ -74,8 +74,35 @@ const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 
 // ------------------------------------------------------------------ hook mode
 
+/**
+ * Keep this job's runtime files out of `git status` in EVERY consumer. `.gitignore` is
+ * consumer-owned and never updated after scaffold, so an ignore line shipped there only reaches
+ * new companies; existing ones saw the files as untracked, one `git add -A` away from a commit.
+ * `.git/info/exclude` is per clone and untracked, which is exactly the files' own scope.
+ */
+export const RUNTIME_FILES = ['.claude/.opos-update-check', '.claude/.opos-update-state.json', '.claude/.opos-update.lock'];
+export function withExcludes(text) {
+  const have = new Set(String(text ?? '').split(/\r?\n/).map((l) => l.trim()));
+  const missing = RUNTIME_FILES.filter((f) => !have.has(f) && !have.has('/' + f));
+  if (!missing.length) return null;
+  const base = String(text ?? '');
+  return `${base}${base && !base.endsWith('\n') ? '\n' : ''}# opos-session-update runtime files (per clone)\n${missing.join('\n')}\n`;
+}
+function ensureExcluded(root) {
+  try {
+    const rel = run('git', ['rev-parse', '--git-path', 'info/exclude'], { cwd: root }).out;
+    if (!rel) return;
+    const file = path.resolve(root, rel);
+    let text = '';
+    try { text = fs.readFileSync(file, 'utf8'); } catch { /* none yet */ }
+    const next = withExcludes(text);
+    if (next !== null) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, next); }
+  } catch { /* never fail a session start over this */ }
+}
+
 function hook(root) {
   const p = paths(root);
+  ensureExcluded(root);
   // 1. report last result once
   const state = readJson(p.state);
   const line = noticeFor(state);
@@ -98,6 +125,7 @@ function hook(root) {
 
 function worker(root, { force = false, minAge = null } = {}) {
   const p = paths(root);
+  ensureExcluded(root);
   const now = new Date();
 
   // claim the lock (exclusive create); a lock older than 30 min is a crashed run and is taken over
@@ -179,8 +207,9 @@ function worker(root, { force = false, minAge = null } = {}) {
       state.localFastForward = ff.code === 0 ? 'ok' : 'skipped (would touch files being edited here; next day retries)';
     }
     const pinNow = pinOf(fs.readFileSync(path.join(root, '.copier-answers.yml'), 'utf8'));
-    if (state.result === 'up-to-date' && pinNow && pinNow !== pinOf(answersLocal)) {
-      state.result = 'updated'; state.from = pinOf(answersLocal); state.to = pinNow;   // someone else updated the repo; this clone caught up
+    if ((state.result === 'up-to-date' || state.result === 'waiting') && pinNow && pinNow !== pinOf(answersLocal)) {
+      // this clone caught up (the repo was updated elsewhere). A newer release still cooling down is not news.
+      state.result = 'updated'; state.from = pinOf(answersLocal); state.to = pinNow; delete state.reason;   // someone else updated the repo; this clone caught up
     }
   } catch (e) {
     state.result = 'failed';
