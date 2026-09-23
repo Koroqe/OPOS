@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.21.1] - 2026-09-23
+
+### Fixed
+
+- **The unattended updater never delivered settings changes.** `.claude/settings.json` is consumer-owned, so `copier update` never touches it; a release that adds a hook or a settings key reaches a company only through `reconcile-settings.py`. `sync-from-core` and `auto-sync` always ran it, but the script-based driver introduced in v0.19 (`opos-auto-update.mjs`, the `sync-opos` job) did not — so no settings change since v0.19 reached any company unattended. Measured on the canary: v0.21.0 applied, its `UserPromptSubmit` hook and `autoCompactWindow` absent. The driver now runs the merge after `copier update`, inside the same commit. Unchanged contract: it only adds missing non-permission keys, never overwrites a value the company set, and never writes permissions.
+
+Companies that already applied v0.20.x or v0.21.0 unattended receive the missing keys with this release.
+
 ## [0.21.0] - 2026-09-23
 
 ### Added

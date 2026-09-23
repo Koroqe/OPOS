@@ -174,6 +174,21 @@ function main() {
       ].join('\n'));
     }
 
+    // ---- reconcile consumer-owned settings (the _skip_if_exists delivery hole)
+    // `.claude/settings.json` is consumer-owned, so copier never updates it: a release that adds a
+    // hook or a settings key reaches a company only through this merge. sync-from-core and
+    // auto-sync have always run it; this driver did not, so since v0.19 no settings change reached
+    // any company unattended (measured on the canary: v0.21.0 applied, its new UserPromptSubmit hook
+    // and autoCompactWindow absent). The script adds missing non-permission keys, never overwrites a
+    // value the company set, and never writes permissions (never-automate invariant 1). Its only
+    // refusal (an unparseable settings file) is reported, not escalated: the release itself is
+    // still worth applying.
+    if (fs.existsSync('shared/scripts/reconcile-settings.py')) {
+      const rc = run('python3', ['shared/scripts/reconcile-settings.py', '--apply']);
+      const last = (rc.out || rc.err || '').trim().split('\n').filter(Boolean).slice(-3).join(' / ');
+      say(`reconcile-settings: exit ${rc.code}${last ? ` — ${last}` : ''}`);
+    }
+
     // ---- stand down while someone is editing a file this release changes
     if (fs.existsSync(LEASE)) {
       const ls = lease(['list', '--json', '--key-prefix', 'path:']);
