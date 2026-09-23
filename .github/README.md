@@ -99,7 +99,7 @@ Yes — parallel sessions are first-class. Each terminal's chief-of-staff stewar
 
 ### What can OPOS agents do without human approval?
 
-The chief-of-staff steward follows a graduated permission ladder — auto (reads, tests, drafts), notice, confirm (e.g. `git commit`, closing issues, creating agents), explicit approval (e.g. `git push`, release cuts), and hard refuse for destructive operations. Shipping, spending, and strategic pivots always come back to you. The full ladder is documented in the chief-of-staff agent charter inside the repo. More questions: the [full OPOS FAQ](docs/faq.md).
+The chief-of-staff steward follows a graduated permission ladder — auto (reads, tests, drafts), notice, confirm (e.g. `git commit`, closing issues, creating agents), explicit approval (e.g. `git push`, release cuts), and hard refuse for destructive operations. Across the whole agent fleet, a starter policy classifies every action by risk rather than by rank: reversible work (R0/R1) the agents simply do, costly-to-undo work (R2) they do only after an independent checker agent confirms the result, and anything touching money, customers, access, contracts or hiring (R3) comes to you prepared as a single decision. Shipping, spending, and strategic pivots always come back to you. The full ladder is documented in the chief-of-staff agent charter inside the repo. More questions: the [full OPOS FAQ](docs/faq.md).
 
 ## Learn more
 
