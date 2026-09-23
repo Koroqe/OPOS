@@ -70,7 +70,7 @@ When drafting the `tools:` ladder AND the role's external-access needs: read `co
 
 8. **Draft the design.** First, **verify `shared/templates/AGENT.md.tmpl` exists AND contains all 5 expected substitution tokens** (`<<AGENT_NAME>>`, `<<AGENT_DESCRIPTION>>`, `<<DEPARTMENT>>`, `<<DELEGATES_TO>>`, `<<ESCALATES_TO>>`). If missing or any token absent, ABORT with: "AGENT.md.tmpl missing or modified — restore from `Koroqe/OPOS` upstream via `copier update`."
 
-   Then fill the template + the 6 body sections (Role, Delegation pattern, Inputs, Outputs, Escalation rules, Owned processes). The `owns_processes:` frontmatter starts as `[]` (the agent owns nothing yet; processes get added by later `design-process` runs when this agent is named as `owner_agent`).
+   Then fill the template + the body sections (Role, Zone and decision rights, Delegation pattern, Inputs, Outputs, Escalation rules, Owned processes). **Zone test (v0.19.0):** name the new role's zone — lease key(s), issue labels, processes — and its checker. If the zone overlaps an existing role's, the answer is more instances of that role, not a new one (role vs worker, `company/policies/autonomy-and-decision-rights.md` §6); say so in the proposal instead of designing a duplicate. The `owns_processes:` frontmatter starts as `[]` (the agent owns nothing yet; processes get added by later `design-process` runs when this agent is named as `owner_agent`).
 
    **Cycle check (delegation graph):** parse existing agents' `Calls:` lines (regex `^Calls:` then tokenize) to build the delegation graph. Add the proposed agent's delegation edges. If a cycle is detected (e.g. A → B → A; or A → A self-delegation), ABORT with: "delegation cycle detected: <node-path>. Agents should form a DAG. Revise the proposed Calls list."
 
@@ -79,7 +79,7 @@ When drafting the `tools:` ladder AND the role's external-access needs: read `co
    - What each said (one sentence each).
    - Placement rationale.
    - **Tools rationale — justify EACH tool in the proposed list** (least-privilege check).
-   - Open questions. **Always explicitly surface** as one open question: whether the agent's `model:` should be `opus` (default) or `sonnet`/`haiku` (cheaper but less capable). Default is `opus` per existing agents; for high-frequency narrow-scope agents `sonnet` may be appropriate.
+   - Open questions. **Always explicitly surface** as one open question: whether the agent's `model:` should be `opus` or `sonnet`/`haiku`. Tiering (policy §10): coding and execution roles default to `sonnet`; leads, architecture and checker roles stay on `opus`; high-frequency narrow-scope agents may use `haiku`.
 
 10. **Iterate.** The user proposes edits. Revise the proposal and re-present. Loop until the user gives an unambiguous approval phrase ("write it," "approve," "ship it," "ok do it"). Phrases like "I'd like to approve this but…" do NOT count — those are still iteration requests.
 

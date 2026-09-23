@@ -28,7 +28,7 @@ Owned by `ops-manager` because all 4 design-* skills are framework-design skills
 
 ## Pre-conditions
 
-- `shared/templates/SUBDEPT.md.tmpl` exists and contains all 7 expected substitution tokens.
+- `shared/templates/SUBDEPT.md.tmpl` exists and contains all 8 expected substitution tokens.
 - The proposed sub-dept name matches the slug regex `^[a-z][a-z0-9-]{0,63}$`.
 - The proposed sub-name is NOT in the framework-reserved 8-name list (shared with `design-department`).
 - The parent dept exists at `departments/<parent_dept>/CLAUDE.md[.jinja]`.
@@ -47,7 +47,7 @@ Mirrors the 12-step procedure in SKILL.md:
 5. Decide on a sub-lead agent (ASK yes/no; emit /design-agent recommendation, NOT auto-invoke).
 6. Consult parent-lead + coo + optional peer via consult-agent.
 7. Capture future sub-dept-internal artifact types (fills DATA_SCOPES token).
-8. Draft the charter from SUBDEPT.md.tmpl (verify 7 tokens; substitute; document two-token semantics divergence from design-department).
+8. Draft the charter from SUBDEPT.md.tmpl (verify 8 tokens; substitute; document two-token semantics divergence from design-department).
 9. Present to user (charter inline + summary + charter target path + open question on restricted-data).
 10. Iterate to unambiguous approval.
 11. Write the files (TOCTOU re-check; context-detect path; mkdir sub-dept folder; write charter ONLY; if lead-agent recommendation: mkdir .claude/agents/<parent>/ first; flip backlog item state if supplied).
