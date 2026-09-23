@@ -53,12 +53,12 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
    wsl -- bash -lc 'rm -rf ~/opos-sync && git clone -q /mnt/<drive>/<path-to-repo> ~/opos-sync && cd ~/opos-sync \
      && git checkout -b opos-update-<tag> && python3 -m copier update --vcs-ref <tag> --conflict rej --defaults'
    ```
-   then commit there,  the branch back from , and **verify the fetched commit before merging it**:
+   then commit there, `git fetch` the branch back from `//wsl.localhost/<distro>/home/<user>/opos-sync`, and **verify the fetched commit before merging it**:
    ```bash
    node shared/scripts/verify-sync.mjs --rev FETCH_HEAD     # --from defaults to the parent's pin
    git merge --ff-only FETCH_HEAD                           # only on exit 0
    ```
-   Do **not** materialise the fetched tree with  to verify it in working-tree mode: that silently overwrites any uncommitted work in your tree.
+   Do **not** materialise the fetched tree with `git read-tree -u --reset` to verify it in working-tree mode: that silently overwrites any uncommitted work in your tree.
 
 7. `git status --porcelain` — list changed files. Count `.rej` files (conflicts).
 7b. **Report `.gitignore` drift.** `.gitignore` is `_skip_if_exists` (v0.16.1), so framework
