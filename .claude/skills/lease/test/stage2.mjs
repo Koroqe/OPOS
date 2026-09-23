@@ -107,7 +107,9 @@ if (ONLY.includes('O')) {
   const KEY = 'process:stage2-offline';
   const a = lease(['acquire', '--key', KEY, '--ttl', '5m', '--intent', 'offline test']);
   check('lease taken while online', a.code === 0, a.err);
-  const BAD = { GH_TOKEN: 'ghp_invalidinvalidinvalidinvalidinvalid00' };
+  // Deliberately NOT shaped like a real token: the framework's redaction lint rejects anything
+  // matching gh[pousr]_ + 36 characters, and a test should not ship something that looks like a leak.
+  const BAD = { GH_TOKEN: 'offline-test-not-a-real-token' };
 
   for (const coldCache of [false, true]) {
     if (coldCache) fs.rmSync(path.join(ROOT, '.claude', 'skills', 'lease', '.state', 'ledger.json'), { force: true });
