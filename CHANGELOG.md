@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.19.1] - 2026-09-23
+
+### Fixed
+
+- **The unattended updater no longer waits for the whole repository to be idle.** It took a `path:**` lease, which conflicts with every path lease anywhere in the repo. At the reference consumer about 19 path leases are live at any given moment, so v0.18.3 was deferred night after night and would never have been applied. It now applies the release, lists the live path leases, and stands down only when one of them covers a file the release actually changes; leases on unrelated folders no longer block anything. `process:auto-sync` is still taken, so two drivers never run at once. Residual: someone can take a lease on a changed file in the few seconds between that check and the push (RISKS 43).
+
 ## [0.19.0] - 2026-09-23
 
 ### Added
