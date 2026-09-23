@@ -44,6 +44,39 @@ test('path keys conflict on OVERLAP in either direction — the two-agents-one-f
   assert.equal(conflicts(narrow, narrow), true);
 });
 
+test('literal path leases: siblings do not conflict, even when they share a directory', () => {
+  const a = parseKey('path:company/policies/autonomy-and-decision-rights.md');
+  const b = parseKey('path:company/policies/telegram-report-tags.md');
+  assert.equal(conflicts(a, b), false, 'two different literal files must not collide just because literalPrefix(a literal) is its parent dir');
+  assert.equal(conflicts(b, a), false);
+});
+
+test('a root-level literal file does not conflict with an unrelated subtree glob', () => {
+  // Regression: literalPrefix('CLAUDE.md') === '' (no directory component), and '' startsWith
+  // ANY prefix — so under the old rule a root literal collided with every other path lease.
+  assert.equal(conflicts(parseKey('path:CLAUDE.md'), parseKey('path:company/**')), false);
+  assert.equal(conflicts(parseKey('path:company/**'), parseKey('path:CLAUDE.md')), false);
+});
+
+test('the same literal path conflicts with itself', () => {
+  assert.equal(conflicts(parseKey('path:CLAUDE.md'), parseKey('path:CLAUDE.md')), true);
+});
+
+test('a literal file conflicts with a glob that covers it', () => {
+  assert.equal(conflicts(parseKey('path:company/ops/x.md'), parseKey('path:company/ops/**')), true);
+  assert.equal(conflicts(parseKey('path:company/ops/**'), parseKey('path:company/ops/x.md')), true);
+});
+
+test('a literal file against a single-star glob: conflicts only when the glob actually matches it', () => {
+  assert.equal(conflicts(parseKey('path:company/ops.md'), parseKey('path:company/*.md')), true);
+  assert.equal(conflicts(parseKey('path:company/sub/ops.md'), parseKey('path:company/*.md')), false, '* does not cross a separator, so this literal is outside the glob');
+});
+
+test('path:** conflicts with a literal path too', () => {
+  assert.equal(conflicts(parseKey('path:**'), parseKey('path:CLAUDE.md')), true);
+  assert.equal(conflicts(parseKey('path:CLAUDE.md'), parseKey('path:**')), true);
+});
+
 test('path:** contends with everything — it is the whole-tree lock auto-sync takes', () => {
   const all = parseKey('path:**');
   assert.equal(conflicts(all, parseKey('path:company/ops/**')), true);

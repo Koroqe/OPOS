@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.19.2] - 2026-09-23
+
+### Fixed
+
+- **A literal `path:` lease conflicted with its own siblings, and a root-level literal file could never be leased at all.** `literalPrefix()` returns the *parent directory* for a wildcard-free path — that's correct for its own doc comment, but `conflicts()` used it for every path-vs-path comparison, including two plain files. So `path:company/policies/a.md` and `path:company/policies/b.md` (found live in a consumer: a new policy file could not be leased because an unrelated sibling policy file was already leased) were reported as contending for the same resource, and a root-level literal like `path:CLAUDE.md` got prefix `''`, which `startsWith`-matches every other path lease — making a root file impossible to lease while ANY path lease was held anywhere in the repo. `conflicts()` now only applies the prefix-overlap heuristic when both sides are real globs (contain `*`/`?`); two literals conflict only when they are the same path, and a literal against a glob is tested with the glob's own `RegExp`. Regression tests in `keys.test.mjs`.
+
 ## [0.19.1] - 2026-09-23
 
 ### Fixed
