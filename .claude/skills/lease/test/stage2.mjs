@@ -269,8 +269,14 @@ if (ONLY.includes('A')) {
     const whole = lease(['acquire', '--key', 'path:**', '--scope', '**', '--ttl', '3m', '--intent', 'copier update', '--paranoid', '--force-dirty']);
     check('auto-sync\'s whole-tree lease stands down while someone edits (exit 2)', whole.code === 2, `exit=${whole.code}`);
     lease(['release', '--key', 'path:company/ops/**', '--reason', 'test'], { cwd: B, enforce: 'off' });
+    // In a live repository another, REAL session may be editing somewhere right now. Then the
+    // whole-tree lease must still stand down — that is correct behaviour, not a failure. What
+    // must not happen is being blocked by the test's OWN, already-released editor lease.
     const after = lease(['acquire', '--key', 'path:**', '--scope', '**', '--ttl', '3m', '--intent', 'copier update', '--force-dirty']);
-    check('...and takes it once the editor is gone', after.code === 0, after.err);
+    const blockedByUs = after.code === 2 && after.err.includes('contended by path:company/ops/**');
+    check('...and is no longer blocked by the released editor (a real live editor elsewhere may still, correctly, block it)',
+      after.code === 0 || (after.code === 2 && !blockedByUs), after.err);
+    if (after.code === 2) console.log('        (blocked by a real live editor: ' + (after.err.split(String.fromCharCode(10))[0] ?? '') + ')');
     lease(['release', '--key', 'path:**', '--reason', 'test'], { enforce: 'off' });
   }
 }

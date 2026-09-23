@@ -90,7 +90,7 @@ Every caller handles the exit code the same way:
 | `2` | stop; report the holder, expiry and intent from the message. Scheduled drivers write a `partial` record — another run has it, the next fire retries |
 | `3` | stop; `git pull --ff-only`, then retry |
 | `4` | (on `check`) take the lease with `acquire`; if that exits `2`, stop |
-| `5` | stop writing immediately — the lease was stolen or lapsed |
+| `5` | the lease lapsed or was taken: `acquire` it again — `0` means it merely lapsed and nobody took it, carry on; `2` means someone else holds it now, stop |
 | `6`, `7`, `8`, `1` | stop and report verbatim |
 
 Exit `9` is the upgrade guarantee. A company that has not run `init-ledger` has not opted in, and pulling a new OPOS release must not change how its task lifecycle behaves.
