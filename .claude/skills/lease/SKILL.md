@@ -62,10 +62,40 @@ node .claude/skills/lease/lease.mjs doctor                 # identity, clock, cl
 | 3 | **STALE CLONE** | `git pull --ff-only`, then retry. **Never work around.** |
 | 4 | **NO LEASE** — gate closed | `acquire` first |
 | 5 | **REVOKED / EXPIRED** | stop writing immediately; re-acquire |
-| 6 | **NO AUTH / NETWORK** | fail closed. (`--offline-ok` currently only skips the auth check; it does not yet verify a cached lease — do not rely on it.) |
+| 6 | **NO AUTH / NETWORK** | fail closed. `--offline-ok` is honoured only by `check`, `commit-gate` and `list`, and only an unexpired cached lease opens a gate; nothing that would write a claim works offline |
 | 7 | **SCOPE VIOLATION** — staged paths outside your lease | unstage the named paths; do not widen the commit |
 | 8 | **CLOCK SKEW** > 600s | fix the clock; the tool refuses to participate |
+| 9 | **NOT CONFIGURED** — this company has not opted in (no registry) | skip the gate and behave exactly as before; opt in with `init-ledger --create` |
 
+## Calling the lease from another skill
+
+Since v0.17.0 the task-lifecycle skills and the scheduled drivers call this skill themselves:
+
+| Skill | Lease step |
+|---|---|
+| `task-register` | `acquire issue:<repo>#<N>` right after the issue is created |
+| `task-update` | `check` before writing, `renew` after posting |
+| `task-complete` | `check` before closing, `release` after |
+| `task-pause` | `release --state yielded`, plus the `paused` label |
+| `task-resume` | `acquire` **before** touching local state — refuses if another machine resumed it |
+| `auto-sync` | `acquire process:auto-sync` and `path:**` after the fast-forward, released on every exit |
+| `review-history` | `acquire process:review-history`; `process:propose-to-core` around upstream PRs |
+
+Every caller handles the exit code the same way:
+
+| Exit | Caller does |
+|---|---|
+| `0` | proceed |
+| `9` | print `lease: not configured, gate skipped` and proceed **exactly as before leases existed** |
+| `2` | stop; report the holder, expiry and intent from the message. Scheduled drivers write a `partial` record — another run has it, the next fire retries |
+| `3` | stop; `git pull --ff-only`, then retry |
+| `4` | (on `check`) take the lease with `acquire`; if that exits `2`, stop |
+| `5` | stop writing immediately — the lease was stolen or lapsed |
+| `6`, `7`, `8`, `1` | stop and report verbatim |
+
+Exit `9` is the upgrade guarantee. A company that has not run `init-ledger` has not opted in, and pulling a new OPOS release must not change how its task lifecycle behaves.
+
+Under `enforce: warn`, `check` and `commit-gate` return `0` for what would have been a refusal, and log it to `.state/would-block.jsonl` instead. `acquire` always refuses a conflict with `2`, whatever the mode — the protocol cannot be half-applied to the act of claiming.
 ## Procedure
 
 ```
@@ -111,6 +141,12 @@ node .claude/skills/lease/lease.mjs audit [--json]          # read-only anomaly 
 node .claude/skills/lease/lease.mjs doctor
 ```
 
+## The registry itself
+
+- **Closed by hand → stop.** GitHub still accepts comments on a closed issue, so without this check the protocol would keep "working" against a registry nobody watches. A registry closed without a rotation pointer makes every command exit `1`, with the repair command in the message.
+- **Rotation.** When the registry holds more than `rotate_at_comments` records after pruning, `reap` opens a successor carrying `opos-lease-ledger-prev: <old>`, points the old one at it with `opos-lease-ledger-next: <new>`, and closes it. Every command follows that pointer. Claims written to the old registry stay visible through the predecessor link until they lapse, so a live lease is never lost to a rotation. Comment ids are repo-global and monotonic, so the lowest-id tiebreak holds across the two issues. The steps are ordered so that a crash at any point is repaired by running `reap` again. `reap --rotate-now` forces one.
+- **Resolution is cached** for ten minutes in `.state/ledger.json`: one extra call per ten minutes, not one per command.
+
 ## Crash recovery has no daemon
 
 **Expiry is authoritative; reaping is cosmetic.** `acquire` beats a corpse whose `expires` has
@@ -142,7 +178,8 @@ before it costs a working day. `OPOS_LEASE_ENFORCE=on|warn|off` overrides per in
    entirely and layers in under the same record format — parked as a future hardening.
 2. **Scale ceiling is roughly 50–100 concurrent acquires**, and the wall is GitHub's *secondary*
    (content-creation) limit, not the 5000/h primary. Use one token per runtime class, never one
-   token for a whole fleet.
+   token for a whole fleet. Rotation bounds a registry's size; **sharding across several
+   registries is not built**.
 3. **Two sessions inside one clone** share `clone_id`: correctly treated as one holder for
    `path:` keys, **not separated** for `issue:` keys. Mitigated only by one-clone-per-repo.
 4. **A lease in a repo you do not control advertises intent; it does not exclude.** A session

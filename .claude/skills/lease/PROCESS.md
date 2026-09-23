@@ -61,13 +61,15 @@ Mirrors the procedure in SKILL.md:
 
 | Mode | Behaviour |
 |---|---|
-| Registry issue closed by a human | **Not detected yet.** GitHub still accepts comments on a closed issue, so the protocol keeps working against it, but nothing warns that the registry was closed. Rotation via a `-next` pointer is not implemented either. |
+| Registry issue closed by a human | Every command exits `1` with the repair command. GitHub still accepts comments on a closed issue, so silently continuing would keep the protocol "working" against a registry nobody watches. A registry closed **with** an `opos-lease-ledger-next` pointer was rotated by `reap` and is followed. |
 | Secondary rate limit (403) | Classified as back-off, never as a hard error. Honour `Retry-After`. |
 | Crash between POST and label | The index lies; `reap` reconciles in both directions. **The label is an index, never a source of truth.** |
 | Crash while holding | The lease expires on TTL; `acquire` beats the corpse with no reaper involved. |
 | Clock skew | Expiry always uses server time. Warn above 120s, refuse above 600s. |
-| `gh` offline or unauthenticated | Exit 6, fail closed. (`--offline-ok` currently only bypasses the auth check; it does not yet verify a cached lease.) |
+| `gh` offline or unauthenticated | Exit 6, fail closed. `--offline-ok` is honoured only by `check`, `commit-gate` and `list`, and then only an unexpired cached lease opens a gate. |
 | GitHub unreachable mid-`renew` | **Not** treated as revocation: the cache is kept and exit 6 returned. Only a true 404 means the claim is gone. |
+| Company has not opted in (no registry) | Exit `9` from every command. Callers skip the gate and behave exactly as before. |
+| Registry grows past `rotate_at_comments` | `reap` rotates it (see SKILL.md "The registry itself"). Crash-safe: re-running `reap` completes a half-done rotation. |
 | A paused task that still holds a live lease | `reap` **flags and does not auto-fix** — auto-fixing would let a pause issued on one machine kill live work on another. |
 
 ## Scheduling
