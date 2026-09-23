@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.16.6] - 2026-09-23
+
+### Fixed
+
+- **Retraction: v0.16.0 claimed things that were never built.** An audit of every statement v0.16.0 made against the code that shipped found six overclaims. They are corrected here, in every copy at once: `RISKS.md`, this changelog, the `lease` skill’s own `SKILL.md` and `PROCESS.md`, the v0.16.0 release notes and PR #31. The immutable v0.16.0 commit message still carries some of them, and this entry is the correction of record.
+  1. **RISKS 22** said scheduled processes take a `process:` lease and the losing run stands down. `auto-sync` and `review-history` never call the lease skill; the risk is unchanged.
+  2. **RISKS 30** was marked "closed at root". `task-register` still appends to `.current-task` with `>>`; the race is unchanged.
+  3. **RISKS 15** was marked closed. Occupancy is visible across machines only for sessions that take a lease voluntarily; task state itself is still per-machine. Downgraded to partially mitigated.
+  4. The lease `PROCESS.md` said a registry issue closed by a human makes `acquire` exit 1, and that a ledger closed with a `-next` pointer is followed as rotation. Neither is implemented.
+  5. `SKILL.md` and `PROCESS.md` said `--offline-ok` requires an unexpired cached lease. It bypasses the auth check without looking at any cache.
+  6. **RISKS 41** said ledger sharding and rotation were "designed in, so the fix is a config edit". Neither exists in code.
+
+  How it happened: v0.16.0 documented the design, including the planned second stage, in the present tense. That tense was then read as a status report. Nothing in the release process compared the docs against the code, and that comparison is what caught these six.
 ## [0.16.5] - 2026-09-23
 
 ### Fixed
@@ -62,9 +75,9 @@ In `0.x.y` releases breaking changes are allowed.
 
 ### Fixed
 
-- **RISKS 15 (cross-machine task state) — CLOSED**, though not by the mechanism it predicted. The deferred plan was to move state into tracked files; that cannot work, because a tracked file must be pushed to be seen and push/pull races are the very problem. Occupancy now lives in a claim comment instead, reachable without a working tree. `.current-task` survives as a local cache and is no longer the source of truth.
-- **RISKS 30 (intra-machine concurrent-register race) — CLOSED AT ROOT**, and the `flock` work item is withdrawn: the race existed because occupancy was an appended local file, and there is no longer an append to race on.
-- **RISKS 22 (concurrent scheduled-run collisions)** — the per-skill `.run.lock` work item is superseded and withdrawn. A lock file would only have serialised runs on one machine; `process:` and `path:**` leases serialise them across machines and runtimes.
+- **RISKS 15 (cross-machine task state) — partially mitigated, still open.** *(Corrected in v0.16.6. This line originally said CLOSED, which was wrong.)* Occupancy is now visible across machines through claim comments, but only for sessions that take a lease; the task-lifecycle skills do not take one yet, so task state itself remains per-machine.
+- **RISKS 30 (intra-machine concurrent-register race) — still open.** *(Corrected in v0.16.6. This line originally said CLOSED AT ROOT, which was wrong.)* `task-register` still appends to `.current-task` with `>>`, so the race is unchanged.
+- **RISKS 22 (concurrent scheduled-run collisions) — still open.** *(Corrected in v0.16.6. This line originally claimed that `process:` and `path:**` leases serialise scheduled runs; the scheduled drivers never call the lease skill.)* The primitive exists; the wiring does not yet.
 - **RISKS 36 (single-operator assumption)** — impact reduced, risk stays open. The lease record is the first artefact in OPOS that names *who* is acting (login, host, clone, runtime, session), so multi-operator identity now has a substrate; authorization still does not.
 ## [0.15.0] - 2026-09-01
 

@@ -61,12 +61,12 @@ Mirrors the procedure in SKILL.md:
 
 | Mode | Behaviour |
 |---|---|
-| Registry issue closed by a human | `acquire` exits 1 naming the repair command. A ledger closed *with* a `-next` pointer is rotation and is followed. |
+| Registry issue closed by a human | **Not detected yet.** GitHub still accepts comments on a closed issue, so the protocol keeps working against it, but nothing warns that the registry was closed. Rotation via a `-next` pointer is not implemented either. |
 | Secondary rate limit (403) | Classified as back-off, never as a hard error. Honour `Retry-After`. |
 | Crash between POST and label | The index lies; `reap` reconciles in both directions. **The label is an index, never a source of truth.** |
 | Crash while holding | The lease expires on TTL; `acquire` beats the corpse with no reaper involved. |
 | Clock skew | Expiry always uses server time. Warn above 120s, refuse above 600s. |
-| `gh` offline or unauthenticated | Exit 6, fail closed. `--offline-ok` requires an unexpired cached lease. |
+| `gh` offline or unauthenticated | Exit 6, fail closed. (`--offline-ok` currently only bypasses the auth check; it does not yet verify a cached lease.) |
 | GitHub unreachable mid-`renew` | **Not** treated as revocation: the cache is kept and exit 6 returned. Only a true 404 means the claim is gone. |
 | A paused task that still holds a live lease | `reap` **flags and does not auto-fix** — auto-fixing would let a pause issued on one machine kill live work on another. |
 

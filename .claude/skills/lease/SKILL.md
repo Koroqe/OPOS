@@ -62,7 +62,7 @@ node .claude/skills/lease/lease.mjs doctor                 # identity, clock, cl
 | 3 | **STALE CLONE** | `git pull --ff-only`, then retry. **Never work around.** |
 | 4 | **NO LEASE** — gate closed | `acquire` first |
 | 5 | **REVOKED / EXPIRED** | stop writing immediately; re-acquire |
-| 6 | **NO AUTH / NETWORK** | fail closed (`--offline-ok` needs an unexpired cached lease) |
+| 6 | **NO AUTH / NETWORK** | fail closed. (`--offline-ok` currently only skips the auth check; it does not yet verify a cached lease — do not rely on it.) |
 | 7 | **SCOPE VIOLATION** — staged paths outside your lease | unstage the named paths; do not widen the commit |
 | 8 | **CLOCK SKEW** > 600s | fix the clock; the tool refuses to participate |
 
