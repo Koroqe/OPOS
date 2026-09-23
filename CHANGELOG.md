@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.18.1] - 2026-09-23
+
+### Added
+
+- **A canary consumer that every release passes through first.** The README had long claimed "the maintainer's own instance is the canary", but the framework repo cannot be one: it has no `.copier-answers.yml`, so no update driver runs against it. `Koroqe/opos-canary` is a real consumer scaffold with the unattended updater switched on. Each release is dispatched to it immediately, so a release that breaks the update path shows up red there within minutes, well inside the 24-hour window before consumers apply it. This release is the first one to go through it. Documented in `MAINTAINER.md` and, briefly, in the consumer README.
+
 ## [0.18.0] - 2026-09-23
 
 Automatic updates, for real. Until this release no consumer had a working unattended update path — checked against the reference consumer's entire history, every one of its 14 updates was applied by a person or an interactive session.

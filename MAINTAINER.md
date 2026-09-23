@@ -62,6 +62,16 @@ Consumer instances running the self-improvement loop open PRs titled `[opos-core
 
 Merged proposals ship to the whole fleet at the next release — the sender's consumer instance picks it up via its own `auto-sync`, which closes the loop (their `review-history` marks the source delta `applied` when it sees the PR merged).
 
+## The canary consumer (v0.18.1)
+
+`Koroqe/opos-canary` (private) is a plain consumer scaffold whose only job is to receive every release through the same unattended updater (`sync-opos`, `OPOS_AUTO_SYNC=on`) before real companies do. Consumers wait 24 hours after a release; the canary does not need to — dispatch it right after cutting a release:
+
+```bash
+gh workflow run sync-opos.yml --repo Koroqe/opos-canary -f min_release_age_hours=0
+```
+
+A green run with "Applied vX.Y.Z" means the update path itself works for that release. A red run means consumers will hit the same wall: fix it, or delete the release, inside the 24-hour window. The canary has no lease registry, so it also exercises the "not opted in" path (exit 9). Releases that change a workflow file will escalate on the canary exactly as on every consumer — apply those to the canary by hand with `sync-from-core` so the next release is exercised from a current base.
+
 ## Releasing a new version
 
 0. **Cadence check (v0.11):** merged-but-unreleased consumer fixes should not sit longer than a week — consumers only receive what is RELEASED; an unreleased merge helps nobody.
