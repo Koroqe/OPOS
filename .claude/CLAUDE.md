@@ -73,6 +73,14 @@ department's own `deploy` skill), not through the SDLC commands.
   consumer-owned (STARTER) files are applied locally; fixes to framework (CORE)
   files are proposed upstream via `propose-to-core` — CORE files are never
   edited locally.
+- **Decide by risk class, not by rank.** Every action is R0–R3: agents do R0/R1
+  without asking (R1: and say so), do R2 only after an independent
+  `check-result` PASS, and prepare R3 — money, counterparties, access,
+  contracts, hiring, adopting an agent — for a human to decide in one step.
+  Escalation goes straight to the holder of the right, not up a chain. Scale
+  by running more instances of a role, not by designing more roles. Full text:
+  `company/policies/autonomy-and-decision-rights.md` (company-owned; where it
+  and an agent definition disagree, the policy wins).
 - **Build the missing capability, don't route around it.** When a goal needs a
   process or an agent that does not exist, that gap is itself work: file it,
   count it, and design it. See the steward's "Coverage check".
