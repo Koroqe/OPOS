@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.18.2] - 2026-09-23
+
+### Fixed
+
+- **An escalation that a human resolved stayed open forever.** When a release is escalated (for example because it changes a workflow file) and a person then applies it, the next automatic run finds the repository up to date — but only the *applied* path closed `[opos-auto-sync]` issues. The *up-to-date* path now closes them too, with a comment naming the version the repository is on.
+- **The nightly run no longer depends on a field the schedule event may not carry.** The default branch was read from `github.event.repository`, which scheduled runs may not include; it now falls back to `github.ref_name`, which is the default branch on a scheduled run. (The script already had a fallback, so no run was affected.)
+
+This release changes `sync-opos.yml`, so — by design — every consumer's updater will escalate it rather than apply it: apply it once with `sync-from-core`. It is also the first release to exercise that escalation path live on the canary.
+
 ## [0.18.1] - 2026-09-23
 
 ### Added
