@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.20.0] - 2026-09-23
+
+An operating-model change. The agents were organised like a human company: an escalation chain (`eng-lead → rnd-lead → coo → ceo → human`), "design a sub-role when load justifies it", and "a deliberation costs ~15 calls, reserve it". Every hop was a wait paid in human attention, while an agent instance costs cents. At the reference consumer this showed up as a growing `founder-action` queue that was mostly errands an agent could have done with one-time access, finished work waiting days on a single "click", and lead agents carrying spend thresholds ("> $X") that nobody had ever set — so they escalated everything. This release moves decisions to whoever holds the right for that **risk class**, and puts an independent checker between agents and the world, because the costliest agent mistakes are confident false claims, and a fleet multiplies those as fast as it multiplies output.
+
+### Added
+
+- **`company/policies/autonomy-and-decision-rights.md` (STARTER).** Decision classes by risk, not rank: **R0** reversible and internal (act), **R1** visible to the team (act and report), **R2** costly to undo or production (act only after a checker PASS), **R3** money, anything a counterparty sees, access, contracts, hiring, adopting an agent, priorities (a human decides; the agent prepares it to one click as one `founder-action` issue). Escalation goes straight to the holder of the right. Also: a holders table only a human edits, maker/checker, the earned-autonomy ladder (`off → shadow → on` + cap, moved only by the holder), role vs worker (scale by instances; a new role needs a new zone), C-level agents as governance, dispatch over the issue queue, durable runtimes, model tiering, a thresholds section (unset = R3), and adoption switches — **R2 autonomy ships off** (R2 is handled as R3 until a human switches it on). The five never-automate invariants are never lowered; ladder actions under an invariant stop at `shadow`.
+- **`result-checker` agent** (company tier, `opus`). Re-establishes a claimed result by a different method than the maker used — the live system, the primary source, a recomputation — and returns `PASS | FAIL | UNVERIFIABLE` with evidence. Tools are exactly `Read, Grep, Glob, Bash, WebFetch`: no `Write`, `Edit` or `Task`, pinned by a unit test.
+- **`check-result` process** (owner `coo`). The maker/checker gate: a fresh checker instance before any R2 action and any "done" above R0; at least two methods for R2; only PASS unlocks; `UNVERIFIABLE` keeps the action one class higher.
+- **Operating-model fields in `PROCESS.md.tmpl`** — optional `executor:`, `checker:`, `decision_classes:`, `autonomy_ladder:`, plus a `## Verification` body section. Documentation fields; nothing enforces them at runtime.
+- **"Zone and decision rights" in `AGENT.md.tmpl`**, and a Decision rights section (new `<<DECISION_RIGHTS>>` token) in `DEPARTMENT.md.tmpl` and `SUBDEPT.md.tmpl`.
+- **A "Decide by risk class, not by rank" principle in `.claude/CLAUDE.md`**, so the posture reaches existing consumers on their next sync.
+- **Steward dispatch.** `chief-of-staff` routes each queue item by zone → owner, executor (agent / agent after an access grant / human), decision class per action, and lease; independent items go to parallel workers.
+
+### Changed
+
+- **`ceo`**: keeper of priorities and metrics, weekly strategy review, arbiter of zone conflicts between agents; prepares R3 decisions for the human CEO instead of approving work.
+- **`coo`**: operator of the agent fleet — queue and dispatch health, stuck work, leases, runtime, process SLAs; now lists `lease` and owns `check-result`.
+- **`ops-manager`**: designed processes declare executor, checker and classes; designed agents have a zone; "consult with purpose".
+- **Department leads** (`commercial-`, `finance-`, `legal-`, `people-`, `pr-lead`): owners of a zone's process portfolio and metrics, with a Decision rights table; R0/R1 without asking. The unset "$X" thresholds point at the policy's thresholds section; the commercial "major deal" threshold is dropped (anything a counterparty sees is already R3). "Sub-roles when load justifies" is replaced by role vs worker.
+- **R&D agents** (`rnd-lead`, `eng-lead`, `eng-reviewer` — STARTER): R&D does infrastructure through registered resources, R2 after a PASS; access gaps become `acquire-resource` requests for the whole class of task; product code in another repository is orchestrated, not edited from here. **`eng-lead` moves to `sonnet`** (execution roles on the faster model; leads, the reviewer and the checker stay on `opus`).
+- `design-process` drafts the new PROCESS fields; `design-agent` applies a zone test and states the model-tiering default; `design-department` / `design-subdept` fill `<<DECISION_RIGHTS>>`.
+- `deliberate-decision`, the consumer README, `company/decisions/README.md` and RISKS 27: "reserve for decisions whose stakes justify the cost" becomes "spend with purpose" — the test is whether a full panel changes the outcome. The guidance on when not to use it is kept.
+- Starter department charters: Decision rights tables and the role-vs-worker rule.
+- `chief-of-staff`'s framework counts brought current: 28 skills, 15 agents, 19 templates.
+
+### Hardened after a consumer's adversarial review
+
+Before release, a consumer adopted the policy and had four of its lead agents attack it (59 findings). The generic lessons are folded in:
+
+- **Access management is R3, always.** Writing secrets, creating/changing/revoking access, aliases and memberships, and new or changed scheduled workflows were R2 in the first draft — against never-automate invariants 1 and 3. A granted access no longer lowers any class: only *using* it can be R1/R2.
+- **Nothing derived lowers a class.** A triage, a plan or a dispatch projection is a hint; the acting agent classifies each action; the policy wins. Choosing the higher class when unsure is never a violation, and a process may gate more strictly than its class.
+- **R2 = plan check before, result check after**, with rollback on a result FAIL (`check-result` gains a `phase`).
+- **Checker evidence is pointers** (path, hash, query), never client data, correspondence or personal data. **A PASS is evidence for the responsible human**, not a replacement of their check for client, money and document classes.
+- **Own area** = a live lease scope and, where tasks carry owner labels, the session's human as owner. R3 is one decision per issue, but per-message send approvals keep their own process channel; R1/R2 reports go to the issue, chat gets digests, R3 asks are batched per human per day.
+- **The ladder was tightened**: classes defined positively, a per-draft compliance checklist in `shadow` whose failure resets the streak, a never-laddered list (outbound a client contract bars, securities/investment-solicitation content without counsel's opinion, accepting or changing terms), anyone demotes / only the holder promotes, automatic demotion on edits, FAILs, complaints and unsubscribes, an independent checker call per output in `on`, and a company-wide outbound pause flag.
+- **Capacity**: a decision order (more workers → a process → a new role with its own zone → a human) and a default cap of 3 concurrent workers per role until a spend ceiling is set.
+- **Access grants** carry an owner, an expiry, a revoke command and a listed task class; `browser-cdp` profiles are one per service and never the owner's personal mail or messengers; a break-glass second admin is named; one-shot revocations are verified from another session.
+- Deleting client data and moving it to a new service or region are R3; scheduled runs act only within both their `authority:` list and their class, and widening `authority:` is R3; until a consumer syncs, the steward's permission tiers keep governing commit, push, release and destructive actions.
+
+No agent's `tools:` line changed. Tool grants are never-automate invariant 1 and need their own human sign-off; leads without `Task` state that `check-result` is run by the session that dispatched them.
+
+### Migration
+
+- **CORE** (all company-tier agents, the five department leads, templates, design skills, `.claude/CLAUDE.md`, the new agent and skill) arrive with your next sync.
+- **The policy** lives under `company/policies/**`, which is `_skip_if_exists`: it arrives on your next sync **as a new file**, and is yours from then on. Fill in §3 holders, §10 thresholds and §11 adoption switches. Nothing turns R2 on by itself.
+- **STARTER files you already have are not touched**: `.claude/agents/rnd/*` and `departments/*/CLAUDE.md`. To adopt the new versions, copy the R&D agents and the charters' "Decision rights" sections from this release (or ask the steward to merge them).
+
 ## [0.19.3] - 2026-09-23
 
 ### Fixed

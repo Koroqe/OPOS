@@ -393,7 +393,7 @@ The three v0.6.0 wrappers (`schedule-process` / `unschedule-process` / `list-sch
 
 - Default round count is 2 (not 3+); user can override down to 1 for cheaper one-shot critique.
 - Round 1 has explicit all-critics-AGREE early-exit (step 6) — consensus decisions skip directly to arbiter verdict, saving ~half the cost.
-- README's "How to use OPOS day-to-day" Berlin-example bullet includes an inline cost note: "trigger only for decisions whose stakes justify the cost (strategic direction, hiring, market entry — NOT routine tactical choices)."
+- README's "How to use OPOS day-to-day" Berlin-example bullet includes an inline "spend with purpose" note (reworded v0.20.0): use it for decisions that are R3 or hard to reverse, where seven critics change the outcome — not for routine tactical choices a single `consult-agent` settles.
 - Future v0.6.x candidates: cost-aware critic culling (auto-skip dept-leads obviously irrelevant to the decision domain); pre-summary skill to compress the arbiter input when the deliberation log exceeds ~25K chars.
 
 ## Risk 28 — Deliberation simulation fidelity (v0.6.1)

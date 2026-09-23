@@ -19,7 +19,24 @@ version: 0.1.0
 # provenance (v0.11 — stamped by the design skill at write time; makes derivation attribution + re-lint mechanical)
 derived_from: <<TEMPLATE_PATH_AT_VERSION>>
 designed_by: <<DESIGN_SKILL_AT_VERSION>>
-# state_schema (OPTIONAL — list the named states this process transitions through; documentation only, no runtime enforcement in v0.2.0; pairs with the `## State transitions` body section below):
+# operating model (OPTIONAL — added v0.20.0; see company/policies/autonomy-and-decision-rights.md). Documentation
+# fields read by people, the steward's dispatch and review-history; no runtime enforcement. Omit any you do not need:
+# executor: <agent-name>        # the role whose workers run this process (may differ from `owner`, who owns its design and metrics)
+# checker: result-checker (2 methods)   # who verifies the result and with how many independent methods; usually
+#                              # result-checker via check-result. R2 actions need >=2. "n/a" only for pure R0 processes.
+# decision_classes: [R0, R1]   # the R0-R3 classes of the actions this process takes (R0 reversible/internal, R1 visible
+#                              # to the team, R2 costly to undo / production — after a checker PASS, R3 a human decides)
+# autonomy_ladder: off         # REQUIRED in spirit when decision_classes includes R3: off | shadow | on (+ a cap, e.g.
+#                              # "on, cap 20/day"). Only the holder of the right moves the rung; never-automate actions stop at shadow.
+#
+# state_schema (OPTIONAL — list the named states this process transitions through; documentation only, no runtime enforcement in v0.2.0; pairs with the `## Verification
+
+How the result is checked, and by whom — never by the actor that produced it. Name the method (live
+system, primary source, recomputation), the number of independent methods, and what happens on FAIL or
+UNVERIFIABLE. For most processes: "`check-result` with <n> method(s); only PASS closes the run." Pure R0
+processes may write "none — R0 only" (added v0.20.0).
+
+## State transitions` body section below):
 # state_schema:
 #   - <state-name>: <one-line description>
 #   - <next-state-name>: <one-line description>

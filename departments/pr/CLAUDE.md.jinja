@@ -10,7 +10,18 @@ Owns external communications — press releases, brand voice consistency, social
 
 - `pr-lead` — dept lead, owns brand voice + media relations + comms templates. Defined at [`.claude/agents/pr/pr-lead.md`](../../.claude/agents/pr/pr-lead.md).
 
-(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting — e.g., a dedicated `social-media-curator`.)
+(Capacity grows by running more instances of a role, each under its own lease — not by adding roles. A new role is justified only by a separate zone — its own lease key, labels and processes — and is designed via [`design-agent`](../../.claude/skills/design-agent/).)
+
+## Decision rights
+
+Per [`company/policies/autonomy-and-decision-rights.md`](../../company/policies/autonomy-and-decision-rights.md): decide by **risk class, not rank**. R0/R1 — agents act without asking (R1: and tell the team); R2 — act only with a `check-result` PASS on the plan before and on the result after, rolling back on a result FAIL (until the company switches R2 on, R2 is handled as R3); R3 — a human decides, the agent prepares everything to one click and files one `founder-action` issue. Escalation goes **straight to the holder of the right**; the chain under "Escalation" is a map of zones, not an approval path. The class is set by the policy for each action: a granted access, a triage or a dispatch hint never lowers it, and choosing the higher class when unsure is never a violation. Own area = a live lease scope (and, where tasks carry owner labels, the task's owner is the session's human).
+
+| Class | In this department |
+|---|---|
+| R0 | press and social drafts, mention monitoring, the brand-voice library |
+| R1 | sharing drafts and monitoring digests with the team |
+| R2 | — |
+| R3 | every publication and every statement to media or the public; crisis responses |
 
 ## Escalation
 

@@ -51,6 +51,28 @@ class TestParseAgents(unittest.TestCase):
         self.assertIn("eng-lead", names)
 
 
+class TestMakerChecker(unittest.TestCase):
+    """v0.20.0: the checker is the gate that lets R2 move to agents; it must stay read-only."""
+
+    def test_result_checker_has_no_write_or_delegation_tools(self):
+        agents = {a.name: a for a in parse_agents()}
+        self.assertIn("result-checker", agents)
+        checker = agents["result-checker"]
+        self.assertEqual(checker.department, "company")
+        self.assertEqual(
+            checker.tools, ["Read", "Grep", "Glob", "Bash", "WebFetch"]
+        )
+        for forbidden in ("Write", "Edit", "Task", "NotebookEdit"):
+            self.assertNotIn(forbidden, checker.tools)
+
+    def test_check_result_skill_owned_by_coo(self):
+        skills = {s.name: s for s in parse_skills()}
+        self.assertIn("check-result", skills)
+        skill = skills["check-result"]
+        self.assertEqual(skill.owner_agent, "coo")
+        self.assertEqual(skill.process_owner, "coo")
+
+
 class TestParseSkills(unittest.TestCase):
     def test_finds_at_least_ten(self):
         skills = parse_skills()

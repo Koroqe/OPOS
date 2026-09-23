@@ -10,7 +10,18 @@ Owns capability gap → resource allocation. AI-first: every gap is first evalua
 
 - `people-lead` — dept lead, runs `allocate-resource` for every capability gap; maintains the resource registry of all agents + humans. Defined at [`.claude/agents/people/people-lead.md`](../../.claude/agents/people/people-lead.md).
 
-(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting.)
+(Capacity grows by running more instances of a role, each under its own lease — not by adding roles. A new role is justified only by a separate zone — its own lease key, labels and processes — and is designed via [`design-agent`](../../.claude/skills/design-agent/).)
+
+## Decision rights
+
+Per [`company/policies/autonomy-and-decision-rights.md`](../../company/policies/autonomy-and-decision-rights.md): decide by **risk class, not rank**. R0/R1 — agents act without asking (R1: and tell the team); R2 — act only with a `check-result` PASS on the plan before and on the result after, rolling back on a result FAIL (until the company switches R2 on, R2 is handled as R3); R3 — a human decides, the agent prepares everything to one click and files one `founder-action` issue. Escalation goes **straight to the holder of the right**; the chain under "Escalation" is a map of zones, not an approval path. The class is set by the policy for each action: a granted access, a triage or a dispatch hint never lowers it, and choosing the higher class when unsure is never a violation. Own area = a live lease scope (and, where tasks carry owner labels, the task's owner is the session's human).
+
+| Class | In this department |
+|---|---|
+| R0 | `allocate-resource` analyses, role and process designs as drafts, access-request specs |
+| R1 | resource-registry documentation, pending-grant rows |
+| R2 | — |
+| R3 | granting, changing or revoking access, secrets, aliases and memberships (a granted access never lowers this); putting a new agent into service; hiring and compensation |
 
 ## Escalation
 

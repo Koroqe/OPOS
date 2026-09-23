@@ -11,9 +11,9 @@ tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "Task"]
 
 ## When to use
 
-When a high-level company decision needs systematic pressure-testing: strategic direction, hiring, market entry, major policy changes, cross-functional tradeoffs. NOT for routine tactical choices (use the chief-of-staff dispatcher or a single `consult-agent` instead — those are cheaper). The plan-critic pattern that's been load-bearing on 7 OPOS releases (v0.4.0 through v0.6.1) is now a first-class company process.
+When a high-level company decision needs systematic pressure-testing: strategic direction, hiring, market entry, major policy changes, cross-functional tradeoffs. NOT for routine tactical choices (use the chief-of-staff dispatcher or a single `consult-agent` instead — they answer faster and a full panel adds nothing there). The plan-critic pattern that's been load-bearing on 7 OPOS releases (v0.4.0 through v0.6.1) is now a first-class company process.
 
-This is the framework's most expensive single skill — **~15 subagent invocations per default 2-round deliberation** (per RISKS Risk 27). Use deliberately for decisions whose stakes justify the cost.
+A default 2-round deliberation is **~15 subagent invocations** (RISKS Risk 27). Spend them with purpose: the test is not whether the company can afford the calls but whether seven critics will change the outcome. Use it for decisions that are R3 or hard to reverse (see `company/policies/autonomy-and-decision-rights.md`), where a single `consult-agent` would miss objections; skip it for routine choices it would only slow down.
 
 ## Inputs
 

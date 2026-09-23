@@ -35,6 +35,18 @@ designed_by: <<DESIGN_SKILL_AT_VERSION>>
 
 One paragraph: what this agent is responsible for and what it does NOT do.
 
+## Zone and decision rights (v0.20.0)
+
+- **Zone:** the lease key(s) this role takes (e.g. `path:departments/<dept>/**`), the issue labels it
+  picks up, and the processes it owns or executes. A role is a zone, not a headcount.
+- **Decision classes** per `company/policies/autonomy-and-decision-rights.md` — a short table of what is
+  R0 (act), R1 (act and report), R2 (act after a `check-result` PASS) and R3 (a human decides; prepare it
+  to one click) in this zone. Do not invent money thresholds here; point to the policy's thresholds
+  section.
+- **Checker:** who verifies this role's results (usually `result-checker` via `check-result`).
+- **Role vs worker:** more load means more running instances of this role, each under its own lease —
+  not a new role. A new role is justified only by a separate zone.
+
 ## Delegation pattern
 
 Calls: <<DELEGATES_TO>>
