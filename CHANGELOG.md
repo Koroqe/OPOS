@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.19.3] - 2026-09-23
+
+### Fixed
+
+- **The daily updater's runtime files no longer show up as untracked in existing companies.** Their ignore lines shipped in `.gitignore`, which is consumer-owned and never updated after scaffold, so only new companies got them; in the canary consumer the files appeared in `git status`, one `git add -A` away from a commit. The script now registers them in the clone's own `.git/info/exclude` on every run, which reaches every company with no migration.
+- **A clone that caught up is reported as updated** even when an even newer release is still inside its 24-hour wait. Before, that run said nothing although the clone had just moved to a new version.
+
 ## [0.19.2] - 2026-09-23
 
 ### Fixed
