@@ -32,6 +32,20 @@ An operating-model change. The agents were organised like a human company: an es
 - Starter department charters: Decision rights tables and the role-vs-worker rule.
 - `chief-of-staff`'s framework counts brought current: 28 skills, 15 agents, 19 templates.
 
+### Hardened after a consumer's adversarial review
+
+Before release, a consumer adopted the policy and had four of its lead agents attack it (59 findings). The generic lessons are folded in:
+
+- **Access management is R3, always.** Writing secrets, creating/changing/revoking access, aliases and memberships, and new or changed scheduled workflows were R2 in the first draft — against never-automate invariants 1 and 3. A granted access no longer lowers any class: only *using* it can be R1/R2.
+- **Nothing derived lowers a class.** A triage, a plan or a dispatch projection is a hint; the acting agent classifies each action; the policy wins. Choosing the higher class when unsure is never a violation, and a process may gate more strictly than its class.
+- **R2 = plan check before, result check after**, with rollback on a result FAIL (`check-result` gains a `phase`).
+- **Checker evidence is pointers** (path, hash, query), never client data, correspondence or personal data. **A PASS is evidence for the responsible human**, not a replacement of their check for client, money and document classes.
+- **Own area** = a live lease scope and, where tasks carry owner labels, the session's human as owner. R3 is one decision per issue, but per-message send approvals keep their own process channel; R1/R2 reports go to the issue, chat gets digests, R3 asks are batched per human per day.
+- **The ladder was tightened**: classes defined positively, a per-draft compliance checklist in `shadow` whose failure resets the streak, a never-laddered list (outbound a client contract bars, securities/investment-solicitation content without counsel's opinion, accepting or changing terms), anyone demotes / only the holder promotes, automatic demotion on edits, FAILs, complaints and unsubscribes, an independent checker call per output in `on`, and a company-wide outbound pause flag.
+- **Capacity**: a decision order (more workers → a process → a new role with its own zone → a human) and a default cap of 3 concurrent workers per role until a spend ceiling is set.
+- **Access grants** carry an owner, an expiry, a revoke command and a listed task class; `browser-cdp` profiles are one per service and never the owner's personal mail or messengers; a break-glass second admin is named; one-shot revocations are verified from another session.
+- Deleting client data and moving it to a new service or region are R3; scheduled runs act only within both their `authority:` list and their class, and widening `authority:` is R3; until a consumer syncs, the steward's permission tiers keep governing commit, push, release and destructive actions.
+
 No agent's `tools:` line changed. Tool grants are never-automate invariant 1 and need their own human sign-off; leads without `Task` state that `check-result` is run by the session that dispatched them.
 
 ### Migration

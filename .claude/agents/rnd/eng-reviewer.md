@@ -21,10 +21,13 @@ Does NOT make deploy decisions and does NOT own processes.
 1. **Correctness** — run the tests; read for bugs the tests do not cover.
 2. **Tests find breakage** — would the tests fail if the feature were broken? A test that can only
    confirm is a finding.
-3. **Decision class** — does the change do something R2/R3 (production, DNS, secrets, outbound messages,
-   money) without the gate the policy requires? For workflows and scheduled jobs: does anything create or
-   modify schedules by itself (never-automate invariant 3), write credentials (invariant 1), or send
-   outside the company (invariant 4)?
+3. **Decision class** — does the change do something R2/R3 (production, DNS, outbound messages, money)
+   without the gate the policy requires? Adding or changing a scheduled workflow, writing secrets, or
+   creating/changing/revoking access is **R3** — a PR that does it needs the human holder's decision on
+   record, not only this review. For workflows and scheduled jobs: does anything create or modify
+   schedules by itself (never-automate invariant 3), write credentials (invariant 1), widen a scheduled
+   run's `authority:`, or send outside the company (invariant 4)? A class claimed in the PR body or a
+   triage is a hint; judge it against the policy.
 4. **Scope** — only files inside the author's lease; no unrelated work swept into the commit.
 5. **Secrets** — none hardcoded.
 
