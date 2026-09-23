@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.18.0] - 2026-09-23
+
+Automatic updates, for real. Until this release no consumer had a working unattended update path — checked against the reference consumer's entire history, every one of its 14 updates was applied by a person or an interactive session.
+
+### Added
+
+- **`sync-opos` is now an unattended updater.** It runs nightly on GitHub's Linux runners and is switched on with one repo variable (`gh variable set OPOS_AUTO_SYNC --body on`); scheduling is never self-registered (invariant 3). Logic lives in `shared/scripts/opos-auto-update.mjs` — plain Node, no LLM, no API key, no cloud app, no third-party action. It applies a release by itself only when that is provably safe:
+  - `copier update` exits 0;
+  - `verify-sync` confirms no local customisation was reverted;
+  - there are no conflicts;
+  - no workflow file is touched.
+
+  Anything else turns the run red and files one `[opos-auto-sync]` issue with the exact fix; that issue is updated rather than duplicated, and closed automatically once a later run succeeds. Releases wait 24 hours before they apply. Where leases are in use, the run holds `process:auto-sync` and `path:**`, so it never updates under a live editor.
+- **Contribution PRs are always based on fresh upstream code.** `propose-to-core` used to cut its branch from the contributor fork's own `main`, which is only as fresh as the last "Sync fork" click — producing PRs based on old code that could silently revert newer upstream work. It now best-effort syncs the fork with the contributor's credentials, then branches from upstream regardless and pushes to the fork. A stale fork no longer matters.
+- Unit tests for the updater's decision logic, run by CI.
+
+### Changed
+
+- `auto-sync`'s one-driver-per-repo preflight reads the `OPOS_AUTO_SYNC` switch. The old test — "is `schedule:` uncommented" — would refuse on every run now that the schedule is always present.
+- The consumer README's "Updating from upstream" section recommends the path that actually works, says plainly what the cloud routine needs, and tells Windows users to sync under WSL.
+
+### Removed
+
+- The `peter-evans/create-pull-request` dependency. The driver no longer opens PRs; it commits clean updates and escalates the rest through issues, which matches the `auto-sync` authority (`commit`, `push`, `file_issue`).
+
 ## [0.17.4] - 2026-09-23
 
 ### Fixed
