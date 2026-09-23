@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.17.2] - 2026-09-23
+
+### Changed
+
+- **`task-update` and `task-complete` gate with `acquire`, not `check`.** Found by reading a consumer's request against what v0.17.0 actually does: they wanted every task a session works on to carry a visible 🔒 claim at the start and a 🔓 at the end. Under `issue:` enforcement `warn` — the default, and the right one until a company has checked every runtime can reach its registry — `check` merely logs a missing lease and returns `0`. So a session updating an *existing* task never took a lease, left no claim on the issue, and was not stopped by another session holding it. `acquire` fixes all three: it is a no-op if this session already holds the task; it takes the lease and posts the claim if the task is free; and it refuses with `2` if another session holds it, **in every enforcement mode**. Collision protection on tasks therefore no longer waits on flipping `issue:` to `on`.
+
 ## [0.17.1] - 2026-09-23
 
 ### Fixed

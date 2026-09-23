@@ -17,7 +17,7 @@ Closes out a tracked task: posts a final report (agent summary + auto-generated 
 with reason `completed`, archives the task file, and removes the issue from the local active-task
 cache. The last of the task-tracking lifecycle skills.
 
-**`.claude/.current-task` is a local convenience cache (v0.17.0)**; the lease checked and released
+**`.claude/.current-task` is a local convenience cache (v0.17.0)**; the lease acquired and released
 at steps 9b/12b is what actually governs whether this session is allowed to close the task —
 closing someone else's task from another machine is exactly the collision leases exist to stop.
 
@@ -43,7 +43,7 @@ Mirrors the procedure in SKILL.md:
 7. Discover PR links via `gh issue view --json closedByPullRequestsReferences`.
 8. Scan commits in range for the `Refs: #<issue>` trailer; collect commits lacking it.
 9. Render the final comment (summary, changelog, PR links, deliverables, missing-ref warning).
-9b. **Lease gate.** `lease.mjs check --key "issue:<repo>#<number>"`. `0` proceed · `9` not
+9b. **Lease gate.** lease.mjs acquire --key "issue:<repo>#<number>"`. `0` proceed · `9` not
     configured, print `lease: not configured, gate skipped` and proceed exactly as before ·
     anything else, stop.
 10. Post the final comment.
@@ -65,7 +65,7 @@ Mirrors the procedure in SKILL.md:
 - `active_task_resolved` — the target issue was determined via `--issue` or a single-entry cache,
   or the run aborted with the documented disambiguation/absence message.
 - `final_comment_posted` — a new comment exists on the issue containing the agent summary.
-- `lease_gate_passed_or_not_configured` — `lease.mjs check` at step 9b returned `0`, or returned `9`
+- `lease_gate_passed_or_not_configured` — `lease.mjs acquire` at step 9b (v0.17.2) returned `0`, or returned `9`
   and the gate was skipped.
 - `status_done_label_applied` — `gh issue view --json labels` includes `status:done`.
 - `issue_closed_with_reason_completed` — `gh issue view --json state,stateReason` returns `CLOSED` /

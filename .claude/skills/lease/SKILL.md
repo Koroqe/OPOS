@@ -74,8 +74,8 @@ Since v0.17.0 the task-lifecycle skills and the scheduled drivers call this skil
 | Skill | Lease step |
 |---|---|
 | `task-register` | `acquire issue:<repo>#<N>` right after the issue is created |
-| `task-update` | `check` before writing, `renew` after posting |
-| `task-complete` | `check` before closing, `release` after |
+| `task-update` | `acquire` before writing (no-op if already held; posts the 🔒 claim if free; `2` if someone else holds it), `renew` after posting |
+| `task-complete` | `acquire` before closing, `release` after (posts the 🔓) |
 | `task-pause` | `release --state yielded`, plus the `paused` label |
 | `task-resume` | `acquire` **before** touching local state — refuses if another machine resumed it |
 | `auto-sync` | `acquire process:auto-sync` and `path:**` after the fast-forward, released on every exit |
@@ -95,7 +95,7 @@ Every caller handles the exit code the same way:
 
 Exit `9` is the upgrade guarantee. A company that has not run `init-ledger` has not opted in, and pulling a new OPOS release must not change how its task lifecycle behaves.
 
-Under `enforce: warn`, `check` and `commit-gate` return `0` for what would have been a refusal, and log it to `.state/would-block.jsonl` instead. `acquire` always refuses a conflict with `2`, whatever the mode — the protocol cannot be half-applied to the act of claiming.
+Under `enforce: warn`, `check` and `commit-gate` return `0` for what would have been a refusal, and log it to `.state/would-block.jsonl` instead. `acquire` always refuses a conflict with `2`, whatever the mode — the protocol cannot be half-applied to the act of claiming. **That is why the task skills gate with `acquire`, not `check`** (v0.17.2): it protects a task from a second session even while `issue:` enforcement is still `warn`, and it leaves the visible 🔒 claim on every task a session touches.
 ## Procedure
 
 ```

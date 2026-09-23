@@ -30,11 +30,13 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
    - Else (array empty / file absent) → ABORT with: `No active task. Open one with task-register, or pass --issue <N> explicitly.`
 4. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo`.
 5. `gh issue view <number> --repo <repo> --json comments,state` — abort if state is `CLOSED` (the user must reopen with `gh issue reopen` or invoke `task-complete` instead).
-5b. **Lease gate (v0.17.0).** Only the session holding the task writes to it:
+5b. **Lease gate (v0.17.2).** Take — or confirm you already hold — the lease on the task:
    ```bash
-   node .claude/skills/lease/lease.mjs check --key "issue:<repo>#<number>"
+   node .claude/skills/lease/lease.mjs acquire --key "issue:<repo>#<number>" --intent "<one line: what this session is doing on the task>"
    ```
-   Handle the exit code exactly as in the lease skill's "Calling the lease from another skill" table: `0` proceed · `9` the company has not opted in to leases — print `lease: not configured, gate skipped` and proceed exactly as before · anything else STOP. Exit `4` means this session holds no lease on the task: take one with `lease.mjs acquire --key "issue:<repo>#<number>"` — if another session holds it, that acquire exits `2` and names who, and you stop. Exit `5` means the lease lapsed or was taken: run `lease.mjs acquire` for the same key. `0` means it had merely lapsed and nobody took it — proceed. `2` means another session holds it now — stop, and report who.
+   `acquire`, not `check`, on purpose. If this session already holds the lease it is a no-op that exits `0`. If the task is free it takes the lease, which posts the 🔒 claim comment on the issue so every other session and every human sees who is working on it. If another session holds it, it exits `2` **in every enforcement mode** — so two sessions can never both write to one task, even while `issue:` enforcement is still `warn`. `check` in `warn` mode would only have logged.
+
+   Exit codes: `0` proceed · `9` the company has not opted in to leases — print `lease: not configured, gate skipped` and proceed exactly as before · `2` another session holds the task — STOP and report who, until when, and why (all three are in the message) · `3` the clone is stale — `git pull --ff-only`, then retry · anything else STOP and report it verbatim.
 
 6. Scan the last 50 comments for the HTML marker `<!-- update-key: <key> -->`. If found, exit 0 silently with the message `duplicate key, no-op` (this is correct behavior, not an error). Still write a history entry with `outcome: partial` recording the skipped invocation.
 7. Render the comment from `shared/templates/task-update.md.tmpl`, substituting `{{KEY}}`, `{{TIMESTAMP}}` (ISO 8601, UTC), `{{STATUS_LINE}}` (either `**Status:** <new>` or empty), `{{MESSAGE}}`.
