@@ -30,10 +30,18 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
    - Else (array empty / file absent) → ABORT with: `No active task. Open one with task-register, or pass --issue <N> explicitly.`
 4. Read `$REPO_ROOT/.claude/task-tracking.config.json`. Validate `repo`.
 5. `gh issue view <number> --repo <repo> --json comments,state` — abort if state is `CLOSED` (the user must reopen with `gh issue reopen` or invoke `task-complete` instead).
+5b. **Lease gate (v0.17.0).** Only the session holding the task writes to it:
+   ```bash
+   node .claude/skills/lease/lease.mjs check --key "issue:<repo>#<number>"
+   ```
+   Handle the exit code exactly as in the lease skill's "Calling the lease from another skill" table: `0` proceed · `9` the company has not opted in to leases — print `lease: not configured, gate skipped` and proceed exactly as before · anything else STOP. Exit `4` means this session holds no lease on the task: take one with `lease.mjs acquire --key "issue:<repo>#<number>"` — if another session holds it, that acquire exits `2` and names who, and you stop. Exit `5` means the lease was stolen or lapsed: stop writing immediately.
+
 6. Scan the last 50 comments for the HTML marker `<!-- update-key: <key> -->`. If found, exit 0 silently with the message `duplicate key, no-op` (this is correct behavior, not an error). Still write a history entry with `outcome: partial` recording the skipped invocation.
 7. Render the comment from `shared/templates/task-update.md.tmpl`, substituting `{{KEY}}`, `{{TIMESTAMP}}` (ISO 8601, UTC), `{{STATUS_LINE}}` (either `**Status:** <new>` or empty), `{{MESSAGE}}`.
 8. `gh issue comment <number> --repo <repo> --body "<rendered>"`.
-9. If `--status` was provided: fetch the issue body via `gh issue view <number> --json body`, run a regex substitution on the canonical `**Status:** ...` line, write back via `gh issue edit <number> --body-file -`. The regex (`/^\*\*Status:\*\* .+$/m` — single-line match, anchored at line start, multiline mode) is implemented in a portable Python one-liner, parameterized via shell env var to avoid quoting issues:
+8b. **Heartbeat.** Posting an update is proof the work is alive, so renew the lease: `node .claude/skills/lease/lease.mjs renew --key "issue:<repo>#<number>" --quiet`. A non-zero exit here does not undo the posted comment, but exit `5` (revoked) must be reported: someone else now holds the task.
+
+9. If `--status` was provided: fetch the issue body, substitute the canonical `**Status:** ...` line, and write it back:
 
    ```bash
    NEW_STATUS=review
@@ -42,11 +50,10 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
      | gh issue edit <number> --repo <repo> --body-file -
    ```
 
-   The helper exits non-zero if the regex didn't match (body was hand-edited and lost the canonical line) — the pipeline then short-circuits before the `gh issue edit` runs. Treat non-zero exit as ABORT with the message: `issue body no longer has the canonical Status line — restore the line or skip --status`.
+   The helper exits non-zero if the canonical line is missing (body hand-edited), and the pipeline then stops before `gh issue edit` runs. Treat that as ABORT: `issue body no longer has the canonical Status line — restore the line or skip --status`. The value travels as an argument, never interpolated into a shell string.
 
-   `sed` and `perl` work too (the regex is portable); Python is the most portable across macOS/Linux without flag quirks. The pipeline captures the new status via `os.environ['NEW_STATUS']` rather than f-string-interpolating the value into the shell command — this avoids any shell-quoting issues if the status string contains spaces or special characters.
+   This is still a read-modify-write against the API, but since v0.17.0 it is performed only by the lease holder (step 5b), so two sessions can no longer race on it. A human editing the body at the same instant can still lose their edit.
 
-   NOTE: this is a read-modify-write against the API; if a human edits the body between view and edit, their change is silently lost. Documented as a known v0 race.
 10. Print one-line confirmation: `Updated: #<number> — key=<key>`.
 11. **Write history entry** to `$REPO_ROOT/.claude/skills/task-update/history/<YYYY-MM-DD>-<short-run-id>.md`. Include in body: the issue number, the key, the status change (if any), and a one-line preview of the message.
 

@@ -1,22 +1,29 @@
 #!/usr/bin/env node
 /**
- * task-state.mjs — the small mutations the task-lifecycle skills need, as a script.
+ * task-state.mjs — the small local-state mutations the task-lifecycle skills need.
  *
- *   node shared/scripts/task-state.mjs remove-active --issue <N>
  *   node shared/scripts/task-state.mjs add-active    --issue <N>
- *   node shared/scripts/task-state.mjs patch-status  --status <s>   (body on stdin, patched body on stdout)
+ *   node shared/scripts/task-state.mjs remove-active --issue <N>
+ *   node shared/scripts/task-state.mjs list-active
+ *   node shared/scripts/task-state.mjs add-paused    --issue <N>
+ *   node shared/scripts/task-state.mjs remove-paused --issue <N>     (exit 3 if not paused)
+ *   node shared/scripts/task-state.mjs list-paused
+ *   node shared/scripts/task-state.mjs patch-status  --status <s>    (body on stdin, patched body on stdout)
  *
- * Why a script and not an inline interpreter one-liner:
+ * These two files are a LOCAL CONVENIENCE CACHE, not the source of truth for occupancy. Since
+ * v0.17.0 the authority is the lease (a claim comment on GitHub, visible from every machine);
+ * these files only remember "which issues did this clone work on", so a session need not pass
+ * --issue every time.
  *
- * These steps used `python3 -c '...'`. On a stock Windows machine `python3` resolves to the
- * Microsoft Store app-execution alias, which prints "Python was not found" and exits 49 — so
- * `task-update`'s status-line patch, `task-complete`'s active-list prune and `task-pause`'s
- * were silently dead there, while the skills read as working. Before that they were shell
- * `grep -v … > tmp && mv` chains, which failed reproducibly on first invocation.
+ * Why a script and not an inline interpreter one-liner: these steps used `python3 -c '...'`,
+ * and on a stock Windows machine python3 is the Microsoft Store alias stub that exits 49 — the
+ * steps were silently dead there while the skills read as working. Before that they were shell
+ * `grep -v … > tmp && mv` chains that failed reproducibly on first invocation. Two interpreter
+ * choices failing the same way is a pattern: logic inside an escaped string is logic nothing
+ * can test. A file can be tested.
  *
- * Two interpreter choices in a row failed the same way, so the fix is not a third one-liner: a
- * file can be tested, and `node` is already required by other shipped skills. Logic that lives
- * in a JSON- or shell-escaped string is logic nothing can check.
+ * Writes go through a temp file + rename, so a concurrent reader never sees a half-written
+ * list, and two writers can at worst lose one update to a cache — never corrupt it.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,52 +34,91 @@ const cmd = argv[0];
 const flag = (n) => { const i = argv.indexOf('--' + n); return i === -1 ? null : argv[i + 1]; };
 
 function repoRoot() {
-  try {
-    return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
-  } catch { return process.cwd(); }
+  try { return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim(); }
+  catch { return process.cwd(); }
 }
 
 const ROOT = flag('root') ?? repoRoot();
 const ACTIVE = path.join(ROOT, '.claude', '.current-task');
+const PAUSED = path.join(ROOT, '.claude', '.paused-tasks');
 
 /** Newline-delimited integers. Non-numeric lines are dropped, duplicates collapsed. */
-function readActive() {
+function readList(file) {
   let raw = '';
-  try { raw = fs.readFileSync(ACTIVE, 'utf8'); } catch { return []; }
+  try { raw = fs.readFileSync(file, 'utf8'); } catch { return []; }
   const nums = raw.split(/\r?\n/).map((l) => l.trim()).filter((l) => /^[0-9]+$/.test(l));
   return Array.from(new Set(nums));
 }
 
-function writeActive(list) {
-  if (!list.length) { try { fs.rmSync(ACTIVE, { force: true }); } catch { /* already gone */ } return; }
-  fs.mkdirSync(path.dirname(ACTIVE), { recursive: true });
-  fs.writeFileSync(ACTIVE, list.join('\n') + '\n');
+function writeList(file, list, { keepEmpty = false } = {}) {
+  if (!list.length && !keepEmpty) {
+    try { fs.rmSync(file, { force: true }); } catch { /* already gone */ }
+    return;
+  }
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, list.length ? list.join('\n') + '\n' : '');
+  fs.renameSync(tmp, file);
 }
+
+// .paused-tasks is kept even when empty, as before: task-resume distinguishes
+// "this clone never paused anything" from "the paused list is now empty".
+const readActive = () => readList(ACTIVE);
+const writeActive = (l) => writeList(ACTIVE, l);
+const readPaused = () => readList(PAUSED);
+const writePaused = (l) => writeList(PAUSED, l, { keepEmpty: true });
 
 function requireIssue() {
   const n = String(flag('issue') ?? '').trim();
   if (!/^[0-9]+$/.test(n)) { process.stderr.write('--issue <N> is required\n'); process.exit(2); }
-  return n;
+  return String(Number(n));
 }
 
+const print = (list) => process.stdout.write(list.length ? list.join(',') + '\n' : '(empty)\n');
+
 switch (cmd) {
-  case 'remove-active': {
-    const n = requireIssue();
-    // Absent file is the desired end state, not an error — another session may have got there
-    // first, and task-complete must stay idempotent.
-    const next = readActive().filter((x) => x !== n);
-    writeActive(next);
-    process.stdout.write(next.length ? next.join(',') + '\n' : '(empty)\n');
-    break;
-  }
   case 'add-active': {
     const n = requireIssue();
     const cur = readActive();
     if (!cur.includes(n)) cur.push(n);
     writeActive(cur);
-    process.stdout.write(cur.join(',') + '\n');
+    print(cur);
     break;
   }
+  case 'remove-active': {
+    // An absent file is the desired end state, not an error — another session may have got
+    // there first, and task-complete must stay idempotent.
+    const n = requireIssue();
+    const next = readActive().filter((x) => x !== n);
+    writeActive(next);
+    print(next);
+    break;
+  }
+  case 'list-active':
+    process.stdout.write(readActive().map((x) => x + '\n').join(''));
+    break;
+  case 'add-paused': {
+    const n = requireIssue();
+    const cur = readPaused();
+    if (!cur.includes(n)) cur.push(n);
+    writePaused(cur);
+    print(cur);
+    break;
+  }
+  case 'remove-paused': {
+    const n = requireIssue();
+    const cur = readPaused();
+    if (!cur.includes(n)) {
+      process.stderr.write(`issue #${n} is not in the paused list\n`);
+      process.exit(3);
+    }
+    writePaused(cur.filter((x) => x !== n));
+    process.stdout.write('ok\n');
+    break;
+  }
+  case 'list-paused':
+    process.stdout.write(readPaused().map((x) => x + '\n').join(''));
+    break;
   case 'patch-status': {
     const status = String(flag('status') ?? '').trim();
     if (!status) { process.stderr.write('--status <value> is required\n'); process.exit(2); }
@@ -85,10 +131,7 @@ switch (cmd) {
     process.stdout.write(patched);
     break;
   }
-  case 'list-active':
-    process.stdout.write(readActive().join('\n') + (readActive().length ? '\n' : ''));
-    break;
   default:
-    process.stderr.write('usage: task-state.mjs <remove-active|add-active|list-active|patch-status> [--issue N] [--status s]\n');
+    process.stderr.write('usage: task-state.mjs <add-active|remove-active|list-active|add-paused|remove-paused|list-paused|patch-status> [--issue N] [--status s] [--root dir]\n');
     process.exit(2);
 }

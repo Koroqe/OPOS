@@ -24,16 +24,17 @@ After `task-pause` has set a task aside, to bring it back as an active task. **A
 
 2. **Read `.current-task` as a newline-delimited array** (v0.7.0). Apply defensive read-side filtering. **Multi-active tasks are first-class as of v0.7.0** — the pre-v0.7.0 "verify absent" guard is REMOVED. The only check here is: is `$ISSUE_NUMBER` already in the array? If yes → abort with "Issue #$ISSUE_NUMBER already active." If no → proceed. (Defensive against re-running task-resume on an already-resumed issue.)
 
-3. **Verify `issue_number` appears in `.paused-tasks`.** `grep -qx "$ISSUE_NUMBER" "$REPO_ROOT/.claude/.paused-tasks"` else abort: "Issue #$ISSUE_NUMBER not found in paused list."
+3. **Verify the issue is paused in this clone.** `node shared/scripts/task-state.mjs list-paused | grep -qx "$ISSUE_NUMBER"`, else abort: "Issue #$ISSUE_NUMBER not found in paused list."
 
-4. **Remove the matching line from `.paused-tasks`.** Use `grep -v` to a temp file then move into place to avoid in-place-edit portability concerns:
+3b. **Take the lease BEFORE touching any local state (v0.17.0).** This is the cross-machine check `.current-task` could never make — the task may have been resumed on another machine in the meantime:
    ```bash
-   grep -vx "$ISSUE_NUMBER" "$REPO_ROOT/.claude/.paused-tasks" > /tmp/paused.tmp && \
-   mv /tmp/paused.tmp "$REPO_ROOT/.claude/.paused-tasks"
+   node .claude/skills/lease/lease.mjs acquire --key "issue:<repo>#$ISSUE_NUMBER" --intent "resumed"
    ```
-   If `.paused-tasks` is empty after removal, leave it as an empty file (don't delete — keeps the convention discoverable).
+   Handle the exit code exactly as in the lease skill's "Calling the lease from another skill" table: `0` proceed · `9` the company has not opted in to leases — print `lease: not configured, gate skipped` and proceed exactly as before · anything else STOP. Exit `2` means another session holds it: abort with its message ("#N is held by <holder> until <time> — it was resumed elsewhere") and change nothing locally.
 
-5. **Append `issue_number` to `.current-task`** (v0.7.0 array semantics; replaces the v0.6.x overwrite-single-line behavior): `echo "$ISSUE_NUMBER" >> "$REPO_ROOT/.claude/.current-task"`. Trailing newline IS now used (matches `task-register` step 10's append convention; the defensive read filter handles either). Other active tasks (in the multi-active workflow) are untouched.
+4. **Remove it from the local paused list.** `node shared/scripts/task-state.mjs remove-paused --issue "$ISSUE_NUMBER"` (the file is kept even when empty), then `gh issue edit "$ISSUE_NUMBER" --repo <repo> --remove-label paused`.
+
+5. **Add it to the local active cache.** `node shared/scripts/task-state.mjs add-active --issue "$ISSUE_NUMBER"`. Other active tasks are untouched.
 
 6. **Post resume notice via `task-update`** (now valid: the resumed issue is in `.current-task`). **As of v0.7.0**, if `.current-task` has multiple active entries, pass `--issue $ISSUE_NUMBER` explicitly so `task-update` doesn't abort on the multi-active disambiguation guard (see task-update step 3):
    ```bash

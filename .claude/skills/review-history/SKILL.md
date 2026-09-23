@@ -41,6 +41,8 @@ Nothing under `company/resources/` — registry rows, entries, request specs, gr
 
 Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged to the default branch and pushed (per the Scheduled-run authority exception — the ff-merge is the sanctioned integration step of the `commit` authority).
 
+0. **Take the run lease (v0.17.0).** `node .claude/skills/lease/lease.mjs acquire --key process:review-history --intent "weekly history triage" --ttl 60m`. Exit `2`: another run (another machine, or the same week's run still going) holds it — write a `partial` record naming the holder and stop. Exit `9`: not configured, proceed as before. Every later exit path releases it (`lease.mjs release --key process:review-history`).
+
 1. **Collect:** glob `**/history/*.md` and `**/scheduled-runs/*.md` from the repo root.
 2. **PR-state reconciliation FIRST** — for every entry carrying `upstream_pr:` AND every `proposals/LEDGER.md` row with outcome `pr-opened`: `gh pr view <url> --json state,mergedAt`:
    - merged → set the entry `status: applied` (durable entries), ledger `outcome` → `merged`, dated note.
@@ -55,6 +57,8 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
    - **STARTER/consumer target, within the objective threshold** — the delta touches **≤ 2 files AND ≤ 20 changed lines AND no sensitive path** (any path containing `auth`, `payment`, `billing`, `secret`, `migration`; `.claude/settings.json`; anything under `.github/workflows/`) → apply the fix and commit `chore(core): review-history — apply delta from <entry-path>`; set `status: applied`.
    - **STARTER/consumer target, above threshold** → write a proposal draft into the owning agent's dept backlog (`write_proposal`); set a note, leave `open` until the owner acts.
    - **Nonsensical, stale, or already-moot** → `status: rejected` + one-line reason. If the source entry is a gitignored scheduled-run record (the flip is not durable), also add a `rejected-local` row to the ledger so other machines/clones don't re-triage it.
+5a. **Before each `propose-to-core` invocation**, take `process:propose-to-core` (`lease.mjs acquire --key process:propose-to-core --ttl 30m`) and release it afterwards. Two runs on two machines must not open duplicate upstream PRs; `proposals/LEDGER.md` dedupe stays as the second line of defence, not the only one.
+
 5b. **Backlog sweep (v0.11 — the counting phase):** glob `**/backlog/*.md`; parse frontmatter (`kind`, `occurrences`, `last_seen`, `runs`, `state` — all additive-optional; absent kind = `task`). Route by kind at threshold: `lesson` with occurrences ≥ 2 → propose-to-core against its `root_cause_target` (counts against the 3-PR cap); `process-gap` with runs+occurrences ≥ 2 → note as a design-process candidate for the owning dept (v0.12 ships the draft mode that acts on it; until then the note IS the output); `resource-gap` at any count → note for acquire-resource (v0.13); `task` → never auto-promoted, but items with `runs ≥ 2` get a one-line "formalization candidate" note appended once. Stale items (`state: proposed`, untouched > 90 days, occurrences 1) get a staleness note for the owner. Every routed/noted item gets `last_seen` refreshed and the action recorded in its Runs log.
 
 5c. **Conditional re-lint (v0.11 — closes the loop INTO derived artifacts):** if the most recent sync (the newest `opos-auto-sync`/`sync-from-core` commit since the previous review-history run) touched `shared/templates/` or any `.claude/skills/design-*/` path, diff each derived artifact's STRUCTURE against its current template: required frontmatter fields present, required sections present, `tools:` entries valid, provenance stamp present. Structural drift → a `write_proposal` draft per artifact for its owner (never an autonomous edit to consumer-owned files beyond the step-5 threshold). No sync or no template changes → skip with a one-line note.
@@ -63,6 +67,8 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
 
 6. **Zero open deltas** (normal on a fresh consumer): write a `success` run record with the note `no open deltas` — every run records (RISKS Risk 20 liveness).
 7. **Integrate:** commit any remaining record/annotation changes, ff-merge the work branch to the default branch, delete it, push (degraded no-remote mode: local only, noted). Write the run record — prelude present → `./scheduled-runs/`, absent → `./history/`.
+
+7b. **Release the run lease** (`lease.mjs release --key process:review-history`). Also do this on every early stop above (step 6 included).
 
 `--dry_run`: run steps 1–5d read-only (the knowledge phase prints its would-be proposals without writing), print the full triage table (entry → classification → intended action), act on nothing, write nothing.
 
