@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.21.2] - 2026-09-23
+
+### Fixed
+
+- **Companies already up to date still receive missing settings.** The unattended driver only ever runs its installed copy, so the v0.21.1 fix alone would reach a company's `.claude/settings.json` only at the release after next. The driver now also reconciles settings when there is nothing to update: idempotent (nothing missing, nothing committed), stands down while a lease covers the file, adds only missing non-permission keys, and commits the result as `chore(sync): reconcile .claude/settings.json with OPOS <pin> (automatic)`. This heals every company that applied v0.19–v0.21.1 unattended.
+
 ## [0.21.1] - 2026-09-23
 
 ### Fixed
