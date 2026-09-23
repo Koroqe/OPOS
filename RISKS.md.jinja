@@ -527,6 +527,14 @@ Scheduled sessions read untrusted remote text — release notes, PR/issue bodies
 
 **Mitigation (v0.17.0):** all three sync drivers treat a non-zero exit as a failure and run `shared/scripts/verify-sync.mjs`, which fails the sync if any file changed that upstream did not change between the two tags. It was tested against both a real destructive Windows run (caught, exit 2) and a clean Linux run of the same update (exit 0). On Windows, run the sync under WSL or on the `gha`/`cloud` runtime. **Residual:** the copier limitation itself is upstream of OPOS and remains; the verification only guarantees that it can no longer be committed unnoticed.
 
+## Risk 43 — The unattended updater hands some releases to a human by design (v0.18.0)
+
+**Likelihood: CERTAIN for releases that change workflow files · Impact: LOW · Status: ACCEPTED, escalated**
+
+The `sync-opos` Action applies clean releases by itself. It deliberately does **not** apply a release that touches `.github/workflows/**`: GitHub rejects such a push from the Actions token (`refusing to allow a GitHub App to create or update workflow … without 'workflows' permission`, verified empirically on 2026-09-23), and never-automate invariant 3 forbids a scheduled run from writing workflow files regardless. Those releases arrive as one red run plus one `[opos-auto-sync]` issue, and wait for a human to run `sync-from-core`. Supplying a personal access token with `workflow` scope would remove the limit and is intentionally **not** supported: it would be a standing credential grant to an unattended process (invariant 1).
+
+Two further limits, both by design: a release is not applied until it is 24 hours old (so a broken one can be withdrawn), and, where leases are in use, not while anyone holds a path lease (the run retries the next night). Before v0.18.0 there was no working automatic update path at all: the shipped Action was manual-only, the reference consumer had deleted it on scaffold day, and `auto-sync` needed a cloud permission that was never granted. That consumer fell 14 releases behind over 81 days.
+
 ## Risk 40 — Lease claims are ordered, not serialised (v0.16.0)
 
 **Likelihood: LOW · Impact: LOW-MEDIUM · Status: OPEN, measured**

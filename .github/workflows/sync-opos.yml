@@ -1,69 +1,71 @@
-# OPT-IN auto-update workflow. By default this only runs on manual trigger
-# (workflow_dispatch). To enable weekly background PRs, uncomment the
-# `schedule:` block below.
+# sync-opos — keeps this company's OPOS up to date, unattended.
 #
-# MUTUAL EXCLUSION (v0.9.0): pick ONE sync driver per repo — this workflow's
-# schedule OR the /auto-sync cron routine (which refuses to run while the
-# schedule below is uncommented). Two drivers produce competing branches.
+# Every night it asks whether a newer OPOS release exists. If one does and it is safe to apply,
+# it applies it, verifies the result, and pushes it to the default branch. If it is not safe, it
+# stops, turns the run red, and files ONE `[opos-auto-sync]` issue saying exactly what a human
+# must do. The logic lives in shared/scripts/opos-auto-update.mjs (plain Node; no LLM, no API key,
+# no cloud app).
 #
-# Permissions: the default GITHUB_TOKEN provides read+write on this repo and
-# is enough if the upstream OPOS repo is PUBLIC. If upstream is PRIVATE,
-# add a `GH_PAT_OPOS_READ` secret (a PAT with read access to upstream) and
-# reference it in the copier step via `env: GH_TOKEN: ${{ secrets.GH_PAT_OPOS_READ }}`.
+# SWITCH IT ON (a human does this once — scheduling is never self-registered, never-automate
+# invariant 3):
+#     gh variable set OPOS_AUTO_SYNC --body on
+# Until then every run skips in a second. Switch it off the same way with `--body off`.
 #
-# Third-party action note: this workflow uses `peter-evans/create-pull-request`
-# for PR creation. If your org's GitHub policy blocks third-party actions,
-# replace that step with a script that uses `gh pr create` directly (see
-# https://cli.github.com/manual/gh_pr_create).
+# What it applies by itself: any release whose changes pass `verify-sync` (no local customisation
+# reverted), produce no conflicts, and touch no file under `.github/workflows/`.
 #
-# Branch-name convention: a FIXED branch name (`opos-core-update`) is used
-# so subsequent workflow runs reuse the same branch — peter-evans/create-pull-request
-# updates the existing PR instead of opening a new one each week. This differs
-# from the `sync-from-core` skill, which uses `opos-update-<tag>` (tag-specific)
-# for the interactive local flow.
+# What it hands to a human, with an issue: conflicts; a failed verification; and any release that
+# changes a workflow file. The last is not a choice — GitHub rejects workflow-file changes pushed
+# with the Actions token ("refusing to allow a GitHub App to create or update workflow … without
+# `workflows` permission", verified 2026-09-23), and invariant 3 forbids a scheduled run from
+# writing workflow files anyway. Apply such a release once with the `sync-from-core` skill; the
+# driver then carries on by itself.
+#
+# ONE DRIVER PER REPO: while OPOS_AUTO_SYNC is on, do not also register the `auto-sync` skill as a
+# routine — its preflight refuses to run when this switch is on.
+#
+# Runs on Linux on purpose: on Windows `copier update` silently drops local customisations
+# (WinError 206, OPOS RISKS 42).
+name: sync-opos
 
-name: Sync from OPOS core
 on:
-  workflow_dispatch: {}
-  # Uncomment to enable weekly auto-PRs (Mon 3am UTC):
-  # schedule:
-  #   - cron: "0 3 * * 1"
+  schedule:
+    - cron: "17 3 * * *"   # 03:17 UTC nightly — when nobody is likely to hold an editing lease
+  workflow_dispatch:
+    inputs:
+      min_release_age_hours:
+        description: "Wait this long after a release before applying it (0 = apply now)"
+        required: false
+        default: "24"
+
+permissions:
+  contents: write   # commit and push the update
+  issues: write     # escalation issues; lease claims on the registry
+
+concurrency:
+  group: sync-opos
+  cancel-in-progress: false
 
 jobs:
-  sync:
+  update:
+    if: ${{ vars.OPOS_AUTO_SYNC == 'on' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Install copier
-        run: pip install copier
-      - name: Record the current pin
-        id: pin
-        run: awk -F"_commit: " 'NF>1 {split($2, a, /[,}]/); print "old=" a[1]}' .copier-answers.yml >> "$GITHUB_OUTPUT"
-      - name: Run copier update
-        # A non-zero exit is a FAILURE (v0.17.0). The step that fails in practice is the one
-        # that re-applies local customisations, so accepting its exit would open a PR that
-        # silently resets them.
-        run: copier update --defaults --conflict rej
-      - name: Verify nothing local was reverted
-        # verify-sync fails the job if the update changed a file that upstream did NOT change
-        # between the two tags, i.e. a local customisation being thrown away.
+        run: pip install --quiet copier
+      - name: Apply the latest OPOS release if it is safe to
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node shared/scripts/verify-sync.mjs --from "${{ steps.pin.outputs.old }}"
-      - name: Create or update PR
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: opos-core-update
-          title: "chore: sync OPOS core"
-          body: |
-            Automated OPOS core sync via `copier update`.
-
-            Review `.rej` files for unresolved conflicts before merging.
-            See https://copier.readthedocs.io/ for `copier update` semantics.
-          commit-message: "chore: sync OPOS core via copier update"
+          OPOS_MIN_RELEASE_AGE_HOURS: ${{ inputs.min_release_age_hours || '24' }}
+          OPOS_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: node shared/scripts/opos-auto-update.mjs
