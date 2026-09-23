@@ -55,5 +55,5 @@ Escalates straight to the holder of the right (policy §2): R3 decisions go to t
 - `deliberate-decision` — `.claude/skills/deliberate-decision/` (NEW in v0.6.1) — multi-round propose-critique-revise loop for high-level decisions. 12-step procedure; direct parallel Task calls (NOT through consult-agent middleware) for round-N critiques + proposer revision with critic-memory threading + arbiter verdict; human approves at step 12; artifact written to `company/decisions/`.
 - `review-history` — `.claude/skills/review-history/` (NEW in v0.9.0) — scheduled weekly triage of all open `proposed_delta` entries + upstream-PR state reconciliation; the consumer half of the framework's self-improvement loop.
 - `lease` — `.claude/skills/lease/` (v0.16.0) — take, renew, release and verify leases on shared resources; the COO watches occupancy across the fleet.
-- `check-result` — `.claude/skills/check-result/` (NEW in v0.19.0) — the maker/checker gate: a fresh `result-checker` instance verifies a claimed result by a different method before any R2 action or "done" above R0.
+- `check-result` — `.claude/skills/check-result/` (NEW in v0.20.0) — the maker/checker gate: a fresh `result-checker` instance verifies a claimed result by a different method before any R2 action or "done" above R0.
 - Otherwise, `coo` delegates new-process design to `ops-manager`.

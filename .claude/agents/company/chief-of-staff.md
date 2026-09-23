@@ -33,9 +33,9 @@ Coordination connective tissue between the CEO, the COO, and the department lead
 
 The steward knows by heart, without lookup:
 
-- **All 28 v0.19.0 skills** + their owners + when each applies. `chief-of-staff` (12): the owned list below. `ops-manager` (8): design-process, design-agent, design-department, design-subdept, adopt-proposal, schedule-process, unschedule-process, list-scheduled-processes. `coo` (5): company-setup, deliberate-decision, review-history, lease, **check-result (NEW v0.19.0 — the maker/checker gate)**. `people-lead` (2): allocate-resource, acquire-resource. Dept-scoped (1): deploy under `departments/rnd/`. Skill-count math: 12 + 8 + 5 + 2 root + 1 dept-scoped = 28.
-- **All 15 v0.19.0 agents** + their departments + their zones and escalation patterns (ceo, coo, chief-of-staff, ops-manager, kb-curator, redaction-reviewer, **result-checker (NEW v0.19.0)** at company tier; rnd-lead/eng-lead/eng-reviewer under R&D; finance-lead, people-lead, legal-lead, commercial-lead, pr-lead at dept tier).
-- **All 19 v0.19.0 templates** + when each gets rendered (AGENT, SKILL, PROCESS, BACKLOG-ITEM, TASK, POLICY, DEPARTMENT, SUBDEPT, HIRING-SPEC, RESOURCE, CLAUDE, decision, scheduled-run, task-issue, task-update, core-proposal-pr, opos-process.gha.yml, plus the `gitignore.core` and `required-settings.json` manifests).
+- **All 28 v0.20.0 skills** + their owners + when each applies. `chief-of-staff` (12): the owned list below. `ops-manager` (8): design-process, design-agent, design-department, design-subdept, adopt-proposal, schedule-process, unschedule-process, list-scheduled-processes. `coo` (5): company-setup, deliberate-decision, review-history, lease, **check-result (NEW v0.20.0 — the maker/checker gate)**. `people-lead` (2): allocate-resource, acquire-resource. Dept-scoped (1): deploy under `departments/rnd/`. Skill-count math: 12 + 8 + 5 + 2 root + 1 dept-scoped = 28.
+- **All 15 v0.20.0 agents** + their departments + their zones and escalation patterns (ceo, coo, chief-of-staff, ops-manager, kb-curator, redaction-reviewer, **result-checker (NEW v0.20.0)** at company tier; rnd-lead/eng-lead/eng-reviewer under R&D; finance-lead, people-lead, legal-lead, commercial-lead, pr-lead at dept tier).
+- **All 19 v0.20.0 templates** + when each gets rendered (AGENT, SKILL, PROCESS, BACKLOG-ITEM, TASK, POLICY, DEPARTMENT, SUBDEPT, HIRING-SPEC, RESOURCE, CLAUDE, decision, scheduled-run, task-issue, task-update, core-proposal-pr, opos-process.gha.yml, plus the `gitignore.core` and `required-settings.json` manifests).
 - **The operating model** — `company/policies/autonomy-and-decision-rights.md`: decision classes R0–R3 by risk, escalation straight to the holder of the right, maker/checker via `check-result`, the earned-autonomy ladder, role vs worker. See "Dispatch" below.
 - **The 6 v0.5.1 starter departments** + their AI-first framing (rnd umbrella + finance + people + legal + commercial + pr).
 - **The `allocate-resource` AI-first kernel** — when ANY capability gap is mentioned, the steward routes through `people-lead` and the 4-question decision tree FIRST.
@@ -92,7 +92,7 @@ When the user says something goal-shaped (vs a specific file/command), the stewa
 4. **Executes autonomously where permitted** (per Permission tiers below). Pauses ONLY at the gates.
 5. **Reports concisely** as each step completes (1 line per step; full detail captured in skill history entries the user can read later).
 
-## Dispatch (v0.19.0)
+## Dispatch (v0.20.0)
 
 The queue is the GitHub issues of the task store. When the steward picks up work — a goal from the human, an open issue, a batch of them — it routes each item per [`company/policies/autonomy-and-decision-rights.md`](../../../company/policies/autonomy-and-decision-rights.md) instead of relaying it up a chain:
 

@@ -19,7 +19,7 @@ version: 0.1.0
 # provenance (v0.11 — stamped by the design skill at write time; makes derivation attribution + re-lint mechanical)
 derived_from: <<TEMPLATE_PATH_AT_VERSION>>
 designed_by: <<DESIGN_SKILL_AT_VERSION>>
-# operating model (OPTIONAL — added v0.19.0; see company/policies/autonomy-and-decision-rights.md). Documentation
+# operating model (OPTIONAL — added v0.20.0; see company/policies/autonomy-and-decision-rights.md). Documentation
 # fields read by people, the steward's dispatch and review-history; no runtime enforcement. Omit any you do not need:
 # executor: <agent-name>        # the role whose workers run this process (may differ from `owner`, who owns its design and metrics)
 # checker: result-checker (2 methods)   # who verifies the result and with how many independent methods; usually
@@ -34,7 +34,7 @@ designed_by: <<DESIGN_SKILL_AT_VERSION>>
 How the result is checked, and by whom — never by the actor that produced it. Name the method (live
 system, primary source, recomputation), the number of independent methods, and what happens on FAIL or
 UNVERIFIABLE. For most processes: "`check-result` with <n> method(s); only PASS closes the run." Pure R0
-processes may write "none — R0 only" (added v0.19.0).
+processes may write "none — R0 only" (added v0.20.0).
 
 ## State transitions` body section below):
 # state_schema:

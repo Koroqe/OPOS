@@ -52,7 +52,7 @@ class TestParseAgents(unittest.TestCase):
 
 
 class TestMakerChecker(unittest.TestCase):
-    """v0.19.0: the checker is the gate that lets R2 move to agents; it must stay read-only."""
+    """v0.20.0: the checker is the gate that lets R2 move to agents; it must stay read-only."""
 
     def test_result_checker_has_no_write_or_delegation_tools(self):
         agents = {a.name: a for a in parse_agents()}
