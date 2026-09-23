@@ -38,17 +38,17 @@ When you want to set the current task aside to work on something else, without c
    ```
    Why `--status blocked` not `--status paused`: `task-update`'s allowed-status set is `in_progress | blocked | review`. "Paused" is a framework-internal state tracked via `.paused-tasks` membership; on GitHub the issue shows `**Status:** blocked` (the closest existing semantic — blocked-by-other-priorities, awaiting resume).
 
-4. **Append the issue number to `.paused-tasks`.** Create the file if absent. One issue number per line:
+3b. **Yield the lease and mark the issue paused (v0.17.0).** A paused task is by definition not occupied, so another session may pick it up:
    ```bash
-   echo "$ISSUE" >> "$REPO_ROOT/.claude/.paused-tasks"
+   node .claude/skills/lease/lease.mjs release --key "issue:<repo>#$ISSUE" --state yielded --reason "paused"
+   gh label create paused --repo <repo> --color C5DEF5 --description "Live task, not being worked on right now" 2>/dev/null
+   gh issue edit "$ISSUE" --repo <repo> --add-label paused
    ```
+   Exit `9` from the release is fine. The `paused` label is what other machines see; `.paused-tasks` below is only this clone's memory.
 
-5. **Remove the paused issue from `.current-task`** (v0.7.0 array semantics; v0.7.2 Python one-liner rewrite — same pattern as `task-complete` step 14):
-   ```bash
-   node shared/scripts/task-state.mjs remove-active --issue "$ISSUE"
-   ```
-   
-   **Why Python (v0.7.2 rewrite):** replaces the v0.7.0 shell-chain pattern that was reproducibly flaky (same root-cause-unknown anomaly that surfaced in `task-complete` step 14 across v0.7.0 + v0.7.1 — see CHANGELOG v0.7.2 Fixed section for the historical pattern and bug class). The Python one-liner eliminates the failure class by construction: single process, env-passed variable values, atomic write semantics, defensive `os.path.exists` short-circuit. Identical semantics to the v0.7.0 pattern — only the execution mechanism is more robust. **Backwards-compat preserved:** when the array had exactly 1 element going in, the Python script's `lines = []` branch fires and `os.remove(target)` is called → file-absent state matches v0.6.x semantics. Other active tasks in the multi-active workflow are untouched.
+4. **Record it in the local paused list.** `node shared/scripts/task-state.mjs add-paused --issue "$ISSUE"`.
+
+5. **Remove it from the local active cache.** `node shared/scripts/task-state.mjs remove-active --issue "$ISSUE"`. Other active tasks are untouched; the file is removed when its last entry goes.
 
 6. **Print confirmation** to stdout: `Paused: #<ISSUE>. Resume with /task-resume <ISSUE>.`
 
