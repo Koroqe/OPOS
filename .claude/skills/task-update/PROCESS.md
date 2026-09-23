@@ -17,7 +17,7 @@ patching the issue body's status line. Idempotent via a caller-provided `--key`.
 task-tracking lifecycle skills.
 
 **`.claude/.current-task` is a local convenience cache (v0.17.0)**, not the source of truth for who
-is working on the task — that is the lease checked at step 5b. Since v0.7.0 the cache is a
+is working on the task — that is the lease acquired (or confirmed held) at step 5b. Since v0.7.0 the cache is a
 newline-delimited array of active issue numbers; this skill auto-picks the target when exactly one
 entry is active and requires `--issue` to disambiguate when several are.
 
@@ -40,7 +40,7 @@ Mirrors the procedure in SKILL.md:
    single-entry auto-pick, or abort with the active list when ambiguous or empty).
 4. Read and validate `task-tracking.config.json`.
 5. Fetch the issue; abort if its state is `CLOSED`.
-5b. **Lease gate.** `lease.mjs check --key "issue:<repo>#<number>"`. `0` proceed · `9` not configured, print `lease: not configured, gate skipped` and proceed exactly as before · `4` this session holds no lease, take one with `lease.mjs acquire`, stopping if that exits `2` (another holder) · `5` lease stolen or lapsed, stop writing immediately · anything else, stop.
+5b. **Lease gate.** lease.mjs acquire --key "issue:<repo>#<number>"`. `0` proceed · `9` not configured, print `lease: not configured, gate skipped` and proceed exactly as before · `4` this session holds no lease, take one with `lease.mjs acquire`, stopping if that exits `2` (another holder) · `5` lease stolen or lapsed, stop writing immediately · anything else, stop.
 6. Idempotency check: scan the last 50 comments for `<!-- update-key: <key> -->`; no-op with
    `outcome: partial` on a match.
 7. Render the comment from `shared/templates/task-update.md.tmpl`.
@@ -60,7 +60,7 @@ Mirrors the procedure in SKILL.md:
   or the run aborted with the documented disambiguation/absence message.
 - `comment_posted_or_skipped_idempotently` — either a new comment exists carrying the matching
   `update-key` marker, or the run was a no-op because that key was already present.
-- `lease_gate_passed_or_not_configured` — `lease.mjs check` (and, if needed, `acquire`) returned
+- `lease_gate_passed_or_not_configured` — `lease.mjs acquire` (v0.17.2: acquire, not check — idempotent for the holder, refuses a second session in every mode) returned
   `0`, or returned `9` and the gate was skipped.
 - `lease_renewed_after_post` — `lease.mjs renew` ran after the comment was posted (its exit code is
   reported, not silently dropped, on `5`).

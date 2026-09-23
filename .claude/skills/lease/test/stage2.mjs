@@ -2,13 +2,14 @@
 /**
  * stage2.mjs — acceptance tests for the v0.17.0 wiring and the registry features.
  *
- *   node .claude/skills/lease/test/stage2.mjs [--only N,O,R,C,L,A] [--clone <path>]
+ *   node .claude/skills/lease/test/stage2.mjs [--only N,O,R,C,L,W,A] [--clone <path>]
  *
  *   N  not configured → exit 9 everywhere, so a company that never opted in is unaffected
  *   O  offline: --offline-ok opens a gate only for an unexpired cached lease; writes refuse
  *   R  rotation: a live lease survives the registry being rotated under it
  *   C  a registry closed by hand stops every command instead of being silently used
  *   L  the task lifecycle, as the skills now run it, across TWO clones
+ *   W  the task gate under enforce=warn: acquire still refuses a second session
  *   A  the scheduled-run guards (process: and path:** leases)
  *
  * Runs against real GitHub on the repo in .claude/lease.config.json. Creates and removes its
@@ -23,7 +24,7 @@ import path from 'node:path';
 
 const argv = process.argv.slice(2);
 const flag = (n, d = null) => { const i = argv.indexOf('--' + n); return i === -1 ? d : (argv[i + 1] ?? true); };
-const ONLY = String(flag('only', 'N,O,R,C,L,A')).split(',').map((x) => x.trim().toUpperCase());
+const ONLY = String(flag('only', 'N,O,R,C,L,W,A')).split(',').map((x) => x.trim().toUpperCase());
 
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const LEASE_REL = path.join('.claude', 'skills', 'lease', 'lease.mjs');
@@ -252,6 +253,33 @@ if (ONLY.includes('L')) {
     const late = lease(['check', '--key', KEY]);
     check('A, which no longer holds it, fails the gate (exit 4 or 5)', late.code === 4 || late.code === 5, `exit=${late.code}`);
     state(['remove-paused', '--issue', String(N)]);
+  }
+}
+
+// ============================================================ W — the task gate under enforce=warn
+if (ONLY.includes('W')) {
+  console.log('\nW — under enforce=warn the task gate (acquire) still refuses a second session and still leaves the claim');
+  const B = ensureClone();
+  if (!B) check('W skipped — no second clone (push first)', false, 'SKIPPED, not passed');
+  else {
+    const N = newIssue('[lease-test] DO NOT TOUCH — warn-mode gate test', 'An existing task nobody has leased yet.\n\n## Status\n\n**Status:** open\n');
+    const KEY = `issue:${REPO}#${N}`;
+    const claims = () => (ghOut(['api', `repos/${REPO}/issues/${N}/comments`, '--jq', '[.[] | select(.body | contains("opos-lease:v1"))] | length']) ?? '0').trim();
+
+    const first = lease(['acquire', '--key', KEY, '--intent', 'working on an existing task'], { enforce: 'warn' });
+    check('an existing, unleased task: the gate takes the lease (exit 0)', first.code === 0, first.err);
+    check('...and the claim comment is now on the issue, visible to everyone', claims() === '1', `claims=${claims()}`);
+
+    const again = lease(['acquire', '--key', KEY, '--intent', 'second update, same session'], { enforce: 'warn' });
+    check('the holder passing the gate again is a no-op (exit 0, no second claim)', again.code === 0 && claims() === '1', `exit=${again.code} claims=${claims()}`);
+
+    const other = lease(['acquire', '--key', KEY, '--intent', 'another session'], { cwd: B, enforce: 'warn' });
+    check('a second session is refused (exit 2) even though enforcement is only warn', other.code === 2, `exit=${other.code}`);
+    check('...and is told who holds it', /held by/.test(other.err), other.err);
+
+    const rel = lease(['release', '--key', KEY, '--reason', 'completed'], { enforce: 'warn' });
+    const body = ghOut(['api', `repos/${REPO}/issues/${N}/comments`, '--jq', '[.[] | select(.body | contains("opos-lease:v1"))][0].body']) ?? '';
+    check('release leaves the 🔓 record on the issue', rel.code === 0 && /RELEASED/.test(body), body.split('\n')[0]);
   }
 }
 
