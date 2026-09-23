@@ -12,7 +12,7 @@ owner_agent: chief-of-staff
 
 Manually, after `check-for-updates` reports a new version is available. Or unconditionally to pull the latest upstream changes.
 
-**Run it in a subagent, never in the interactive main thread (v0.19.1).** A sync reads and diffs many files; done inline, all of that output stays in the conversation, and every later request re-reads it. Measured at a consumer: a sync run inside a 450k–900k-token session was the bulk of the 183M tokens its usage dashboard attributed to `check-for-updates`. Routine releases are applied by the daily SessionStart updater (`opos-session-update.mjs`), so a manual sync should be rare. When one is needed, apply every pending release in one run, not one run per release.
+**Run it in a subagent, never in the interactive main thread (v0.21.0).** A sync reads and diffs many files; done inline, all of that output stays in the conversation, and every later request re-reads it. Measured at a consumer: a sync run inside a 450k–900k-token session was the bulk of the 183M tokens its usage dashboard attributed to `check-for-updates`. Routine releases are applied by the daily SessionStart updater (`opos-session-update.mjs`), so a manual sync should be rare. When one is needed, apply every pending release in one run, not one run per release.
 
 ## Inputs
 

@@ -80,7 +80,13 @@ const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); }
  * new companies; existing ones saw the files as untracked, one `git add -A` away from a commit.
  * `.git/info/exclude` is per clone and untracked, which is exactly the files' own scope.
  */
-export const RUNTIME_FILES = ['.claude/.opos-update-check', '.claude/.opos-update-state.json', '.claude/.opos-update.lock'];
+export const RUNTIME_FILES = [
+  '.claude/.opos-update-check', '.claude/.opos-update-state.json', '.claude/.opos-update.lock',
+  // v0.21.0: the manual probe's cache (check-for-updates/check.mjs) and the per-session state the
+  // lease and context-size hooks write. Same scope, same reason: per clone, never committed, and a
+  // consumer-owned .gitignore cannot be relied on to list files added after its scaffold.
+  '.claude/.update-probe', '.claude/.sessions/',
+];
 export function withExcludes(text) {
   const have = new Set(String(text ?? '').split(/\r?\n/).map((l) => l.trim()));
   const missing = RUNTIME_FILES.filter((f) => !have.has(f) && !have.has('/' + f));

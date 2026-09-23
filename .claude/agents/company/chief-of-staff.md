@@ -149,7 +149,7 @@ When a session opens at the repo root. The steward is the active posture by defa
 1. Read `.claude/.current-task`. **Parse as a newline-delimited array of integers** (v0.7.0 array semantics; v0.6.x single-task content parses as 1-element array — fully backwards-compatible). Apply defensive read-side filtering (drop non-digit lines per RISKS Risk 30). If file does not exist OR is empty, set `current_tasks = []`. If file has 1 line, `current_tasks = [N]` (single-task workflow). If file has N lines, `current_tasks = [N₁, N₂, ...]` (**parallel workflow as of v0.7.0**). Do NOT abort on absent file (fresh scaffold case).
 2. Read `.claude/.paused-tasks`. **If the file does not exist**, set `paused_tasks = []` and continue.
 3. List the 5 most recent history entries across `.claude/skills/*/history/`. **If history folders are empty (fresh scaffold)**, set `recent_activity = []` and continue.
-   3b. *(v0.19.0)* **Do NOT invoke `check-for-updates`.** Updates are the SessionStart hook's job: `opos-session-update.mjs` checks and applies them once a day in the background and prints one line only when something happened. If that line is in your session context, capture it as `update_notice`; otherwise there is nothing to say. Invoking the skill here cost ~5 model requests per session, each re-reading the whole context — measured as a visible share of a consumer's weekly limit for a job a script does for free.
+   3b. *(v0.21.0)* **Do NOT invoke `check-for-updates`.** Updates are the SessionStart hook's job: `opos-session-update.mjs` checks and applies them once a day in the background and prints one line only when something happened. If that line is in your session context, capture it as `update_notice`; otherwise there is nothing to say. Invoking the skill here cost ~5 model requests per session, each re-reading the whole context — measured as a visible share of a consumer's weekly limit for a job a script does for free.
 4. For each task in `current_tasks` (was: ONE task in v0.6.x), read the open issue's current state via `gh issue view <n> --repo <repo> --json comments,state,labels`. Build a list of `(issue_num, title, state)` tuples. **If `gh` is unauthenticated or the network is down**, skip silently and note in the greeting ("GitHub state unavailable").
 
 4a. **Resource awareness (v0.13).** Read `company/resources/REGISTRY.md` (absent → skip): the active resources and any `pending-grant` rows. Mention pending grants in the greeting's Loop line — a waiting grant is a human bottleneck the ops panel must surface.
@@ -172,7 +172,7 @@ When a session opens at the repo root. The steward is the active posture by defa
 - GitHub issues opened, updated, and closed via the task-lifecycle skills (`task-register`, `task-update`, `task-complete`).
 - Upstream-update awareness: relays the SessionStart updater's one-line notice when there is one; on explicit request runs `node .claude/skills/check-for-updates/check.mjs` (one Bash call) and applies updates via `sync-from-core` — in a subagent, never in the main thread (see Context economy).
 
-## Context economy (v0.19.0)
+## Context economy (v0.21.0)
 
 Every request re-reads the whole conversation, so a session's cost grows with its context, not with the size of the task. Measured at a consumer: one interactive session ran 28 hours across five unrelated topics, reached 925k tokens of context with zero compactions, and alone was 80% of the week's usage — at that size a single `git status` re-read ~0.9M tokens. Four rules:
 
@@ -194,7 +194,7 @@ Escalates straight to the holder of the right (policy §2): R3 decisions to the 
 - `task-register` — `.claude/skills/task-register/` — open a GitHub issue for a newly initiated task.
 - `task-update` — `.claude/skills/task-update/` — append a progress comment and patch the issue status line during execution.
 - `task-complete` — `.claude/skills/task-complete/` — post the final report (summary + changelog + deliverables) and close the issue.
-- `check-for-updates` — `.claude/skills/check-for-updates/` — on-demand probe (`check.mjs`, one Bash call) for a NEWER upstream release. Since v0.19.0 no other skill invokes it: the SessionStart updater owns routine update checks.
+- `check-for-updates` — `.claude/skills/check-for-updates/` — on-demand probe (`check.mjs`, one Bash call) for a NEWER upstream release. Since v0.21.0 no other skill invokes it: the SessionStart updater owns routine update checks.
 - `sync-from-core` — `.claude/skills/sync-from-core/` — apply upstream changes via `copier update`; opens a branch with the diff for user review before commit.
 - `auto-sync` — `.claude/skills/auto-sync/` (NEW in v0.9.0) — the scheduled, non-interactive sibling of sync-from-core: auto-commits clean upstream syncs daily; escalates conflicts/divergence to a consumer-repo issue.
 - `propose-to-core` — `.claude/skills/propose-to-core/` (NEW in v0.9.0) — turn a CORE-file defect into a fully anonymized upstream PR, behind a fail-closed redaction gate; invoked by coo's `review-history` triage or manually.

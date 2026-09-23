@@ -12,7 +12,7 @@ version: 0.2.0
 
 ## Narrative
 
-On-demand upstream-version probe, run as one script call (`check.mjs`). Since v0.19.1 no other skill invokes it — the daily SessionStart updater (`shared/scripts/opos-session-update.mjs`) owns routine checks. Compares the consumer's pinned tag (`.copier-answers.yml` `_commit:`) against the latest non-prerelease release on the upstream repo (parsed from `_src_path`). Reports only a NEWER release (semver), silent otherwise. Its own 6 h cache (`.claude/.update-probe`) prevents API spam.
+On-demand upstream-version probe, run as one script call (`check.mjs`). Since v0.21.0 no other skill invokes it — the daily SessionStart updater (`shared/scripts/opos-session-update.mjs`) owns routine checks. Compares the consumer's pinned tag (`.copier-answers.yml` `_commit:`) against the latest non-prerelease release on the upstream repo (parsed from `_src_path`). Reports only a NEWER release (semver), silent otherwise. Its own 6 h cache (`.claude/.update-probe`) prevents API spam.
 
 ## Pre-conditions
 

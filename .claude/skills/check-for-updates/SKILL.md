@@ -12,7 +12,7 @@ owner_agent: chief-of-staff
 
 ## When to use
 
-Only on explicit request — "is there a newer OPOS?", or before a deliberate manual `sync-from-core`. **No other skill invokes it** (v0.19.1): `task-register`, `task-update`, `task-complete` and the steward's First-touch used to run it on every call. Executed step by step by the model, each run cost about five requests, every one re-reading the whole session context — measured as a visible share of a consumer's weekly limit (up to 16% on its usage dashboard) for a job a script does for free.
+Only on explicit request — "is there a newer OPOS?", or before a deliberate manual `sync-from-core`. **No other skill invokes it** (v0.21.0): `task-register`, `task-update`, `task-complete` and the steward's First-touch used to run it on every call. Executed step by step by the model, each run cost about five requests, every one re-reading the whole session context — measured as a visible share of a consumer's weekly limit (up to 16% on its usage dashboard) for a job a script does for free.
 
 ## Steps
 
@@ -33,7 +33,7 @@ Do not re-implement the script's steps by hand. The whole point of the script is
 
 - Reads `_commit` and `_src_path` from `.copier-answers.yml`; missing file → one-line warning, exit 0.
 - Resolves the latest release: `gh api repos/<owner>/<repo>/releases` for `gh:owner/repo` and GitHub URLs (no leading slash on the endpoint — MSYS rewrites it to a Windows path); `git tag` of a local clone for a local `_src_path`, with a portability warning.
-- **Compares semver and reports only a NEWER release.** Until v0.19.1 the procedure reported any *different* tag, so a consumer pinned ahead of upstream's latest release would have been told to "update" — to an older version.
+- **Compares semver and reports only a NEWER release.** Until v0.21.0 the procedure reported any *different* tag, so a consumer pinned ahead of upstream's latest release would have been told to "update" — to an older version.
 - Keeps its own 6 h cache in `.claude/.update-probe`. It never writes `.claude/.last-update-check`, which is the daily flag of the session updater.
 - Always exits 0.
 

@@ -21,7 +21,7 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
 
 ## Steps
 
-1. *(Removed in v0.19.0 — do NOT invoke `check-for-updates`.)* Update checks belong to the SessionStart updater (`shared/scripts/opos-session-update.mjs`), which runs once a day for free. Invoking the skill here cost ~5 model requests per lifecycle call, each re-reading the whole session context. Step numbering is kept so the references below stay valid.
+1. *(Removed in v0.21.0 — do NOT invoke `check-for-updates`.)* Update checks belong to the SessionStart updater (`shared/scripts/opos-session-update.mjs`), which runs once a day for free. Invoking the skill here cost ~5 model requests per lifecycle call, each re-reading the whole session context. Step numbering is kept so the references below stay valid.
 2. Resolve repo root via `git rev-parse --show-toplevel`.
 3. **Read `$REPO_ROOT/.claude/.current-task` as a newline-delimited array** of active task issue numbers (v0.7.0 array semantics; v0.6.x single-task content parses as 1-element array — fully backwards-compatible). Apply defensive read-side filtering (drop non-digit lines per Risk 30). Then determine the target issue number:
    - If `--issue <N>` was provided → use it directly. (Works regardless of array size; lets a batch script or external caller target a specific issue without parsing the active list.)
