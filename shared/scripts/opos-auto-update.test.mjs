@@ -1,7 +1,7 @@
 /** node --test shared/scripts/opos-auto-update.test.mjs — the decision logic of the unattended updater. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyTouched, pickLatest, pinOf, srcRepoOf } from './opos-auto-update.mjs';
+import { classifyTouched, pickLatest, pinOf, srcRepoOf, isOwnIssue } from './opos-auto-update.mjs';
 
 test('a release touching a workflow file is separated out — it must never be auto-pushed', () => {
   const c = classifyTouched(['.claude/skills/lease/lease.mjs', '.github/workflows/sync-opos.yml', 'RISKS.md']);
@@ -41,4 +41,18 @@ test('pin and upstream are read from every _src_path shape copier writes', () =>
   assert.equal(srcRepoOf('_src_path: https://github.com/Koroqe/OPOS.git'), 'Koroqe/OPOS');
   assert.equal(srcRepoOf('_src_path: git@github.com:Koroqe/OPOS.git'), 'Koroqe/OPOS');
   assert.equal(srcRepoOf('_src_path: /home/agent/workspace/OPOS'), null, 'a local path cannot be updated from CI');
+});
+
+test('only the updater\'s own issues are ever touched — never a human issue that merely mentions it', () => {
+  assert.equal(isOwnIssue('[opos-auto-sync] v0.18.2: this release changes workflow files'), true);
+  assert.equal(isOwnIssue('Включить петлю самообновления OPOS: зарегистрировать auto-sync и review-history'), false, 'real human issue #364 must never match');
+  assert.equal(isOwnIssue('opos-auto-sync is broken'), false, 'no bracket prefix, no match');
+  assert.equal(isOwnIssue('Re: [opos-auto-sync] v0.18.2: x'), false, 'prefix must be at the start');
+  assert.equal(isOwnIssue(null), false);
+});
+
+test('dedupe is per tag', () => {
+  assert.equal(isOwnIssue('[opos-auto-sync] v0.18.2: workflow files', 'v0.18.2'), true);
+  assert.equal(isOwnIssue('[opos-auto-sync] v0.18.2: workflow files', 'v0.18.20'), false, 'v0.18.20 is not v0.18.2');
+  assert.equal(isOwnIssue('[opos-auto-sync] v0.18.20: x', 'v0.18.2'), false);
 });
