@@ -42,8 +42,20 @@ jobs:
           python-version: "3.12"
       - name: Install copier
         run: pip install copier
+      - name: Record the current pin
+        id: pin
+        run: awk -F"_commit: " 'NF>1 {split($2, a, /[,}]/); print "old=" a[1]}' .copier-answers.yml >> "$GITHUB_OUTPUT"
       - name: Run copier update
+        # A non-zero exit is a FAILURE (v0.17.0). The step that fails in practice is the one
+        # that re-applies local customisations, so accepting its exit would open a PR that
+        # silently resets them.
         run: copier update --defaults --conflict rej
+      - name: Verify nothing local was reverted
+        # verify-sync fails the job if the update changed a file that upstream did NOT change
+        # between the two tags, i.e. a local customisation being thrown away.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node shared/scripts/verify-sync.mjs --from "${{ steps.pin.outputs.old }}"
       - name: Create or update PR
         uses: peter-evans/create-pull-request@v6
         with:
