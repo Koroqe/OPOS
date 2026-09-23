@@ -90,7 +90,7 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
    - For `research`: market reports, user-interview notes, prototype evaluations.
    Capture from `dept_description` and the step-6 consultations.
 
-8. **Draft the charter.** First, **verify `shared/templates/DEPARTMENT.md.tmpl` exists AND contains all 6 expected substitution tokens** (`<<DEPT_NAME>>`, `<<DEPT_TITLE>>`, `<<MISSION>>`, `<<LEAD_NAME>>`, `<<ESCALATION>>`, `<<DATA_SCOPES>>`). If missing or any token absent, ABORT with: "DEPARTMENT.md.tmpl missing or modified — restore from `Koroqe/OPOS` upstream via `copier update`."
+8. **Draft the charter.** First, **verify `shared/templates/DEPARTMENT.md.tmpl` exists AND contains all 7 expected substitution tokens** (`<<DEPT_NAME>>`, `<<DEPT_TITLE>>`, `<<MISSION>>`, `<<LEAD_NAME>>`, `<<ESCALATION>>`, `<<DATA_SCOPES>>`, `<<DECISION_RIGHTS>>`). If missing or any token absent, ABORT with: "DEPARTMENT.md.tmpl missing or modified — restore from `Koroqe/OPOS` upstream via `copier update`."
 
    Render the template:
    - `<<DEPT_NAME>>` = the validated kebab-case name (e.g., `customer-success`).
@@ -98,6 +98,7 @@ A future v0.5.x release MAY backfill `data/` + `backlog/` on all 6 starters, at 
    - `<<MISSION>>` = 1-3 sentence mission synthesized from `dept_description` + ceo/coo consultations. State both what the dept owns AND what it doesn't (interface boundary).
    - `<<LEAD_NAME>>` = the lead-agent name from step 5 (default `<dept-name>-lead`).
    - `<<ESCALATION>>` = escalation pattern. Default: `<<LEAD_NAME>> → coo → ceo`. Adjust per `coo` consultation if a non-standard escalation surfaces.
+   - `<<DECISION_RIGHTS>>` = four table rows (R0, R1, R2, R3) naming this dept's concrete actions per class, per `company/policies/autonomy-and-decision-rights.md` (v0.19.0). Money, anything a counterparty sees, access grants and contracts are always R3; use `—` for a class the dept has no actions in.
    - `<<DATA_SCOPES>>` = bullet list of dept-internal data types from step 7. State whether data should be `restricted: true` per RISKS Risk 1 (default: not restricted; surface as an open question at step 9).
 
 9. **Present to the user.** Output the proposed charter contents as an inline code block in chat. Follow with a summary:

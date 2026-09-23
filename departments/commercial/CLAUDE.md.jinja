@@ -6,13 +6,24 @@ Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
 
 Owns revenue end-to-end — demand generation, marketing content, sales pipeline, customer success. AI-first: LLM drafts content, automated lead qualification, human approves public-facing copy. Commercial does NOT make product decisions; surfaces customer evidence (pipeline data, feedback, segments) the product-makers act on.
 
-Marketing and Sales are unified here for v0 — split into sub-leads (`marketing-lead`, `sales-lead`) via [`design-agent`](../../.claude/skills/design-agent/) when load justifies.
+Marketing and Sales are one zone here. More work means more running instances of `commercial-lead`, each under its own lease; a separate role (e.g. customer success) is justified only by a separate zone — its own lease key, labels and processes — and is designed via [`design-agent`](../../.claude/skills/design-agent/).
 
 ## Roles
 
 - `commercial-lead` — dept lead, owns end-to-end revenue execution. Defined at [`.claude/agents/commercial/commercial-lead.md`](../../.claude/agents/commercial/commercial-lead.md).
 
 (Future split candidates: `marketing-lead`, `sales-lead`, `customer-success-lead` — design via `design-agent` when needed.)
+
+## Decision rights
+
+Per [`company/policies/autonomy-and-decision-rights.md`](../../company/policies/autonomy-and-decision-rights.md): decide by **risk class, not rank**. R0/R1 — agents act without asking (R1: and tell the team); R2 — act only after a `check-result` PASS (until the company switches R2 on, R2 is handled as R3); R3 — a human decides, the agent prepares everything to one click and files one `founder-action` issue. Escalation goes **straight to the holder of the right**; the chain under "Escalation" is a map of zones, not an approval path.
+
+| Class | In this department |
+|---|---|
+| R0 | content drafts, lead scoring, pipeline and segment analyses, deal analysis of any size |
+| R1 | internal pipeline reports, the zone's data files |
+| R2 | changes in commercial systems (CRM) once they are registered resources |
+| R3 | anything a customer or counterparty sees, prices and discounts, contracts |
 
 ## Escalation
 

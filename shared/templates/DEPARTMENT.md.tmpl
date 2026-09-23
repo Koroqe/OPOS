@@ -12,6 +12,7 @@ Substitution tokens:
   <<LEAD_NAME>>       — name of the dept lead agent (e.g. "finance-lead")
   <<ESCALATION>>      — escalation rules (e.g. "<<LEAD_NAME>> → coo → ceo")
   <<DATA_SCOPES>>     — what dept-internal vs cross-dept data lives here
+  <<DECISION_RIGHTS>> — four table rows `| R0 | … |` … `| R3 | … |` naming this dept's actions per class (v0.19.0)
 
 This is the template used by company-setup and (eventually) design-department to
 create new dept charters. Inherits from the company-scope charter via cascade.
@@ -29,7 +30,15 @@ Inherits from `../../company/CLAUDE.md`. This file adds dept-specific scope.
 
 - `<<LEAD_NAME>>` — dept lead, owns end-to-end execution. Defined at [`.claude/agents/<<DEPT_NAME>>/<<LEAD_NAME>>.md`](../../.claude/agents/<<DEPT_NAME>>/<<LEAD_NAME>>.md).
 
-(Sub-roles can be added later via [`design-agent`](../../.claude/skills/design-agent/) when the dept load justifies splitting.)
+(Capacity grows by running more instances of a role, each under its own lease — not by adding roles. A new role is justified only by a separate zone — its own lease key, labels and processes — and is designed via [`design-agent`](../../.claude/skills/design-agent/).)
+
+## Decision rights
+
+Per [`company/policies/autonomy-and-decision-rights.md`](../../company/policies/autonomy-and-decision-rights.md): decide by **risk class, not rank**. R0/R1 — agents act without asking (R1: and tell the team); R2 — act only after a `check-result` PASS; R3 — a human decides, the agent prepares everything to one click and files one `founder-action` issue. Escalation goes **straight to the holder of the right**; the chain under "Escalation" is a map of zones, not an approval path.
+
+| Class | In this department |
+|---|---|
+<<DECISION_RIGHTS>>
 
 ## Duties (self-building — v0.12)
 

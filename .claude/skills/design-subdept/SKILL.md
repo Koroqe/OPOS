@@ -101,7 +101,7 @@ Same minimal-scaffolding default as `design-department`. Charter only; subdirs c
    - For `commercial/customer-success`: NPS surveys, churn analyses, onboarding playbooks.
    Capture from `subdept_description` + the step-6 consultations. Note any restricted-data needs (per Risk 1; surface as open question at step 9).
 
-8. **Draft the charter.** First, **verify `shared/templates/SUBDEPT.md.tmpl` exists AND contains all 7 expected substitution tokens** (`<<PARENT_DEPT>>`, `<<SUB_NAME>>`, `<<SUB_TITLE>>`, `<<MISSION>>`, `<<LEAD_NAME>>`, `<<ESCALATION>>`, `<<DATA_SCOPES>>`). If missing or any token absent, ABORT with: "SUBDEPT.md.tmpl missing or modified — restore from `Koroqe/OPOS` upstream via `copier update`."
+8. **Draft the charter.** First, **verify `shared/templates/SUBDEPT.md.tmpl` exists AND contains all 8 expected substitution tokens** (`<<PARENT_DEPT>>`, `<<SUB_NAME>>`, `<<SUB_TITLE>>`, `<<MISSION>>`, `<<LEAD_NAME>>`, `<<ESCALATION>>`, `<<DATA_SCOPES>>`, `<<DECISION_RIGHTS>>`). If missing or any token absent, ABORT with: "SUBDEPT.md.tmpl missing or modified — restore from `Koroqe/OPOS` upstream via `copier update`."
 
    Render the template:
    - `<<PARENT_DEPT>>` = the validated parent slug (e.g., `legal`). **Pure slug, no slash.**
@@ -110,6 +110,7 @@ Same minimal-scaffolding default as `design-department`. Charter only; subdirs c
    - `<<MISSION>>` = 1-3 sentence mission synthesized from `subdept_description` + parent-lead + coo consultations. State explicitly what the sub-dept owns AND what stays with the parent.
    - `<<LEAD_NAME>>` = the sub-lead name from step 5 (default `<<SUB_NAME>>-lead`).
    - `<<ESCALATION>>` = `<<LEAD_NAME>> → <<PARENT_DEPT>>-lead → coo → ceo`. The parent-lead is the FIRST escalation stop — this is the KEY escalation-chain difference from top-level depts (which escalate `<dept>-lead → coo → ceo` directly).
+   - `<<DECISION_RIGHTS>>` = four table rows (R0, R1, R2, R3) naming this sub-dept's concrete actions per class, per `company/policies/autonomy-and-decision-rights.md` (v0.19.0). Money, anything a counterparty sees, access grants and contracts are always R3; use `—` for an empty class.
    - `<<DATA_SCOPES>>` = bullet list of sub-dept-internal data types from step 7. Note whether `restricted: true` per Risk 1 (surface as open question at step 9; default not restricted).
 
    **Token-substitution semantics note:** unlike `design-department` which uses one `<<DEPT_NAME>>` token, this skill uses TWO separate tokens (`<<PARENT_DEPT>>` and `<<SUB_NAME>>`). Each is a pure slug (no `/` separator). The full hierarchical path `<parent>/<sub>` only appears in user-facing strings (step 9 chat output, step 12 history filename slug-encoding), never as a template substitution. This avoids the slug-regex divergence and lead-agent path-rendering bugs that a single `<<DEPT_NAME>> = <parent>/<sub>` token would produce.

@@ -25,7 +25,7 @@ Owned by `ops-manager` (same as `design-process` and `design-agent`) because all
 
 ## Pre-conditions
 
-- `shared/templates/DEPARTMENT.md.tmpl` exists and contains all 6 expected substitution tokens.
+- `shared/templates/DEPARTMENT.md.tmpl` exists and contains all 7 expected substitution tokens.
 - The proposed dept name matches the slug regex `^[a-z][a-z0-9-]{0,63}$` (verbatim `ui/validate.py:_SLUG_RE`).
 - The proposed name is NOT in the framework-reserved exact-match list (`{rnd, finance, people, legal, commercial, pr, engineering, company}`).
 - `departments/<name>/` does NOT already exist.
@@ -42,7 +42,7 @@ Mirrors the 12-step procedure in SKILL.md:
 5. Decide on a lead agent (yes/no — yes emits /design-agent recommendation at step 11).
 6. Consult relevant agents (ceo + coo always; one specific collaborator optional).
 7. Capture future dept-internal artifact types (fills `<<DATA_SCOPES>>`).
-8. Draft the charter (verify DEPARTMENT.md.tmpl + render 6 tokens).
+8. Draft the charter (verify DEPARTMENT.md.tmpl + render 7 tokens).
 9. Present to the user (proposal + charter target path + open question on `restricted:`).
 10. Iterate to approval.
 11. Write the charter (context-detected suffix; ONLY the charter — no `data/`, `backlog/`, `.claude/skills/` subdirs).

@@ -22,7 +22,18 @@ AI-first principle: every internal capability gap surfaced inside R&D goes throu
 - `eng-lead` — engineering branch lead, owns engineering execution + deploys + technical decisions; reports up to `rnd-lead`. Defined at [`.claude/agents/rnd/eng-lead.md`](../../.claude/agents/rnd/eng-lead.md).
 - `eng-reviewer` — PR review against engineering standards; called by `eng-lead`. Defined at [`.claude/agents/rnd/eng-reviewer.md`](../../.claude/agents/rnd/eng-reviewer.md).
 
-(Future sub-roles can be designed via [`design-agent`](../../.claude/skills/design-agent/) when load justifies splitting — e.g., a dedicated `infra-lead` separate from `eng-lead`.)
+(Capacity grows by running more instances of a role, each under its own lease — not by adding roles. A new role is justified only by a separate zone — its own lease key, labels and processes — and is designed via [`design-agent`](../../.claude/skills/design-agent/).)
+
+## Decision rights
+
+Per [`company/policies/autonomy-and-decision-rights.md`](../../company/policies/autonomy-and-decision-rights.md): decide by **risk class, not rank**. R0/R1 — agents act without asking (R1: and tell the team); R2 — act only after a `check-result` PASS (until the company switches R2 on, R2 is handled as R3); R3 — a human decides, the agent prepares everything to one click and files one `founder-action` issue. Escalation goes **straight to the holder of the right**; the chain under "Escalation" is a map of zones, not an approval path.
+
+| Class | In this department |
+|---|---|
+| R0 | research (cited), ADRs, runbooks, ops scripts with tests in the leased area |
+| R1 | dev/staging environments and dev deploys, commits to its own area |
+| R2 | DNS on company domains, CI secrets and variables, environment config, account settings (through registered resources only), production deploys through the project's gates |
+| R3 | granting credentials, paid services, anything a customer sees before the release gates |
 
 ## Escalation
 
