@@ -535,6 +535,12 @@ The `sync-opos` Action applies clean releases by itself. It deliberately does **
 
 Two further limits, both by design: a release is not applied until it is 24 hours old (so a broken one can be withdrawn), and, where leases are in use, not while anyone holds a path lease (the run retries the next night). Before v0.18.0 there was no working automatic update path at all: the shipped Action was manual-only, the reference consumer had deleted it on scaffold day, and `auto-sync` needed a cloud permission that was never granted. That consumer fell 14 releases behind over 81 days.
 
+## Risk 44 — The in-session updater depends on a session being opened (v0.19.0)
+
+**Likelihood: MEDIUM · Impact: LOW · Status: MITIGATED**
+
+`shared/scripts/opos-session-update.mjs` runs from a SessionStart hook, once a day per clone. A clone that nobody opens a session in is not fast-forwarded, and a repo whose sessions all run on Windows without the `sync-opos` job switched on gets a `needs-human` notice instead of an update: a native Windows `copier update` destroys local customisations (Risk 42), so the job refuses to run it. The same limits as Risk 43 apply: a release waits 24 hours, a release that changes workflow files goes to a human, and the update is deferred while anyone holds a path lease. **Mitigation:** the nightly `sync-opos` job updates the repo whether or not anyone opens a session; the in-session job adds the per-machine fast-forward and a same-day retry. Consumers scaffolded before v0.19.0 that already have their own `SessionStart` hooks must add the hook by hand (the additive settings class never rewrites an existing array).
+
 ## Risk 40 — Lease claims are ordered, not serialised (v0.16.0)
 
 **Likelihood: LOW · Impact: LOW-MEDIUM · Status: OPEN, measured**

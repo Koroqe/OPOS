@@ -38,3 +38,8 @@ __pycache__/
 # with `git ls-files`. A consumer that ignores them has processes whose traces never
 # reach git, so its detectors find zero by construction and report health while the
 # company is blind. That is a real incident, not a hypothetical.
+
+# v0.19.0: daily in-session updater — per-clone daily flag, state and lock
+.claude/.opos-update-check
+.claude/.opos-update-state.json
+.claude/.opos-update.lock
