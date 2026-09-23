@@ -20,6 +20,9 @@ _exclude:
   - .claude/.current-task
   - .claude/.paused-tasks
   - .claude/.last-update-check
+  - .claude/.opos-update-check        # v0.19.0: per-clone daily flag of the in-session updater
+  - .claude/.opos-update-state.json   # v0.19.0: per-clone updater state, runtime-only
+  - .claude/.opos-update.lock         # v0.19.0: per-clone updater lock, runtime-only
   - .claude/scratchpad.md
   - .claude/skills/lease/.state    # v0.16.0: per-clone lease cache + would-block log; runtime-only, never shipped
   - .claude/.clone-id              # v0.16.0: per-clone identity, minted on first run

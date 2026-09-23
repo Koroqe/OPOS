@@ -8,6 +8,8 @@ owner_agent: chief-of-staff
 
 # check-for-updates
 
+> **Since v0.19.0 this skill is not what keeps a company current.** A SessionStart hook runs `shared/scripts/opos-session-update.mjs` once a day per clone, in the background, and that job *applies* updates and fast-forwards the clone. It exists because this skill only ever printed a notice, and only when the model chose to run it: at the reference consumer it left no run record at all while the company fell 14 releases behind, and every update was applied by hand. This skill remains the cheap on-demand probe (`--force`).
+
 ## When to use
 
 Invoked automatically as step 1 of `task-register`, `task-update`, `task-complete`, **and (v0.8.1) as part of the chief-of-staff First-touch protocol** on session open — so consumers whose daily rhythm does not go through the task-lifecycle skills still get the notice. Adopters can invoke manually via `/check-for-updates --force` to force a fresh check, or `/check-for-updates --include-prerelease` to consider pre-release tags.

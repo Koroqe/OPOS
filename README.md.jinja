@@ -110,6 +110,8 @@ A typical user journey: (1) design a weekly metrics rollup via `/design-process`
 
 ## Updating from upstream
 
+**How a company stays current (v0.19.0).** Every Claude Code session starts a hook; once a day per clone it starts a silent background job (`shared/scripts/opos-session-update.mjs`). That job checks for a newer OPOS release, gets it applied to the repo, and fast-forwards the clone, so every machine that opens a session ends up on the latest version without anyone running anything. You see one line at the next session start only if something happened or needs you. Where the repo has the `sync-opos` job switched on (option 1 below), the in-session job hands the actual update to it — on Windows that is required, because a native `copier update` there discards local customisations; on Linux or macOS with `copier` installed it runs the update itself in a throw-away clone. The nightly `sync-opos` run covers the days when nobody opens a session.
+
 Three ways to receive updates from `Koroqe/OPOS` — **pick exactly one automatic driver per repo** (they compete otherwise; `auto-sync` refuses to run while the Action is switched on).
 
 1. **Unattended GitHub Action (v0.18.0 — RECOMMENDED).** `.github/workflows/sync-opos.yml` runs nightly on GitHub's Linux runners: no laptop, no cloud app, no API key. Switch it on once:

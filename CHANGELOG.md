@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.19.0] - 2026-09-23
+
+### Added
+
+- **A daily in-session updater that actually updates.** A SessionStart hook runs `shared/scripts/opos-session-update.mjs`. Once a day per clone — its own flag `.claude/.opos-update-check`, plus a lock so parallel sessions never both run — it starts a silent background job. The job:
+  - checks upstream for a release newer than the repo's pin *on the remote*;
+  - if one exists and is at least 24 hours old, gets it applied: by triggering and waiting for the repo's `sync-opos` job where that is switched on (the only safe place on Windows), otherwise by running the same updater locally in a throw-away clone on Linux or macOS;
+  - fast-forwards the local clone to the remote, so every machine that opens a session ends up on the latest version without anyone pulling. It fast-forwards only, and only on the default branch; git refuses to touch files someone is editing, and then the job leaves the clone alone;
+  - stays silent: one line at the next session start, only if something was updated or needs a human.
+
+  It exists because the previous in-session mechanism, `check-for-updates`, only printed a notice, and only when the model chose to follow a prose instruction. At the reference consumer it left no run record at all while the company fell 14 releases behind; all 14 of its updates were applied by hand.
+
+### Migration
+
+- New consumers get the hook from `shared/templates/required-settings.json`. **An existing consumer with its own `SessionStart` hooks must add `node shared/scripts/opos-session-update.mjs` by hand** — the additive class never rewrites a value the consumer already set; `sync-from-core` reports the gap.
+
 ## [0.18.3] - 2026-09-23
 
 ### Fixed
