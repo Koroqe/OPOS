@@ -86,7 +86,13 @@ function main() {
   const rel = pickLatest(JSON.parse(sh('gh', ['api', `repos/${upstream}/releases`, '--jq', '[.[] | {tag: .tag_name, draft, prerelease, published: .published_at}]'])));
   if (!rel) { say(`No stable release upstream. Nothing to do.`); return 0; }
   say(`Pinned: **${pin}** · latest upstream: **${rel.tag}** (published ${rel.published})`);
-  if (rel.tag === pin) { say('Up to date.'); return 0; }
+  if (rel.tag === pin) {
+    say('Up to date.');
+    // A release escalated earlier and then applied by a human leaves its issue open; close it now
+    // that the pin shows it landed. Without this an already-resolved escalation lingers forever.
+    closeOpenIssues(repo, pin);
+    return 0;
+  }
 
   const ageH = (Date.now() - Date.parse(rel.published)) / 3600000;
   if (ageH < minAgeH) {
@@ -176,7 +182,7 @@ function closeOpenIssues(repo, uptoTag) {
   const r = run('gh', ['issue', 'list', '--repo', repo, '--state', 'open', '--search', '"[opos-auto-sync]" in:title', '--json', 'number,title']);
   let list = [];
   try { list = JSON.parse(r.out || '[]'); } catch { /* none */ }
-  for (const i of list) run('gh', ['issue', 'close', String(i.number), '--repo', repo, '--reason', 'completed', '--comment', `Superseded: OPOS ${uptoTag} was applied automatically.`]);
+  for (const i of list) run('gh', ['issue', 'close', String(i.number), '--repo', repo, '--reason', 'completed', '--comment', `Resolved: this repository is now on OPOS ${uptoTag} (confirmed by the automatic update run).`]);
 }
 
 const isDirect = (() => { try { return !!process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href; } catch { return false; } })();

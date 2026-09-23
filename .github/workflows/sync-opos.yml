@@ -67,5 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPOS_MIN_RELEASE_AGE_HOURS: ${{ inputs.min_release_age_hours || '24' }}
-          OPOS_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          # Scheduled runs may carry no repository object in the event payload; github.ref_name is
+          # the default branch there, so it is the reliable fallback.
+          OPOS_DEFAULT_BRANCH: ${{ github.event.repository.default_branch || github.ref_name }}
         run: node shared/scripts/opos-auto-update.mjs
