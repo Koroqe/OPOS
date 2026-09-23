@@ -2,6 +2,10 @@
 
 Source of truth for company-wide policy. Readable by all agents.
 
+## Shipped with the framework
+
+- [`autonomy-and-decision-rights.md`](autonomy-and-decision-rights.md) — decision classes R0–R3, maker/checker, the earned-autonomy ladder, role vs worker. Company-owned once scaffolded: fill in the holders, thresholds and adoption switches.
+
 ## How to add a policy
 
 1. Create a new file `<short-slug>.md` in this folder.
