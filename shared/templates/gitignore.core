@@ -12,6 +12,7 @@
 .claude/.current-task
 .claude/.paused-tasks
 .claude/.last-update-check
+.claude/.update-probe
 .claude/scratchpad.md
 .claude/scheduled-processes.json
 .claude/settings.local.json

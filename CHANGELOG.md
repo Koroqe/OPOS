@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.21.0] - 2026-09-23
+
+### Added
+
+- **A context-size notice before the next expensive turn.** A `UserPromptSubmit` hook (`shared/scripts/context-budget-notice.mjs`) reads the session's own transcript and, once the conversation passes 150k tokens of context (then every further 100k), tells the human and the steward: every request now re-reads all of it, so a new topic belongs in a fresh session and a continuing one wants `/compact`. Once per band, zero model requests, fail-open. Thresholds: `OPOS_CONTEXT_NOTICE_AT`, `OPOS_CONTEXT_NOTICE_STEP`.
+- **`autoCompactWindow: 250000`** in `shared/templates/required-settings.json`. On 1M-window models Claude Code otherwise compacts at about 967k tokens. Verified three ways: the official model-config documentation (settings key, 100k–1M), `--autocompact` in `claude --help`, and the key in the shipped binary. A consumer's own value is never overwritten.
+- **The steward's "Context economy" rules:** one topic per session (write a handoff to the task issue, then `/clear`); delegate multi-step grunt work (investigations, sweeps, syncs, long Bash sequences) to a subagent with a fresh context; never run a sync in the main thread; never read a large file whole.
+- **`check-for-updates/check.mjs`** — the manual update probe as one Bash call. It reports only a **newer** release (semver): the old procedure reported any *different* tag, so a consumer pinned ahead of upstream's latest release would have been told to "update" to an older one. It keeps its own cache (`.claude/.update-probe`) and never touches the session updater's daily flag.
+
+### Changed
+
+- **Nothing invokes `check-for-updates` any more.** `task-register`, `task-update`, `task-complete` and the steward's First-touch ran it on every call, turn by turn: about five requests, each re-reading the whole session context. The daily SessionStart updater (v0.19.0) owns routine checks; the skill is on-demand only.
+- **`sync-from-core` runs in a subagent**, and applies every pending release in one run.
+- The session updater's per-clone `.git/info/exclude` list now also covers `.claude/.update-probe` and `.claude/.sessions/`.
+
+### Why
+
+Measured at the reference consumer from its local transcripts: one interactive session ran 28 hours across five unrelated topics, reached 925k tokens of context with zero compactions, and alone was 80% of a week's usage — 81% of its 244M tokens were spent at more than 400k context, where a single `git status` re-reads ~0.9M tokens. The usage dashboard's "16% from /check-for-updates" was mostly attribution (it charges everything after a skill to that skill; a `copier update` sync run inside that session followed the check), but the skill's turn-by-turn execution and its "different, not newer" comparison were real defects.
+
+### Migration
+
+- A consumer without a `UserPromptSubmit` key receives the hook automatically from `sync-from-core` / the updater's settings reconciliation, and `autoCompactWindow` likewise when unset. A consumer with its own `UserPromptSubmit` hooks keeps them and must add `node shared/scripts/context-budget-notice.mjs` by hand (the additive class never rewrites an existing value).
+
 ## [0.20.0] - 2026-09-23
 
 An operating-model change. The agents were organised like a human company: an escalation chain (`eng-lead → rnd-lead → coo → ceo → human`), "design a sub-role when load justifies it", and "a deliberation costs ~15 calls, reserve it". Every hop was a wait paid in human attention, while an agent instance costs cents. At the reference consumer this showed up as a growing `founder-action` queue that was mostly errands an agent could have done with one-time access, finished work waiting days on a single "click", and lead agents carrying spend thresholds ("> $X") that nobody had ever set — so they escalated everything. This release moves decisions to whoever holds the right for that **risk class**, and puts an independent checker between agents and the world, because the costliest agent mistakes are confident false claims, and a fleet multiplies those as fast as it multiplies output.

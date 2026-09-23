@@ -5,14 +5,14 @@ collaborators: []
 inputs: [force, include_prerelease]
 success_criteria: [check_completed_or_skipped_due_to_cache, history_entry_written_only_if_meaningful]
 slo: "5 seconds (or instant if cached)"
-version: 0.1.0
+version: 0.2.0
 ---
 
 # check-for-updates
 
 ## Narrative
 
-Cheap upstream-version probe that other framework skills invoke as their first step. Compares the consumer's pinned tag (`.copier-answers.yml` `_commit:`) against the latest non-prerelease release on the upstream repo (parsed from `_src_path`). Silent unless an update is available. 6h cache prevents API spam.
+On-demand upstream-version probe, run as one script call (`check.mjs`). Since v0.21.0 no other skill invokes it — the daily SessionStart updater (`shared/scripts/opos-session-update.mjs`) owns routine checks. Compares the consumer's pinned tag (`.copier-answers.yml` `_commit:`) against the latest non-prerelease release on the upstream repo (parsed from `_src_path`). Reports only a NEWER release (semver), silent otherwise. Its own 6 h cache (`.claude/.update-probe`) prevents API spam.
 
 ## Pre-conditions
 

@@ -7,6 +7,7 @@
     "allow": [],
     "deny": []
   },
+  "autoCompactWindow": 250000,
   "hooks": {
     "SessionStart": [
       {
@@ -14,6 +15,16 @@
           {
             "type": "command",
             "command": "python3 -c \"import json,os; p='.claude/scheduled-processes.json'; rows=[r for r in (json.load(open(p)) if os.path.exists(p) else []) if not str(r.get('routine_id','')).startswith('gha:')]; print('[opos-scheduler] ' + str(len(rows)) + ' session-scoped registration(s) (' + ', '.join(r['process_name'] for r in rows) + ') need re-arming: re-run /schedule-process for each (idempotent; previously authorized). gha registrations are durable and need nothing.') if rows else None\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node shared/scripts/context-budget-notice.mjs"
           }
         ]
       }
