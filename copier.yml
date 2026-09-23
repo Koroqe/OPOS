@@ -23,6 +23,7 @@ _exclude:
   - .claude/.opos-update-check        # v0.19.0: per-clone daily flag of the in-session updater
   - .claude/.opos-update-state.json   # v0.19.0: per-clone updater state, runtime-only
   - .claude/.opos-update.lock         # v0.19.0: per-clone updater lock, runtime-only
+  - .claude/.update-probe        # v0.19.0: check-for-updates' own 6h probe cache; per-machine, never shipped — distinct from .last-update-check (the session updater's daily flag), which it must never overwrite
   - .claude/scratchpad.md
   - .claude/skills/lease/.state    # v0.16.0: per-clone lease cache + would-block log; runtime-only, never shipped
   - .claude/.clone-id              # v0.16.0: per-clone identity, minted on first run
