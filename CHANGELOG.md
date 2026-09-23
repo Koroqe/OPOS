@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.17.3] - 2026-09-23
+
+### Fixed
+
+- **The documented Windows sync route had no safe place to verify.** v0.17.0 told Windows consumers to run `copier update` under WSL and fetch the commit back, and told them to run `verify-sync` — but `verify-sync` only inspected the working tree, and WSL usually has no `gh`. The obvious workaround, materialising the fetched tree with `git read-tree -u --reset` and verifying that, silently overwrites uncommitted work. It did exactly that during this release's own verification, costing a policy edit that happened to be recoverable. `verify-sync --rev <commit>` now judges a sync commit against its parent without touching the working tree (`--from` defaults to the parent's pin), and the route in `sync-from-core` is: fetch, `verify-sync --rev FETCH_HEAD`, and merge only on exit 0. Tested on a clean sync commit (0), and on a real destructive native-Windows run both uncommitted (2) and committed (2).
+
 ## [0.17.2] - 2026-09-23
 
 ### Changed
