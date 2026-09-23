@@ -89,9 +89,20 @@ export function matchesAny(file, globs) {
 
 /**
  * Do two keys contend for the same resource?
- * Exact for issue/process/branch. For path: containment in EITHER direction, so
- * path:departments/commercial/** blocks path:departments/commercial/data/sourcing/** and
- * vice versa, while path:departments/legal/** is free.
+ * Exact for issue/process/branch. For path: overlap — does some file path exist that both
+ * globs would match?
+ *   - two wildcard-free (literal) paths: conflict only when equal. 'a/x.md' and 'a/y.md' name
+ *     different files and must not block each other, however deep the shared directory.
+ *   - a literal against a real glob: conflict iff the glob's own RegExp matches the literal.
+ *     ('x/**' already matches the bare 'x' itself — see globToRegExp — so a literal that names
+ *     the glob's own root directory is covered without extra logic.)
+ *   - two real globs: the previous conservative prefix-overlap rule, so
+ *     path:departments/commercial/** still blocks path:departments/commercial/data/sourcing/**
+ *     and vice versa, while path:departments/legal/** is free. This may still false-positive on
+ *     two globs that merely share a literal prefix before their first wildcard — acceptable;
+ *     it is not the false-positive this function used to have for fully-literal paths (a literal
+ *     file's "prefix" is its parent directory, which made siblings — and, at the repo root, every
+ *     other path lease — collide).
  */
 export function conflicts(a, b) {
   const ka = typeof a === 'string' ? parseKey(a) : a;
@@ -99,6 +110,18 @@ export function conflicts(a, b) {
   if (ka.type !== kb.type) return false;
   if (ka.type !== 'path') return ka.norm === kb.norm;
   if (ka.norm === kb.norm) return true;
+
+  const aIsGlob = /[*?]/.test(ka.glob);
+  const bIsGlob = /[*?]/.test(kb.glob);
+
+  if (!aIsGlob && !bIsGlob) return false; // two literals: only equality conflicts, checked above
+
+  if (aIsGlob !== bIsGlob) {
+    const lit = aIsGlob ? kb : ka;
+    const glob = aIsGlob ? ka : kb;
+    return globToRegExp(glob.glob).test(lit.glob);
+  }
+
   const pa = ka.prefix ?? literalPrefix(ka.glob);
   const pb = kb.prefix ?? literalPrefix(kb.glob);
   return pa.startsWith(pb) || pb.startsWith(pa);
