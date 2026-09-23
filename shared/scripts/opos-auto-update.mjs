@@ -45,6 +45,18 @@ export function classifyTouched(files) {
   };
 }
 
+/**
+ * Is this one of the updater's own issues? Exact title prefix only. GitHub search is fuzzy (it
+ * tokenises and ignores brackets), and a human issue that merely mentions OPOS and auto-sync must
+ * never be commented on — let alone closed — by an unattended job.
+ */
+export const PREFIX = '[opos-auto-sync]';
+export function isOwnIssue(title, tag = null) {
+  const t = String(title ?? '');
+  if (!t.startsWith(PREFIX)) return false;
+  return tag === null ? true : t.startsWith(`${PREFIX} ${tag}:`);
+}
+
 /** Latest stable release, or null. */
 export function pickLatest(releases) {
   return (releases ?? []).find((r) => !r.draft && !r.prerelease) ?? null;
@@ -171,18 +183,22 @@ function main() {
     say(`**Escalated:** ${what}`);
     const title = `[opos-auto-sync] ${tag}: ${what}`;
     const body = `The automatic OPOS update driver stopped and needs a human.\n\n**What:** ${what}\n\n${details}\n\nRun: ${env.GITHUB_SERVER_URL ?? 'https://github.com'}/${env.GITHUB_REPOSITORY ?? repo}/actions/runs/${env.GITHUB_RUN_ID ?? '?'}\n\nThis issue is updated, not duplicated, on every run until the release is applied; it is closed automatically once it is.`;
-    const existing = run('gh', ['issue', 'list', '--repo', repo, '--state', 'open', '--search', `"[opos-auto-sync] ${tag}" in:title`, '--json', 'number', '--jq', '.[0].number']).out.trim();
+    const existing = String(ownOpenIssues(repo).find((i) => isOwnIssue(i.title, tag))?.number ?? '');
     if (existing) run('gh', ['issue', 'comment', existing, '--repo', repo, '--body', `Still blocked on this run: ${what}. ${env.GITHUB_SERVER_URL ?? ''}/${repo}/actions/runs/${env.GITHUB_RUN_ID ?? ''}`]);
     else run('gh', ['issue', 'create', '--repo', repo, '--title', title, '--body', body]);
     return 1;
   }
 }
 
+function ownOpenIssues(repo) {
+  const r = run('gh', ['issue', 'list', '--repo', repo, '--state', 'open', '--limit', '200', '--json', 'number,title']);
+  try { return JSON.parse(r.out || '[]').filter((i) => isOwnIssue(i.title)); } catch { return []; }
+}
+
 function closeOpenIssues(repo, uptoTag) {
-  const r = run('gh', ['issue', 'list', '--repo', repo, '--state', 'open', '--search', '"[opos-auto-sync]" in:title', '--json', 'number,title']);
-  let list = [];
-  try { list = JSON.parse(r.out || '[]'); } catch { /* none */ }
-  for (const i of list) run('gh', ['issue', 'close', String(i.number), '--repo', repo, '--reason', 'completed', '--comment', `Resolved: this repository is now on OPOS ${uptoTag} (confirmed by the automatic update run).`]);
+  for (const i of ownOpenIssues(repo)) {
+    run('gh', ['issue', 'close', String(i.number), '--repo', repo, '--reason', 'completed', '--comment', `Resolved: this repository is now on OPOS ${uptoTag} (confirmed by the automatic update run).`]);
+  }
 }
 
 const isDirect = (() => { try { return !!process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href; } catch { return false; } })();

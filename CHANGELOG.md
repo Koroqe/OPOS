@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.18.3] - 2026-09-23
+
+### Fixed
+
+- **The updater could have commented on — or closed — a human's issue.** It found its own `[opos-auto-sync]` issues through GitHub search, which is fuzzy: it tokenises and ignores brackets. At the reference consumer a human issue titled "…OPOS… auto-sync…" sat right next to the updater's issues; on this occasion the phrase search did not match it, but nothing guaranteed that. The updater now lists open issues and matches the exact `[opos-auto-sync] <tag>:` title prefix itself, for both deduplication and closing. Unit tests pin the case with that real issue's title.
+
+This release touches no workflow file, so every consumer's updater applies it by itself.
+
 ## [0.18.2] - 2026-09-23
 
 ### Fixed
