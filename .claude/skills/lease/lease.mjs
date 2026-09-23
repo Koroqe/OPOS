@@ -26,8 +26,16 @@ import { renderProjection } from './lib/render.mjs';
 
 export const EXIT = {
   OK: 0, ERROR: 1, CONFLICT: 2, STALE: 3, NO_LEASE: 4,
-  REVOKED: 5, NO_AUTH: 6, SCOPE: 7, SKEW: 8,
+  REVOKED: 5, NO_AUTH: 6, SCOPE: 7, SKEW: 8, NOT_CONFIGURED: 9,
 };
+
+/*
+ * 9 NOT_CONFIGURED is deliberately distinct from every failure code. A consumer that has
+ * not run `init-ledger` has not opted in to the protocol, and the task-lifecycle skills
+ * must then behave exactly as they did before leases existed — skip the gate with a one-line
+ * notice, never block. Upgrading a company must not change its behaviour until it chooses to.
+ */
+const OFFLINE_OK_COMMANDS = new Set(['check', 'commit-gate', 'list']);
 
 function parseArgs(argv) {
   const out = { _: [] };
@@ -44,10 +52,16 @@ function parseArgs(argv) {
   return out;
 }
 
+function configPath(root) {
+  // OPOS_LEASE_CONFIG lets the test suite point at a throwaway registry without touching
+  // the company's real one.
+  return process.env.OPOS_LEASE_CONFIG ?? path.join(root, '.claude', 'lease.config.json');
+}
+
 function loadConfig(root) {
-  const p = path.join(root, '.claude', 'lease.config.json');
+  const p = configPath(root);
   const cfg = readJson(p);
-  if (!cfg) die(EXIT.ERROR, `no .claude/lease.config.json at ${p}`);
+  if (!cfg) die(EXIT.NOT_CONFIGURED, `lease protocol not configured: no ${p}. Opt in with: lease.mjs init-ledger --create`);
   cfg.ledger = cfg.ledger ?? {};
   // One source of truth for "which repo is our task store". A null here means: reuse the value
   // the task-lifecycle skills already read, so a consumer configures the repo in exactly one file.
@@ -55,17 +69,18 @@ function loadConfig(root) {
     cfg.ledger.repo = readJson(path.join(root, '.claude', 'task-tracking.config.json'))?.repo ?? null;
   }
   if (!cfg.ledger.repo) {
-    die(EXIT.ERROR, 'no ledger repo: set ledger.repo in .claude/lease.config.json, or repo in .claude/task-tracking.config.json');
+    die(EXIT.NOT_CONFIGURED, 'lease protocol not configured: no ledger repo (set ledger.repo in .claude/lease.config.json, or repo in .claude/task-tracking.config.json)');
   }
   return cfg;
 }
 function saveConfig(root, cfg, { keepRepo = false } = {}) {
-  const onDisk = readJson(path.join(root, '.claude', 'lease.config.json')) ?? {};
+  const onDisk = readJson(configPath(root)) ?? {};
   const next = { ...cfg, ledger: { ...cfg.ledger } };
   // Do not bake the resolved fallback into the file: if it was null on disk it stays null, so
   // the repo keeps living in exactly one place.
   if (!keepRepo && !(onDisk.ledger?.repo)) next.ledger.repo = null;
-  writeJson(path.join(root, '.claude', 'lease.config.json'), next);
+  delete next.ledger.prev;
+  writeJson(configPath(root), next);
 }
 
 function parseDuration(v, fallbackS) {
@@ -95,10 +110,22 @@ function enforceModeFor(cfg, type) {
 function context(args, { needClock = true, scope = [] } = {}) {
   const root = repoRoot();
   const cfg = loadConfig(root);
+  if (!cfg.ledger?.issue) {
+    die(EXIT.NOT_CONFIGURED, 'lease protocol not configured (no registry issue). Opt in with: lease.mjs init-ledger --create');
+  }
   const id = identity({ root, withClock: needClock });
-  if (!id.loginOk && !args['offline-ok']) {
-    die(EXIT.NO_AUTH, `gh unavailable or unauthenticated: ${id.loginErr ?? 'unknown'}\n` +
-      `  no provable lease -> no shared-area write. Re-auth with: gh auth login`);
+  let offline = false;
+  if (!id.loginOk) {
+    // --offline-ok is honoured only for commands that can be answered from the local cache,
+    // and only a cached lease that has not expired can then open a gate. Anything that would
+    // have to WRITE a claim cannot be done offline, by construction.
+    if (args['offline-ok'] && OFFLINE_OK_COMMANDS.has(args._cmd)) {
+      offline = true;
+      warn(`[lease] OFFLINE: gh unavailable (${String(id.loginErr ?? '').split('\n')[0]}). Answering from the local cache only; nothing is verified against GitHub.`);
+    } else {
+      die(EXIT.NO_AUTH, `gh unavailable or unauthenticated: ${id.loginErr ?? 'unknown'}\n` +
+        `  no provable lease -> no shared-area write. Re-auth with: gh auth login`);
+    }
   }
   const skew = Math.abs(id.clock.skew_s ?? 0);
   if (needClock && skew > (cfg.clock_skew_fail_s ?? 600)) {
@@ -107,7 +134,79 @@ function context(args, { needClock = true, scope = [] } = {}) {
   if (needClock && skew > (cfg.clock_skew_warn_s ?? 120)) {
     warn(`[lease] WARN clock skew ${id.clock.skew_s}s vs GitHub — expiry still uses server time, but records will look odd.`);
   }
-  return { root, cfg, id, nowMs: id.clock.ms, scope, args };
+  const ctx = { root, cfg, id, nowMs: id.clock.ms, scope, args, offline };
+  if (!offline) {
+    // A cached login can make identity look healthy while the network is down; the registry
+    // read is then the first call that fails. For commands that may run offline, that failure
+    // degrades to offline mode instead of exit 6 — otherwise --offline-ok could never apply
+    // in the one situation it exists for.
+    const soft = !!args['offline-ok'] && OFFLINE_OK_COMMANDS.has(args._cmd);
+    if (!resolveLedger(ctx, { soft })) {
+      ctx.offline = true;
+      warn('[lease] OFFLINE: the registry is unreachable. Answering from the local cache only; nothing is verified against GitHub.');
+    }
+  }
+  return ctx;
+}
+
+/**
+ * Find the live registry. A registry closed WITH a `opos-lease-ledger-next: N` marker was
+ * rotated by `reap` and is followed; one closed WITHOUT it was closed by a human, which is a
+ * stop (exit 1) with the repair command — GitHub still accepts comments on a closed issue, so
+ * silently carrying on would keep the protocol "working" against a registry nobody watches.
+ *
+ * Also records the predecessor (`opos-lease-ledger-prev: N`) so claims written before a
+ * rotation stay visible until they lapse. Comment ids are repo-global and monotonic, so the
+ * lowest-id tiebreak remains valid across the two issues.
+ *
+ * Cached for ten minutes: one extra call per ten minutes, not one per command.
+ */
+function resolveLedger(ctx, { soft = false } = {}) {
+  const cacheFile = path.join(stateDir(ctx.root), 'ledger.json');
+  const cached = readJson(cacheFile);
+  if (cached && cached.repo === ctx.cfg.ledger.repo && cached.start === ctx.cfg.ledger.issue
+      && Date.now() - Date.parse(cached.at) < 10 * 60 * 1000) {
+    ctx.cfg.ledger.issue = cached.issue;
+    ctx.cfg.ledger.prev = cached.prev ?? null;
+    return true;
+  }
+  const start = ctx.cfg.ledger.issue;
+  let issue = start;
+  for (let hop = 0; hop < 5; hop++) {
+    const r = ghJson(['api', `repos/${ctx.cfg.ledger.repo}/issues/${issue}`, '--jq', '{state: .state, body: .body}']);
+    if (!r.ok) {
+      if (/not found|404/i.test(r.err)) die(EXIT.ERROR, `lease registry ${ctx.cfg.ledger.repo}#${issue} does not exist. Repair: lease.mjs init-ledger --create --force`);
+      if (soft) return false;
+      die(EXIT.NO_AUTH, `cannot read the lease registry: ${r.err}`);
+    }
+    const body = r.data?.body ?? '';
+    if (r.data?.state === 'closed') {
+      const next = /opos-lease-ledger-next:\s*([0-9]+)/.exec(body);
+      if (!next) {
+        die(EXIT.ERROR, `the lease registry ${ctx.cfg.ledger.repo}#${issue} was closed by hand (no rotation pointer).\n` +
+          `  Nothing is watching it any more. Reopen it, or: lease.mjs init-ledger --create --force`);
+      }
+      issue = Number(next[1]);
+      continue;
+    }
+    const prev = /opos-lease-ledger-prev:\s*([0-9]+)/.exec(body);
+    ctx.cfg.ledger.issue = issue;
+    ctx.cfg.ledger.prev = prev ? Number(prev[1]) : null;
+    try { writeJson(cacheFile, { repo: ctx.cfg.ledger.repo, start, issue, prev: ctx.cfg.ledger.prev, at: new Date().toISOString() }); } catch { /* cache is optional */ }
+    if (issue !== start) warn(`[lease] registry rotated: ${start} -> ${issue}. Update ledger.issue in lease.config.json when convenient.`);
+    return true;
+  }
+  die(EXIT.ERROR, 'lease registry rotation chain is longer than 5 hops — refusing to follow it');
+}
+
+/** Claims for a target. For the registry that means the live issue AND its predecessor. */
+function listTarget(ctx, target) {
+  if (target.kind !== 'ledger' || !ctx.cfg.ledger.prev) return listClaims(target);
+  const cur = listClaims(target);
+  if (!cur.ok) return cur;
+  const old = listClaims({ repo: target.repo, issue: ctx.cfg.ledger.prev });
+  const claims = [...cur.claims, ...(old.ok ? old.claims : [])].sort((a, b) => a.id - b.id);
+  return { ok: true, claims };
 }
 
 function buildRecord(ctx, k, { ttlS, scope, intent, fresh, state = 'held', nonce = null }) {
@@ -230,7 +329,7 @@ function cmdAcquire(args) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     // READ — fast path. The common case (already held) costs one GET and writes NOTHING,
     // which is what stops a polling fleet from generating comment churn.
-    const pre = listClaims(target);
+    const pre = listTarget(ctx, target);
     if (!pre.ok) {
       if (pre.rateLimited) { sleep(2000 * (attempt + 1)); continue; }
       die(EXIT.NO_AUTH, `cannot read claims: ${pre.err}`);
@@ -284,7 +383,7 @@ function cmdAcquire(args) {
     // immediately following GET. This wait is empirical, not contractual (SKILL.md Residual 1).
     sleep(settle);
 
-    const after = listClaims(target);
+    const after = listTarget(ctx, target);
     if (!after.ok) {
       deleteClaim(target.repo, posted.id);
       die(EXIT.NO_AUTH, `cannot re-read after posting (claim withdrawn): ${after.err}`);
@@ -424,7 +523,7 @@ function cmdSteal(args) {
   const k = parseKey(String(args.key));
   if (!args.reason) die(EXIT.ERROR, 'steal requires --reason — taking over another holder\u2019s work is a human decision and must stay legible afterwards.');
   const target = claimTarget(k, ctx.cfg);
-  const all = listClaims(target);
+  const all = listTarget(ctx, target);
   if (!all.ok) die(EXIT.NO_AUTH, all.err);
   const victim = all.claims.filter((c) => isLive(c.rec, ctx.nowMs) && conflicts(c.rec.key, k))[0];
   if (!victim) { warn(`nothing live to steal on ${k.norm} — just acquire it.`); return EXIT.OK; }
@@ -484,16 +583,21 @@ function cmdCheck(args) {
   if (Date.parse(cached.expires) <= ctx.nowMs) {
     return fail(EXIT.REVOKED, `LEASE EXPIRED on ${k.norm} (expired ${cached.expires}) — re-acquire before writing.`);
   }
-  if (!args['no-net'] && !args.fast) {
+  if (!args['no-net'] && !args.fast && !ctx.offline) {
     const got = getClaim(cached.repo, cached.comment_id);
     // Same rule as renew: unreachable is not revoked. Fail closed on the gate (exit 6) but do
     // NOT destroy the cache, so a blip does not cost a lease that is still perfectly valid.
     if (!got.ok && !got.missing) {
-      return fail(EXIT.NO_AUTH, `cannot verify ${k.norm} against GitHub (${String(got.err).split('\n')[0]}). Lease kept; retry.`);
-    }
-    if (!got.claim) return fail(EXIT.REVOKED, `LEASE GONE on ${k.norm} — the claim comment no longer exists.`);
-    if (!sameHolder(got.claim.rec.holder, ctx.id.holder) || got.claim.rec.state !== 'held') {
-      return fail(EXIT.REVOKED, `LEASE REVOKED on ${k.norm}: state=${got.claim.rec.state}, holder ${describeHolder(got.claim.rec)}`);
+      if (!args['offline-ok']) {
+        return fail(EXIT.NO_AUTH, `cannot verify ${k.norm} against GitHub (${String(got.err).split('\n')[0]}). Lease kept; retry.`);
+      }
+      // --offline-ok: the unexpired cache (already checked above) is the verdict. Say so loudly.
+      warn(`[lease] OFFLINE: could not verify ${k.norm} against GitHub; trusting the unexpired local cache (until ${cached.expires}).`);
+    } else {
+      if (!got.claim) return fail(EXIT.REVOKED, `LEASE GONE on ${k.norm} — the claim comment no longer exists.`);
+      if (!sameHolder(got.claim.rec.holder, ctx.id.holder) || got.claim.rec.state !== 'held') {
+        return fail(EXIT.REVOKED, `LEASE REVOKED on ${k.norm}: state=${got.claim.rec.state}, holder ${describeHolder(got.claim.rec)}`);
+      }
     }
   }
   if (!args.quiet) out(`OK ${k.norm} held until ${cached.expires.slice(11, 16)} UTC`);
@@ -532,14 +636,14 @@ function cmdCommitGate(args) {
       outside.map((f) => `    ${f}`).join('\n') + '\n  Unstage them (git restore --staged <path>) — do not widen the commit.');
   }
   // A successful gate is also a heartbeat: work demonstrably happened, so the lease is alive.
-  if (!args['no-renew']) { try { cmdRenew({ all: true, 'no-fetch': true, quiet: true }); } catch { /* best effort */ } }
+  if (!args['no-renew'] && !ctx.offline) { try { cmdRenew({ all: true, 'no-fetch': true, quiet: true }); } catch { /* best effort */ } }
   out(`commit-gate OK: ${staged.length} staged path(s) within [${scope.join(', ')}]`);
   return EXIT.OK;
 }
 
 function cmdList(args) {
   const ctx = context(args, { needClock: !args['no-net'] });
-  if (args['no-net']) {
+  if (args['no-net'] || ctx.offline) {
     const rows = cachedKeys(ctx.root).map((kk) => readJson(heldFile(ctx.root, parseKey(kk)))).filter(Boolean);
     if (args.json) out(JSON.stringify(rows, null, 2));
     else if (!rows.length) out('(no cached leases)');
@@ -565,8 +669,8 @@ function cmdList(args) {
  * limit), not by the size of the backlog — which is what makes this scale.
  */
 function gatherAllClaims(ctx) {
-  const ledger = { repo: ctx.cfg.ledger.repo, issue: ctx.cfg.ledger.issue };
-  const res = listClaims(ledger);
+  const ledger = { repo: ctx.cfg.ledger.repo, issue: ctx.cfg.ledger.issue, kind: 'ledger' };
+  const res = listTarget(ctx, ledger);
   if (!res.ok) die(EXIT.NO_AUTH, res.err);
   const all = [...res.claims];
   if (ctx.cfg.index_label) {
@@ -581,6 +685,63 @@ function gatherAllClaims(ctx) {
   }
   const seen = new Set();
   return all.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true))).sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Rotate the registry when it grows past `rotate_at_comments` records.
+ *
+ * Order is chosen so a crash at any point is recoverable by simply running reap again:
+ *   1. find an already-created successor (an open registry whose body says prev: <old>) —
+ *      so a crash after step 2 never produces a second successor;
+ *   2. otherwise create it, carrying `opos-lease-ledger-prev: <old>`;
+ *   3. point the old registry at it (`opos-lease-ledger-next: <new>`) and close it;
+ *   4. record the new number locally.
+ * Until step 3 lands, everyone keeps using the old registry, which is still open and valid.
+ * After it, resolveLedger follows the pointer, and claims written to the old registry stay
+ * visible through the predecessor link until they lapse — so no live lease is lost.
+ */
+function rotateLedger(ctx) {
+  const repo = ctx.cfg.ledger.repo;
+  const old = ctx.cfg.ledger.issue;
+  const label = ctx.cfg.ledger_label ?? 'lease-ledger';
+  const marker = `opos-lease-ledger-prev: ${old} `;
+
+  let num = null;
+  const open = ghJson(['issue', 'list', '--repo', repo, '--label', label, '--state', 'open', '--limit', '20', '--json', 'number,body']);
+  if (open.ok) {
+    const existing = (open.data ?? []).find((i) => i.number !== old && String(i.body ?? '').includes(marker));
+    if (existing) num = existing.number;
+  }
+  if (!num) {
+    const created = gh(['issue', 'create', '--repo', repo, '--label', label,
+      '--title', 'OPOS lease registry — DO NOT CLOSE, DO NOT COMMENT BY HAND',
+      '--body', LEDGER_BODY + '\n<!-- ' + marker + '-->']);
+    if (!created.ok) return { ok: false, err: created.err };
+    num = Number(path.basename(created.out.trim()));
+  }
+
+  // Pin the new registry, unpin the old one. Best-effort: GraphQL-only, and an unpinned
+  // registry still works — it is just easier to lose.
+  const pin = (n, op) => {
+    const node = gh(['api', `repos/${repo}/issues/${n}`, '--jq', '.node_id']);
+    if (node.ok) gh(['api', 'graphql', '-f', `query=mutation($id:ID!){${op}(input:{issueId:$id}){issue{number}}}`, '-F', `id=${node.out.trim()}`]);
+  };
+  pin(num, 'pinIssue');
+  pin(old, 'unpinIssue');
+
+  const ob = ghJson(['api', `repos/${repo}/issues/${old}`, '--jq', '{body: .body}']);
+  if (!ob.ok) return { ok: false, err: ob.err };
+  let body = String(ob.data?.body ?? '');
+  body = /<!-- opos-lease-ledger-next:\s*[0-9]*\s*-->/.test(body)
+    ? body.replace(/<!-- opos-lease-ledger-next:\s*[0-9]*\s*-->/, `<!-- opos-lease-ledger-next: ${num} -->`)
+    : body + `\n\n<!-- opos-lease-ledger-next: ${num} -->`;
+  const patched = gh(['api', '--method', 'PATCH', `repos/${repo}/issues/${old}`, '--input', '-'],
+    { input: JSON.stringify({ body, state: 'closed', state_reason: 'completed' }) });
+  if (!patched.ok) return { ok: false, err: patched.err };
+
+  saveConfig(ctx.root, { ...ctx.cfg, ledger: { ...ctx.cfg.ledger, issue: num } });
+  try { fs.rmSync(path.join(stateDir(ctx.root), 'ledger.json'), { force: true }); } catch { /* fine */ }
+  return { ok: true, from: old, to: num };
 }
 
 function cmdReap(args) {
@@ -641,6 +802,17 @@ function cmdReap(args) {
           if (!dry) addLabel(ledger.repo, n, ctx.cfg.index_label);
         }
       }
+    }
+  }
+  // Rotation: count lease records still on the live registry after pruning.
+  const limit = Number(ctx.cfg.rotate_at_comments ?? 400);
+  const liveIssue = listClaims({ repo: ctx.cfg.ledger.repo, issue: ctx.cfg.ledger.issue });
+  const count = liveIssue.ok ? liveIssue.claims.length : 0;
+  if (args['rotate-now'] || count > limit) {
+    actions.push({ what: 'rotate', records: count, limit, forced: !!args['rotate-now'] });
+    if (!dry) {
+      const r = rotateLedger(ctx);
+      actions.push(r.ok ? { what: 'rotated', from: r.from, to: r.to } : { what: 'rotate-failed', err: String(r.err).split('\n')[0] });
     }
   }
   out(JSON.stringify({ ok: true, dry, at: new Date(ctx.nowMs).toISOString(), actions }, null, 2));
@@ -905,12 +1077,13 @@ function main() {
     out('');
     out(`  ${Object.keys(COMMANDS).join(' | ')}`);
     out('');
-    out('Exit: 0 ok · 1 error · 2 conflict · 3 stale clone · 4 no lease · 5 revoked · 6 no auth · 7 scope · 8 skew');
+    out('Exit: 0 ok · 1 error · 2 conflict · 3 stale clone · 4 no lease · 5 revoked · 6 no auth · 7 scope · 8 skew · 9 not configured');
     return EXIT.OK;
   }
   const fn = COMMANDS[cmd];
   if (!fn) { warn(`unknown command: ${cmd}`); return EXIT.ERROR; }
   const args = parseArgs(argv.slice(1));
+  args._cmd = cmd;
   try { return fn(args) ?? EXIT.OK; }
   catch (e) {
     if (e instanceof KeyError) { warn(`bad key: ${e.message}`); return EXIT.ERROR; }
