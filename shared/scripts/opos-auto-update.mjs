@@ -99,6 +99,44 @@ function run(file, args, opts = {}) {
 }
 const sh = (file, args, opts) => execFileSync(file, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts }).trim();
 
+/**
+ * Up-to-date path: bring `.claude/settings.json` in line with the pinned release's manifest.
+ * Needed because a driver only ever runs its INSTALLED copy: before v0.21.2 no driver reconciled
+ * settings, so every company that applied v0.19–v0.21.1 unattended is missing that period's keys,
+ * and with no newer release the apply path would never run to add them. Idempotent: with nothing
+ * missing it writes nothing and commits nothing. Stands down while someone holds a lease on the
+ * file. Adds only missing non-permission keys (never-automate invariant 1 — see the script).
+ */
+function healSettings(branch, pin) {
+  const SETTINGS = '.claude/settings.json';
+  if (!fs.existsSync('shared/scripts/reconcile-settings.py') || !fs.existsSync(SETTINGS)) return 0;
+  const LEASE = '.claude/skills/lease/lease.mjs';
+  if (fs.existsSync(LEASE)) {
+    const ls = run(process.execPath, [LEASE, 'list', '--json', '--key-prefix', 'path:']);
+    if (ls.code === 0 && blockingLeases(JSON.parse(ls.out || '[]'), [SETTINGS], matchesAny).length) {
+      say(`Settings: a live lease covers \`${SETTINGS}\` — someone is editing it. Retrying on the next run.`);
+      return 0;
+    }
+  }
+  const rc = run('python3', ['shared/scripts/reconcile-settings.py', '--apply']);
+  const last = (rc.out || rc.err || '').trim().split('\n').filter(Boolean).slice(-3).join(' / ');
+  say(`reconcile-settings: exit ${rc.code}${last ? ` — ${last}` : ''}`);
+  if (!run('git', ['status', '--porcelain', '--', SETTINGS]).out.trim()) return 0;
+  run('git', ['config', 'user.name', 'github-actions[bot]']);
+  run('git', ['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
+  run('git', ['add', '--', SETTINGS]);
+  const c = run('git', ['commit', '-q', '-m', `chore(sync): reconcile ${SETTINGS} with OPOS ${pin} (automatic)\n\nAdds the framework settings keys this company is missing (non-permission keys only;\nexisting values untouched). Applied by the unattended update driver.`]);
+  if (c.code !== 0) { say(`Settings: commit failed — ${(c.err || c.out).trim()}`); return 0; }
+  let p = run('git', ['push', 'origin', `HEAD:${branch}`]);
+  if (p.code !== 0) {
+    const rb = run('git', ['pull', '--rebase', 'origin', branch]);
+    if (rb.code !== 0) { run('git', ['rebase', '--abort']); say('Settings: could not rebase onto the moving branch; retrying on the next run.'); return 0; }
+    p = run('git', ['push', 'origin', `HEAD:${branch}`]);
+  }
+  say(p.code === 0 ? `**Settings reconciled** with ${pin} and pushed.` : `Settings: push failed — ${(p.err || p.out).trim()}`);
+  return 0;
+}
+
 function main() {
   const root = sh('git', ['rev-parse', '--show-toplevel']);
   process.chdir(root);
@@ -120,7 +158,7 @@ function main() {
     // A release escalated earlier and then applied by a human leaves its issue open; close it now
     // that the pin shows it landed. Without this an already-resolved escalation lingers forever.
     closeOpenIssues(repo, pin);
-    return 0;
+    return healSettings(branch, pin);
   }
 
   const ageH = (Date.now() - Date.parse(rel.published)) / 3600000;
