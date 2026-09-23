@@ -27,6 +27,8 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
    - Else (remote shape): `gh api repos/<owner>/<repo>/releases --jq '[.[] | select(.prerelease == false)] | first | .tag_name'` (no leading slash — MSYS/Git-Bash path-mangling on Windows). Local-clone shape: `git -C <path> tag --sort=-v:refname | grep -v -- '-' | head -1`.
 4. **If `--check_only` is true** (v0.8.1 rewrite — Copier has no `--dry-run`, and `--pretend` is ignored by `copier update`'s patch-apply step, so a real preview needs a throw-away branch): `git checkout -b opos-preview-<tag>` → `copier update --vcs-ref <tag> --defaults --conflict rej` → print `git status --porcelain` (flag `.rej` files) and `git diff --stat` → `git reset --hard && git clean -fd` → `git checkout -` → `git branch -D opos-preview-<tag>`. Nothing is committed and the tree is left exactly as found. Skip steps 5–9.
 5. Create the update branch: `git checkout -b <branch>` (default `opos-update-<tag>`).
+5b. Record the current pin as `OLD_PIN` (`_commit` in `.copier-answers.yml`) — step 6c needs it.
+
 6. Run `copier update --vcs-ref <tag> --conflict rej --defaults`. The `--defaults` flag is safe because `copier.yml`'s only question (`COMPANY_NAME`) was answered at initial scaffold and persists in `.copier-answers.yml`; updates reuse the stored answer without re-prompting. `--trust` is NOT used today because `copier.yml` has no `_tasks` or `_migrations`. If future versions add tasks, add `--trust` in all THREE sync drivers: here, the `auto-sync` skill, and the Actions workflow (`.github/workflows/sync-opos.yml`).
 6b. **Reconcile consumer-owned settings (the `_skip_if_exists` delivery hole).** `copier update` cannot
    touch `.claude/settings.json` — it is `_skip_if_exists`, so every framework settings change is otherwise
@@ -40,16 +42,19 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
    reviews them alongside the file diff. A non-zero exit other than 2 (unparseable settings.json) is
    surfaced, not swallowed: the script refuses to rewrite a file it cannot parse.
 
-6c. **Verify the update by its RESULT, not by copier's exit code.** After
-   `copier update` returns, check three things: `_commit` in `.copier-answers.yml` equals the
-   target tag, the expected files changed, and the `.rej` count. A non-zero exit whose pin DID
-   move and which produced no `.rej` is a **success with a warning** — record the warning, do
-   not escalate it as a failed sync. Observed in the wild: on Windows, `copier update` exits 1
-   with `WinError 206 "The filename or extension is too long"` from a subprocess it spawns
-   AFTER every file has been applied correctly. Treating that exit code as authoritative makes
-   the unattended driver escalate a sync that in fact succeeded, and — worse — leaves the pin
-   advanced while the run is recorded as failed.
-   Conversely a ZERO exit is not sufficient either: confirm the pin actually moved.
+6c. **Verify the update — exit code AND result.** A non-zero `copier update` exit is a **failure**; v0.16.1 called it "success with a warning" when the pin had moved, and that was wrong (on Windows the exit comes from the step that re-applies local customisations). Then run `node shared/scripts/verify-sync.mjs --from "$OLD_PIN"`:
+   - `0` — clean; continue.
+   - `1` — rejects or wrong pin; continue to step 7 and surface them.
+   - `2` — **local customisations would be reverted**: a file changed that upstream did not change. Do not offer a commit. `git reset --hard && git clean -fd`, `git checkout -`, delete the branch, and tell the user which files were at risk.
+   - `3` — cannot determine; treat as `2`.
+
+   **On Windows**, exit `2` with `WinError 206` is expected once a consumer has a large `departments/`/`company/` tree: copier passes one `--exclude` per such file to `git apply` and overruns the 32K command line. Run the update in a Linux environment instead — WSL works — using a fresh clone so no Windows working-tree state leaks in:
+   ```bash
+   wsl -- bash -lc 'rm -rf ~/opos-sync && git clone -q /mnt/<drive>/<path-to-repo> ~/opos-sync && cd ~/opos-sync \
+     && git checkout -b opos-update-<tag> && python3 -m copier update --vcs-ref <tag> --conflict rej --defaults'
+   ```
+   then review there, commit, and `git fetch` the branch back from `//wsl.localhost/<distro>/home/<user>/opos-sync`.
+
 7. `git status --porcelain` — list changed files. Count `.rej` files (conflicts).
 7b. **Report `.gitignore` drift.** `.gitignore` is `_skip_if_exists` (v0.16.1), so framework
    additions do not arrive on their own. Diff the consumer’s file against
