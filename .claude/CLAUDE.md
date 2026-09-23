@@ -74,9 +74,11 @@ department's own `deploy` skill), not through the SDLC commands.
   files are proposed upstream via `propose-to-core` — CORE files are never
   edited locally.
 - **Decide by risk class, not by rank.** Every action is R0–R3: agents do R0/R1
-  without asking (R1: and say so), do R2 only after an independent
-  `check-result` PASS, and prepare R3 — money, counterparties, access,
-  contracts, hiring, adopting an agent — for a human to decide in one step.
+  without asking (R1: and say so), do R2 only with an independent
+  `check-result` PASS on the plan before and on the result after, and prepare
+  R3 — money, counterparties, granting/changing/revoking access and secrets,
+  schedules, contracts, hiring, adopting an agent — for a human to decide in
+  one step. A granted access or a derived document never lowers a class.
   Escalation goes straight to the holder of the right, not up a chain. Scale
   by running more instances of a role, not by designing more roles. Full text:
   `company/policies/autonomy-and-decision-rights.md` (company-owned; where it
