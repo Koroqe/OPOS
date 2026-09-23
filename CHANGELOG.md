@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.17.4] - 2026-09-23
+
+### Fixed
+
+- **Two sentences in `sync-from-core`’s Windows route shipped with their commands missing.** v0.17.3’s text read "then commit there, the branch back from , and verify…" and "materialise the fetched tree with to verify it". The maintainer wrote the edit through a double-quoted shell string, so the shell executed every backtick-quoted fragment and replaced it with its (empty) output. The fragments that executed were `git fetch` (harmless) and `git read-tree -u --reset` and a path (both failed without effect); nothing but the text was damaged. The two sentences are restored. Every other file edited in the v0.16.6–v0.17.3 series was checked for the same damage; none was found. Maintainer note: prose containing backticks is never passed through a double-quoted shell string.
+
 ## [0.17.3] - 2026-09-23
 
 ### Fixed
