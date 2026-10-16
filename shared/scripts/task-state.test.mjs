@@ -64,9 +64,11 @@ test('patch-status rewrites only the canonical line', () => {
   assert.equal(r.stdout, 'intro\n**Status:** review\n**Status:** in the text, not first\n');
 });
 
-test('patch-status exits 1 when the canonical line is missing, so the pipeline stops before gh issue edit', () => {
+test('patch-status exits 1 and writes nothing when the canonical line is missing (callers gate on the exit code; a pipe would not)', () => {
   const s = sandbox();
-  assert.equal(s.run(['patch-status', '--status', 'review'], 'no status line here\n').status, 1);
+  const r = s.run(['patch-status', '--status', 'review'], 'no status line here\n');
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
 });
 
 test('a status value is never shell-interpreted', () => {

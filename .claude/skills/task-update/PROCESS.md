@@ -48,8 +48,10 @@ Mirrors the procedure in SKILL.md:
 8b. **Renew the lease** (heartbeat): `lease.mjs renew --key "issue:<repo>#<number>" --quiet`. A
     non-zero exit here does not undo the posted comment, but exit `5` (revoked) must be reported.
 9. If `--status` was provided, patch the canonical `**Status:** ...` body line via
-   `shared/scripts/task-state.mjs patch-status`, piped into `gh issue edit --body-file -`; abort
-   cleanly if the canonical line is missing.
+   `shared/scripts/task-state.mjs patch-status`, staged through a file and chained with `&&` into
+   `gh issue edit --body-file <file>` — never piped (a pipe runs the edit even when the helper
+   refuses, with an empty body). If the canonical line is missing, leave the body untouched — the
+   status is already in the step-8 comment — and record `partial`.
 10. Print one-line confirmation.
 11. Write the history entry.
 
@@ -65,8 +67,9 @@ Mirrors the procedure in SKILL.md:
 - `lease_renewed_after_post` — `lease.mjs renew` ran after the comment was posted (its exit code is
   reported, not silently dropped, on `5`).
 - `status_line_patched_if_provided_or_failed_clearly` — if `--status` was passed, the body's
-  `**Status:**` line was patched or the run aborted with the documented error; vacuously true
-  otherwise.
+  `**Status:**` line was patched, or the body was left untouched with the documented notice
+  because the line is missing; the body is never written with anything but the helper's
+  successful output. Vacuously true otherwise.
 - `issue_still_open_at_start` — the issue's state was OPEN at step 4.
 - `history_entry_written` — a new file exists under `./history/` with schema-conformant
   frontmatter.
