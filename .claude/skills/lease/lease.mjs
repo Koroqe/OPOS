@@ -19,7 +19,7 @@ import { parseKey, conflicts, keyHash, claimTarget, matchesAny, KeyError } from 
 import { freshness, stagedFiles } from './lib/freshness.mjs';
 import {
   renderRecord, listClaims, getClaim, postClaim, patchClaim, deleteClaim,
-  addLabel, removeLabel, isLive, isExpired, sameHolder,
+  addLabel, removeLabel, listIssuesByLabel, isLive, isExpired, sameHolder,
 } from './lib/claims.mjs';
 import { sleep, gh, ghJson } from './lib/sh.mjs';
 import { renderProjection } from './lib/render.mjs';
@@ -205,6 +205,12 @@ function listTarget(ctx, target) {
   const cur = listClaims(target);
   if (!cur.ok) return cur;
   const old = listClaims({ repo: target.repo, issue: ctx.cfg.ledger.prev });
+  // A failed predecessor read must never look like "no claims there": live leases recorded
+  // in the predecessor would silently vanish from every conflict check. Say so, loudly.
+  if (!old.ok) {
+    warn(`[lease] WARNING: predecessor registry #${ctx.cfg.ledger.prev} is unreadable (${String(old.err ?? 'unknown').split('\n')[0]}) — ` +
+      'leases recorded there are INVISIBLE to this check.');
+  }
   const claims = [...cur.claims, ...(old.ok ? old.claims : [])].sort((a, b) => a.id - b.id);
   return { ok: true, claims };
 }
@@ -674,8 +680,7 @@ function gatherAllClaims(ctx) {
   if (!res.ok) die(EXIT.NO_AUTH, res.err);
   const all = [...res.claims];
   if (ctx.cfg.index_label) {
-    const labelled = ghJson(['issue', 'list', '--repo', ledger.repo, '--label', ctx.cfg.index_label,
-      '--state', 'open', '--limit', '100', '--json', 'number,title']);
+    const labelled = listIssuesByLabel(ledger.repo, ctx.cfg.index_label, { limit: 100 });
     if (labelled.ok) {
       for (const it of labelled.data ?? []) {
         const own = listClaims({ repo: ledger.repo, issue: it.number });
@@ -707,7 +712,7 @@ function rotateLedger(ctx) {
   const marker = `opos-lease-ledger-prev: ${old} `;
 
   let num = null;
-  const open = ghJson(['issue', 'list', '--repo', repo, '--label', label, '--state', 'open', '--limit', '20', '--json', 'number,body']);
+  const open = listIssuesByLabel(repo, label, { limit: 20 });
   if (open.ok) {
     const existing = (open.data ?? []).find((i) => i.number !== old && String(i.body ?? '').includes(marker));
     if (existing) num = existing.number;
@@ -780,8 +785,7 @@ function cmdReap(args) {
   // Index reconciliation, BOTH directions. The label is an index, never a source of truth:
   // a crash between POST and label call makes it lie in one direction or the other.
   if (ctx.cfg.index_label) {
-    const labelled = ghJson(['issue', 'list', '--repo', ledger.repo, '--label', ctx.cfg.index_label,
-      '--state', 'open', '--limit', '100', '--json', 'number']);
+    const labelled = listIssuesByLabel(ledger.repo, ctx.cfg.index_label, { limit: 100 });
     if (labelled.ok) {
       for (const it of labelled.data ?? []) {
         const key = `issue:${ledger.repo}#${it.number}`;
@@ -945,8 +949,7 @@ function cmdInitLedger(args) {
     const label = cfg.ledger_label ?? 'lease-ledger';
     gh(['label', 'create', label, '--repo', cfg.ledger.repo, '--color', '5319E7',
       '--description', 'Lease registry. Exactly one open issue carries this label']);
-    const existing = ghJson(['issue', 'list', '--repo', cfg.ledger.repo, '--label', label,
-      '--state', 'open', '--limit', '5', '--json', 'number']);
+    const existing = listIssuesByLabel(cfg.ledger.repo, label, { limit: 5 });
     if (existing.ok && (existing.data ?? []).length) {
       num = existing.data[0].number;
       out(`found an existing open ledger: #${num}`);
@@ -1024,7 +1027,7 @@ function cmdAudit(args) {
 
   // paused + live lease: a pause issued on machine B while machine A is actually working.
   // Reported, never auto-fixed — auto-fixing would let the wrong machine kill live work.
-  const paused = ghJson(['issue', 'list', '--repo', cfg.ledger.repo, '--label', 'paused', '--state', 'open', '--limit', '100', '--json', 'number']);
+  const paused = listIssuesByLabel(cfg.ledger.repo, 'paused', { limit: 100 });
   if (paused.ok) {
     for (const it of paused.data ?? []) {
       const key = `issue:${cfg.ledger.repo}#${it.number}`;
@@ -1036,7 +1039,7 @@ function cmdAudit(args) {
 
   // Index drift, both directions. The label is an index, never a source of truth.
   if (cfg.index_label) {
-    const labelled = ghJson(['issue', 'list', '--repo', cfg.ledger.repo, '--label', cfg.index_label, '--state', 'open', '--limit', '100', '--json', 'number']);
+    const labelled = listIssuesByLabel(cfg.ledger.repo, cfg.index_label, { limit: 100 });
     if (labelled.ok) {
       const have = new Set((labelled.data ?? []).map((i) => i.number));
       for (const n of have) {

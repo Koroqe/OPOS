@@ -71,26 +71,69 @@ export function sameHolder(a, b) {
   return !!(a && b && a.clone_id === b.clone_id && a.login === b.login);
 }
 
+const PAGE = 100;
+const MAX_PAGES = 1000; // 100k comments; a registry rotates long before this — it is a runaway guard only
+
+/**
+ * Explicit page loop. NEVER `gh api --paginate`: past the first page gh follows GitHub's
+ * `Link: rel="next"` URL, which is in `repositories/<numeric-id>/...` form, and some
+ * proxied runtimes (hosted cloud sessions) reject numeric-ID paths with HTTP 403. Walking
+ * `?page=N` on the `repos/<owner>/<repo>/...` path keeps every request in the supported form.
+ * Stops on the first page shorter than a full page. `ghFn` is injectable for offline tests.
+ */
+function ghPages(basePath, jq, ghFn) {
+  const lines = [];
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const sep = basePath.includes('?') ? '&' : '?';
+    const r = ghFn(['api', `${basePath}${sep}per_page=${PAGE}&page=${page}`, '--jq', jq]);
+    if (!r.ok) return { ok: false, err: r.err };
+    const rows = r.out.split('\n').map((l) => l.trim()).filter(Boolean);
+    lines.push(...rows);
+    if (rows.length < PAGE) return { ok: true, lines };
+  }
+  return { ok: false, err: `more than ${MAX_PAGES} pages at ${basePath} — refusing to continue` };
+}
+
 /**
  * All lease comments on a target. Returns { ok, claims:[{id, login, created_at, updated_at, body, rec}] }.
  * Sorted by comment id ascending — the tiebreak order.
  */
-export function listClaims(target) {
+export function listClaims(target, { ghFn = gh } = {}) {
   if (!target?.repo) return { ok: false, claims: [], err: 'no ledger repo configured' };
   if (!target?.issue) return { ok: false, claims: [], err: 'no ledger issue configured (run: lease.mjs init-ledger)' };
-  const r = gh(['api', '--paginate', `/repos/${target.repo}/issues/${target.issue}/comments?per_page=100`,
-    '--jq', '.[] | {id: .id, login: .user.login, created_at: .created_at, updated_at: .updated_at, body: .body}']);
+  const r = ghPages(`repos/${target.repo}/issues/${target.issue}/comments`,
+    '.[] | {id: .id, login: .user.login, created_at: .created_at, updated_at: .updated_at, body: .body}', ghFn);
   if (!r.ok) return { ok: false, claims: [], err: r.err, rateLimited: isRateLimited(r.err) };
   const claims = [];
-  for (const line of r.out.split('\n')) {
-    const s = line.trim();
-    if (!s) continue;
-    let o; try { o = JSON.parse(s); } catch { continue; }
+  for (const line of r.lines) {
+    let o; try { o = JSON.parse(line); } catch { continue; }
     const rec = parseRecord(o.body ?? '');
     if (rec) claims.push({ id: o.id, login: o.login, created_at: o.created_at, updated_at: o.updated_at, body: o.body, rec });
   }
   claims.sort((a, b) => a.id - b.id);
   return { ok: true, claims };
+}
+
+/**
+ * Open issues carrying a label, via REST (`gh issue list` is GraphQL, which hosted cloud
+ * proxies block). Returns { ok, data:[{number, title, body}] } like `gh issue list --json`.
+ * The REST issues endpoint also returns pull requests; they are filtered out.
+ */
+export function listIssuesByLabel(repo, label, { limit = 100, ghFn = gh } = {}) {
+  const per = Math.min(PAGE, Math.max(1, limit));
+  const data = [];
+  for (let page = 1; data.length < limit && page <= MAX_PAGES; page += 1) {
+    const q = `repos/${repo}/issues?labels=${encodeURIComponent(label)}&state=open&per_page=${per}&page=${page}`;
+    const r = ghFn(['api', q, '--jq', '.[] | {number: .number, title: .title, body: .body, pr: (.pull_request != null)}']);
+    if (!r.ok) return { ok: false, data: [], err: r.err };
+    const rows = r.out.split('\n').map((l) => l.trim()).filter(Boolean);
+    for (const line of rows) {
+      let o; try { o = JSON.parse(line); } catch { continue; }
+      if (!o.pr) data.push({ number: o.number, title: o.title, body: o.body });
+    }
+    if (rows.length < per) break;
+  }
+  return { ok: true, data: data.slice(0, limit) };
 }
 
 /** One comment by id — the cache-confirm path for `check`, 1 API call. */
