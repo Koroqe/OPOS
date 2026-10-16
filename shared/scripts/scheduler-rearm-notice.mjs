@@ -35,8 +35,10 @@ const root = safe(
 const rows = safe(() => {
   const p = path.join(root, '.claude', 'scheduled-processes.json');
   const all = JSON.parse(fs.readFileSync(p, 'utf8'));
-  // `gha:` registrations are durable — they live in a workflow file, not in a session.
-  return (Array.isArray(all) ? all : []).filter((r) => !String(r?.routine_id ?? '').startsWith('gha:'));
+  // `gha:` registrations live in a workflow file and `cloud:` registrations live in a hosted
+  // routine (`cloud:<trigger_id>`); neither dies with the session, so neither needs re-arming.
+  const durable = (r) => /^(gha|cloud):/.test(String(r?.routine_id ?? ''));
+  return (Array.isArray(all) ? all : []).filter((r) => !durable(r));
 }, []) ?? [];
 
 if (rows.length) {
@@ -44,7 +46,7 @@ if (rows.length) {
   process.stdout.write(
     `[opos-scheduler] ${rows.length} session-scoped registration(s) (${names}) need re-arming: ` +
     're-run /schedule-process for each (idempotent; previously authorized). ' +
-    'gha registrations are durable and need nothing.\n',
+    'gha and cloud registrations are durable and need nothing.\n',
   );
 }
 
