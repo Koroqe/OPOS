@@ -21,6 +21,11 @@ Substitution tokens:
   <<ROOT_CAUSE_TARGET>>     — generator path whose missing constraint permitted the mistake, or "none" (OPTIONAL — v0.11; routed as an independent CORE delta)
   <<MISTAKE_CLASS>>         — kebab-case mistake-class slug, or "none" (OPTIONAL — v0.11; the occurrence-counting key)
 
+Optional frontmatter line (cloud runtime only, no token — add it by hand when the value is not `direct`):
+  integration: pr-merged <url> | pr-open <url> | local-only
+  How the run's commits reached the default branch when the direct push was refused; see
+  shared/cloud-integration.md. Absent means the push went straight through (`direct`).
+
 Convention:
   Scheduled runs write to `<skill-folder>/scheduled-runs/` — NEVER to `history/`.
   Manual invocations (interactive Claude Code session) write to `history/` instead.
