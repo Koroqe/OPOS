@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.22.0] - 2026-10-16
+
+Six consumer-proposed fixes ([#57](https://github.com/Koroqe/OPOS/pull/57)-[#62](https://github.com/Koroqe/OPOS/pull/62)).
+
+### Added
+
+- **A notice when the self-improvement loop has stalled** ([#59](https://github.com/Koroqe/OPOS/pull/59)). The SessionStart notice script now also prints one `[opos-loop]` line when `proposed_delta` entries that `review-history` would select are older than 14 days and `review-history` has no run record in that window (or none at all). Until it runs, no recorded fix reaches local files or upstream, and a company that never registered it looked exactly like a fresh scaffold. The steward's greeting now must show a `STALE: review-history` Loop line when the notice is present and offer to run or register it first. File-only, fail-open, silent when there is nothing to say.
+
+### Changed
+
+- **The steward finishes its own reversible work instead of asking** ([#61](https://github.com/Koroqe/OPOS/pull/61)). Committing within the session's own lease scope, fast-forward merge of its own branch, non-force push of its own commits, closing the task issue it took after a `check-result` PASS, and releasing its own leases are now Notice tier. For that work the risk class wins over a stricter tier. Releases, force-push, history rewrites, destructive operations, anything outside the lease scope, and the top risk class still need a human. Gate exit codes must be checked explicitly (never behind `;`, a pipe, or `|| true`), and in a checkout shared by two live sessions commits use `git commit -- <paths>`.
+
+### Fixed
+
+- **`task-update --status` could empty an issue body** ([#57](https://github.com/Koroqe/OPOS/pull/57)). Step 9 piped the status patch into `gh issue edit --body-file -`; when the canonical `**Status:**` line was missing the helper refused, but `gh` still ran on empty input and replaced the body with nothing. The step now stages through files and chains with `&&`, and a missing status line leaves the body untouched with a notice (outcome `partial`) instead of aborting after the comment is posted.
+- **`PROCESS.md.tmpl` frontmatter was not valid YAML** ([#58](https://github.com/Koroqe/OPOS/pull/58)). The `## Verification` section added in v0.20.0 had been spliced into the middle of a frontmatter comment, so a process copied from the template had an unparseable frontmatter (empty owner in the console, scheduling validator failure) and no Verification heading. The comment is restored and the section sits in the body between `## Steps` and `## Done when`. A new test renders the template and checks it parses.
+- **Cloud routines were flagged for re-arming** ([#60](https://github.com/Koroqe/OPOS/pull/60)). Registrations with a `cloud:<trigger_id>` routine id are hosted and durable, like `gha:` ones; the SessionStart re-arm notice no longer asks to re-register them. CI now runs the new test.
+- **The lease registry failed through proxies that reject numeric-ID repository paths** ([#62](https://github.com/Koroqe/OPOS/pull/62)). Hosted cloud sessions answered HTTP 403 once a registry passed 100 comments, so every lease command exited 6. Claims are now read page by page over `repos/<owner>/<repo>` paths, and label listings use the REST issues endpoint instead of GraphQL. An unreadable predecessor registry now prints a warning instead of silently hiding its live leases. Remaining GraphQL-backed call sites in other skills are listed in the PR and not changed here.
+
 ## [0.21.2] - 2026-09-23
 
 ### Fixed
