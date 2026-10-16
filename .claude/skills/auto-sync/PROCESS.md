@@ -32,6 +32,10 @@ commands:
   - "Bash(python3 -m copier update:*)"
   - "Bash(gh api repos/*)"
   - "Bash(gh api /repos/*)"
+  - "Bash(gh api -X POST repos/*/pulls *)"
+  - "Bash(gh api -X POST repos/*/issues *)"
+  - "Bash(gh api -X PUT repos/*/pulls/*/merge *)"
+  - "Bash(git remote get-url:*)"
   - "Bash(gh issue create:*)"
   - "Bash(gh issue list:*)"
   - "Bash(gh repo view:*)"
@@ -74,7 +78,7 @@ Mirrors the 13-step procedure in SKILL.md:
 9. `--dry_run` → print, mutate nothing, stop.
 10. Branch `opos-auto-sync-<tag>`; `copier update --vcs-ref <tag> --conflict rej --defaults`.
 11. CHANGELOG-only `.rej` auto-resolution under the mechanical predicate (all-additive hunks, version-block/link-ref lines only; insert before first `^## \[`; verify canonical awk extraction + no day heading below the first `^## \[`).
-12. Zero remaining `.rej` → commit (sha recorded), ff-merge to default branch, delete branch, push (push failure → issue + `partial`). Non-zero → commit partial state incl. `.rej` on the branch, checkout default, issue with resolution instructions, `partial`.
+12. Zero remaining `.rej` → commit (sha recorded), ff-merge to default branch, delete branch, push (push failure → issue + `partial`; on `cloud` a refused push first falls back to session branch + REST PR + REST merge, `shared/cloud-integration.md`). Non-zero → commit partial state incl. `.rej` on the branch, checkout default, issue with resolution instructions, `partial`.
 13. Run record — scheduled invocations to `./scheduled-runs/`, manual to `./history/` (prelude-string routing). Issues use the `[opos-auto-sync]` title prefix with local open-issue title matching for dedupe.
 
 ## Done when

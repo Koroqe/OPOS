@@ -8,6 +8,8 @@ from pathlib import Path
 
 from ui.scheduling import validate_frontmatter
 
+REPO = Path(__file__).resolve().parents[2]
+
 
 def _write_process_md(tmp: Path, frontmatter: str) -> Path:
     """Write a minimal PROCESS.md with the given YAML frontmatter."""
@@ -193,6 +195,37 @@ class TestValidateFrontmatter(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("every-minute" in e for e in errors))
 
+
+class TestCloudIntegrationPath(unittest.TestCase):
+    """The cloud push-restriction fallback (shared/cloud-integration.md) must stay wired."""
+
+    DOC = REPO / "shared" / "cloud-integration.md"
+    SKILLS = REPO / ".claude" / "skills"
+
+    def test_doc_exists_and_states_the_untested_part(self) -> None:
+        text = self.DOC.read_text(encoding="utf-8")
+        self.assertIn("gh api -X POST repos/<owner>/<repo>/pulls", text)
+        self.assertIn("merge_method=merge", text)
+        self.assertIn("pr-open", text)
+        self.assertIn("have not been exercised in the cloud runtime", text)
+
+    def test_default_branch_pushers_reference_it_and_allow_rest_writes(self) -> None:
+        for name in ("review-history", "auto-sync"):
+            skill = (self.SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+            process = (self.SKILLS / name / "PROCESS.md").read_text(encoding="utf-8")
+            self.assertIn("shared/cloud-integration.md", skill, name)
+            self.assertIn('"Bash(gh api -X POST repos/*/pulls *)"', process, name)
+            self.assertIn('"Bash(gh api -X POST repos/*/issues *)"', process, name)
+            self.assertIn('"Bash(gh api -X PUT repos/*/pulls/*/merge *)"', process, name)
+            # Never the bare write patterns: they would admit collaborator/webhook/settings writes.
+            self.assertNotIn('"Bash(gh api -X POST repos/*)"', process, name)
+            self.assertNotIn('"Bash(gh api -X PUT repos/*)"', process, name)
+
+    def test_schedule_process_documents_the_restriction(self) -> None:
+        text = (self.SKILLS / "schedule-process" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Cloud push restriction", text)
+        self.assertIn("shared/cloud-integration.md", text)
+        self.assertIn("untested in the cloud runtime", text)
 
 if __name__ == "__main__":
     unittest.main()
