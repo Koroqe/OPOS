@@ -67,18 +67,19 @@ The autonomous half of the OPOS update loop. Where `sync-from-core` applies an u
 
 Mirrors the 13-step procedure in SKILL.md:
 
+0. Cloud step 0 (cloud only): record `SESSION_BRANCH`, resolve repo + default branch, fetch the default branch (`shared/cloud-integration.md`).
 1. Resolve repo root.
 2. Non-scaffolded posture: no `.copier-answers.yml` → warn, exit 0.
 3. Mutual-exclusion preflight: sync-opos.yml Action schedule enabled → one-time issue, `partial`, stop.
-4. Clean-tree guard: dirty → `partial` record, no issue, stop.
+4. Clean-tree guard: dirty → `partial` record, no issue, stop. (4b, cloud only: an open `[opos-run] auto-sync` PR already exists → `partial`, stop.)
 5. Stale-branch self-heal (tag ≤ pin → delete, continue) / pending-conflict hold (tag > pin → verify issue, `partial`, stop).
 6. Divergence guard: `git fetch` + `--ff-only` merge from origin; diverged → issue, `partial`, stop; unreachable remote → degraded mode.
 7. Direct release probe (bypasses the 6h cache; refreshes it after); tag validated `^v?[0-9]+\.[0-9]+\.[0-9]+$`.
 8. No update → `success` record with note, stop.
 9. `--dry_run` → print, mutate nothing, stop.
-10. Branch `opos-auto-sync-<tag>`; `copier update --vcs-ref <tag> --conflict rej --defaults`.
+10. Branch `opos-auto-sync-<tag>` (on `cloud`, from `origin/<default-branch>`); `copier update --vcs-ref <tag> --conflict rej --defaults`.
 11. CHANGELOG-only `.rej` auto-resolution under the mechanical predicate (all-additive hunks, version-block/link-ref lines only; insert before first `^## \[`; verify canonical awk extraction + no day heading below the first `^## \[`).
-12. Zero remaining `.rej` → commit (sha recorded), ff-merge to default branch, delete branch, push (push failure → issue + `partial`; on `cloud` a refused push first falls back to session branch + REST PR + REST merge, `shared/cloud-integration.md`). Non-zero → commit partial state incl. `.rej` on the branch, checkout default, issue with resolution instructions, `partial`.
+12. Zero remaining `.rej` → commit (sha recorded), ff-merge to default branch, delete branch, push (push failure → issue + `partial`; on `cloud` the run record is committed BEFORE the push (step 13), then a refused push falls back to session branch + REST PR + REST merge, `shared/cloud-integration.md`). Non-zero → commit partial state incl. `.rej` on the branch, checkout default, issue with resolution instructions, `partial`.
 13. Run record — scheduled invocations to `./scheduled-runs/`, manual to `./history/` (prelude-string routing). Issues use the `[opos-auto-sync]` title prefix with local open-issue title matching for dedupe.
 
 ## Done when

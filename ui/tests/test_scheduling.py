@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -226,7 +227,11 @@ class TestCloudIntegrationPath(unittest.TestCase):
             "Bash(gh api -X POST repos/*/issues *)",
             "Bash(gh api -X PUT repos/*/pulls/*/merge *)",
         }
-        write_flags = ("-X POST", "-X PUT", "-X PATCH", "-X DELETE", "--method")
+        # Any method flag in any spelling (-X, -X=M, -XM, --method, --method=M) or any
+        # field/input flag (which makes `gh api` an implicit POST) marks a write.
+        write_re = re.compile(
+            r"(?:^|\s)(?:-X|--method|-f|-F|--field|--raw-field|--input)(?=$|[\s=A-Za-z])"
+        )
         for name in ("review-history", "auto-sync"):
             fm = _parse_frontmatter(self.SKILLS / name / "PROCESS.md")
             self.assertIsNotNone(fm, name)
@@ -235,7 +240,7 @@ class TestCloudIntegrationPath(unittest.TestCase):
             self.assertTrue(allowed <= set(commands), name)
             for entry in commands:
                 self.assertNotIn(entry, ("Bash(gh api:*)", "Bash(gh api *)"), name)
-                if "gh api" in entry and any(flag in entry for flag in write_flags):
+                if "gh api" in entry and write_re.search(entry):
                     self.assertIn(entry, allowed, f"{name}: widened write pattern {entry!r}")
 
     def test_schedule_process_documents_the_restriction(self) -> None:

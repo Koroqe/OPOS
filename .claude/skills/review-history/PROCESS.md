@@ -70,6 +70,7 @@ The consumer of the `proposed_delta` self-improvement signal. Every OPOS process
 
 Mirrors the 7-step procedure in SKILL.md:
 
+0. Cloud step 0 (cloud only, unnumbered, runs first): record `SESSION_BRANCH`, resolve repo + default branch, fetch, create the work branch from `origin/<default-branch>` (`shared/cloud-integration.md`).
 1. Glob all `history/` + `scheduled-runs/` entries.
 2. PR-state reconciliation first (entries with `upstream_pr:` + ledger `pr-opened` rows): merged → `applied`/`merged`; closed-unmerged → issue + note; open → skip. Ledger writes obey the writer constraints in `propose-to-core/proposals/README.md` (outcome column + `rejected-local` rows only).
 3. Select `status: open` deltas.
@@ -78,7 +79,7 @@ Mirrors the 7-step procedure in SKILL.md:
 5b. Backlog sweep: count + route items by `kind` at threshold (lesson ≥2 → generator-targeted propose-to-core; process-gap ≥2 → design-process candidate note; resource-gap → acquire-resource note; task → never auto-promoted).
 5c. Conditional re-lint of derived artifacts when the last sync touched `shared/templates/` or `design-*/` (structural drift → `write_proposal` drafts, never autonomous edits).
 6. Zero open deltas → `success` record with note.
-7. ff-merge the dated work branch, push, run record (prelude routing). On `cloud`, a refused push falls back to the session branch + REST PR + REST merge (`shared/cloud-integration.md`); an unmergeable PR is left open and recorded per the `integration:` rule in `shared/cloud-integration.md`.
+7. ff-merge the dated work branch, push, run record (prelude routing). On `cloud` the record is committed (`integration: pending`, force-added) BEFORE the push, and a refused push falls back to the session branch + REST PR + REST merge (`shared/cloud-integration.md`); an unmergeable PR is left open and recorded per the `integration:` rule in `shared/cloud-integration.md`.
 
 ## Done when
 
