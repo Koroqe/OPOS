@@ -228,9 +228,10 @@ class TestCloudIntegrationPath(unittest.TestCase):
             "Bash(gh api -X PUT repos/*/pulls/*/merge *)",
         }
         # Any method flag in any spelling (-X, -X=M, -XM, --method, --method=M) or any
-        # field/input flag (which makes `gh api` an implicit POST) marks a write.
+        # field/input flag (which makes `gh api` an implicit POST) marks a write. `:` is a
+        # delimiter too (`Bash(gh api -X:*)`).
         write_re = re.compile(
-            r"(?:^|\s)(?:-X|--method|-f|-F|--field|--raw-field|--input)(?=$|[\s=A-Za-z])"
+            r"(?:^|\s)(?:-X|--method|-f|-F|--field|--raw-field|--input)(?=$|[\s=:A-Za-z])"
         )
         for name in ("review-history", "auto-sync"):
             fm = _parse_frontmatter(self.SKILLS / name / "PROCESS.md")
@@ -240,6 +241,8 @@ class TestCloudIntegrationPath(unittest.TestCase):
             self.assertTrue(allowed <= set(commands), name)
             for entry in commands:
                 self.assertNotIn(entry, ("Bash(gh api:*)", "Bash(gh api *)"), name)
+                # GraphQL is blocked on cloud and can write.
+                self.assertNotIn("gh api graphql", entry, name)
                 if "gh api" in entry and write_re.search(entry):
                     self.assertIn(entry, allowed, f"{name}: widened write pattern {entry!r}")
 

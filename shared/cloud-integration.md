@@ -89,9 +89,16 @@ Optional line in the `scheduled-runs/` frontmatter (additive). Allowed values ev
 - Merged by REST: write nothing further. The merged PR is the evidence; `review-history` reconciles a
   `pending` record against the merged `[opos-run]` PR when it reads it.
 - Merge refused: push one follow-up commit to the same session branch that sets `integration: pr-open <url>`.
-  (An `auto-sync` conflict run also opens its `[opos-run]` PR on cloud and leaves it open, so the next run
-  finds it; see its step 4b.)
 - No PR could be opened: the record stays local and says `local-only`.
+- **Where it was read decides what `pending` means.** A record read from the default branch has been
+  integrated, whatever its `integration:` value says. `pending` is meaningful only for a record read from an
+  open PR, or from a session branch that has no PR. If the session-branch push succeeded but the PR POST
+  failed, the remote record still says `pending` on a branch with no PR: treat it as unintegrated, name the
+  branch in the record body, and do not try to rewrite the remote copy.
+- **Conflict runs open no PR.** The default-branch push and the REST PR/merge above apply to a clean result
+  only. A run whose result is a conflict (for example `auto-sync` with `.rej` files) commits the conflict
+  state with the record, pushes non-force to the session branch only, opens no PR, and files its conflict
+  issue via REST naming that branch.
 
 Every other file (both skills, both `PROCESS.md`, the run-record template) refers here and does not restate it.
 

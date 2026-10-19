@@ -71,7 +71,7 @@ The consumer of the `proposed_delta` self-improvement signal. Every OPOS process
 Mirrors the 7-step procedure in SKILL.md:
 
 0. Cloud step 0 (cloud only, unnumbered, runs first): record `SESSION_BRANCH`, resolve repo + default branch, fetch, create the work branch from `origin/<default-branch>` (`shared/cloud-integration.md`).
-1. Glob all `history/` + `scheduled-runs/` entries.
+1. Glob all `history/` + `scheduled-runs/` entries. On `cloud`, a record read from the default branch is integrated whatever its `integration:` says; `pending` counts only from an open PR or a PR-less session branch (`shared/cloud-integration.md`).
 2. PR-state reconciliation first (entries with `upstream_pr:` + ledger `pr-opened` rows): merged → `applied`/`merged`; closed-unmerged → issue + note; open → skip. Ledger writes obey the writer constraints in `propose-to-core/proposals/README.md` (outcome column + `rejected-local` rows only).
 3. Select `status: open` deltas.
 4. Classify (validated `delta_target` hint → inference → runtime two-part test at the pinned `_commit`).
