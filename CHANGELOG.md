@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.22.1] - 2026-10-19
+
+Two consumer-proposed fixes ([#63](https://github.com/Koroqe/OPOS/pull/63), [#64](https://github.com/Koroqe/OPOS/pull/64)).
+
+### Fixed
+
+- **Scheduled cloud runs never reached the default branch** ([#64](https://github.com/Koroqe/OPOS/pull/64)). A Claude Code cloud routine session can push only to the `claude/*` branch it was assigned, and the cloud proxy blocks GraphQL, so `gh pr create` / `gh pr merge` fail there too. Every `review-history` and `auto-sync` run on the `cloud` runtime therefore left its record and edits on a session branch that a human had to merge by hand. The new `shared/cloud-integration.md` defines the fallback. A new step 0 records the session branch before anything else. After a refused push to the default branch, the run pushes that branch, opens a PR and merges it over REST (`gh api`). The committed record says `integration: pending`, and `review-history` reconciles it against the merged PR. If the merge is refused, the PR stays open and a follow-up commit sets `integration: pr-open <url>`. If no PR can be opened, the record says `local-only`. A record that is on the default branch counts as integrated, whatever its `integration:` value says. An `auto-sync` run that hits conflicts never pushes to the default branch and never opens a PR: it pushes only its session branch and files the conflict issue, as on other runtimes. An open conflict issue holds later runs, but an unmerged record PR never does. `review-history` also reads records still sitting on open PRs from earlier runs. The command manifests gain only three narrow REST write patterns (`-X POST repos/*/pulls`, `-X POST repos/*/issues`, `-X PUT repos/*/pulls/*/merge`) plus `git remote get-url`, never a bare `-X POST repos/*`, and a test asserts that. `/schedule-process` now writes the fallback instruction into the cloud routine prompt it composes. **Existing cloud routines need two additions to their prompt by hand:** those patterns in the allowed-command list, and the fallback sentence. A routine prompt is not a framework file, so `copier update` cannot change it. See "Existing routines" in `shared/cloud-integration.md`.
+- **CI did not run the stalled-loop notice tests** ([#63](https://github.com/Koroqe/OPOS/pull/63)). `shared/scripts/scheduler-rearm-notice.test.mjs`, shipped with v0.22.0's `[opos-loop]` notice, is now in CI's `node --test` list.
+
 ## [0.22.0] - 2026-10-16
 
 Six consumer-proposed fixes ([#57](https://github.com/Koroqe/OPOS/pull/57)-[#62](https://github.com/Koroqe/OPOS/pull/62)).
