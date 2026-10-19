@@ -97,8 +97,10 @@ Optional line in the `scheduled-runs/` frontmatter (additive). Allowed values ev
   branch in the record body, and do not try to rewrite the remote copy.
 - **Conflict runs open no PR.** The default-branch push and the REST PR/merge above apply to a clean result
   only. A run whose result is a conflict (for example `auto-sync` with `.rej` files) commits the conflict
-  state with the record, pushes non-force to the session branch only, opens no PR, and files its conflict
-  issue via REST naming that branch.
+  state with the record, pushes non-force to the session branch only — and only when that branch starts with
+  `claude/` and is not the default branch; otherwise, or when the push is refused, it pushes nothing and the
+  record is `local-only` — opens no PR, and files its conflict issue via REST naming the branch that holds the
+  conflict state, or stating that it is local-only.
 
 Every other file (both skills, both `PROCESS.md`, the run-record template) refers here and does not restate it.
 
