@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ui.scheduling import validate_frontmatter
+from ui.scheduling import _parse_frontmatter, validate_frontmatter
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -217,9 +217,26 @@ class TestCloudIntegrationPath(unittest.TestCase):
             self.assertIn('"Bash(gh api -X POST repos/*/pulls *)"', process, name)
             self.assertIn('"Bash(gh api -X POST repos/*/issues *)"', process, name)
             self.assertIn('"Bash(gh api -X PUT repos/*/pulls/*/merge *)"', process, name)
-            # Never the bare write patterns: they would admit collaborator/webhook/settings writes.
-            self.assertNotIn('"Bash(gh api -X POST repos/*)"', process, name)
-            self.assertNotIn('"Bash(gh api -X PUT repos/*)"', process, name)
+
+    def test_gh_api_write_entries_are_exactly_the_three_narrow_patterns(self) -> None:
+        # Parse the real `commands:` list; a substring check would miss `gh api:*`,
+        # `-X POST:*`, PATCH, DELETE and `--method`.
+        allowed = {
+            "Bash(gh api -X POST repos/*/pulls *)",
+            "Bash(gh api -X POST repos/*/issues *)",
+            "Bash(gh api -X PUT repos/*/pulls/*/merge *)",
+        }
+        write_flags = ("-X POST", "-X PUT", "-X PATCH", "-X DELETE", "--method")
+        for name in ("review-history", "auto-sync"):
+            fm = _parse_frontmatter(self.SKILLS / name / "PROCESS.md")
+            self.assertIsNotNone(fm, name)
+            commands = fm.get("commands")
+            self.assertIsInstance(commands, list, name)
+            self.assertTrue(allowed <= set(commands), name)
+            for entry in commands:
+                self.assertNotIn(entry, ("Bash(gh api:*)", "Bash(gh api *)"), name)
+                if "gh api" in entry and any(flag in entry for flag in write_flags):
+                    self.assertIn(entry, allowed, f"{name}: widened write pattern {entry!r}")
 
     def test_schedule_process_documents_the_restriction(self) -> None:
         text = (self.SKILLS / "schedule-process" / "SKILL.md").read_text(encoding="utf-8")

@@ -26,14 +26,17 @@ other session and no next run reads.
 Detect the runtime from the prelude: the prompt `/schedule-process` composes says "on the cloud runtime".
 No such phrase -> this document does not apply; push as the skill says.
 
-0. **At the very start of the run**, if cloud: record the checked-out branch, `SESSION_BRANCH=$(git rev-parse
-   --abbrev-ref HEAD)`. It is the one branch the proxy will accept. If it does not match `claude/*`, the
-   fallback is unavailable: treat any refused push as `local-only` (step 4).
+0. **Cloud step 0 - the first step of the run, before any checkout.** It is an explicit numbered step in
+   `auto-sync/SKILL.md` and `review-history/SKILL.md`; neither may skip it. If cloud: record the checked-out
+   branch, `SESSION_BRANCH=$(git rev-parse --abbrev-ref HEAD)`. It is the one branch the proxy will accept.
+   If it does not start with `claude/`, the fallback is unavailable: record that now, so any refused push
+   ends as `local-only` (step 4). A cloud run starting on the session branch is expected; it creates its own
+   work branch from the default branch.
    Resolve `<owner>/<repo>` from `git remote get-url origin` (strip the host, a trailing `.git`, and any
    credentials); the default branch with `gh api repos/<owner>/<repo> --jq .default_branch`. Do not use
    `gh repo view`.
 1. **Try the normal integration first:** ff-merge the work branch into the local default branch, then
-   `git push origin <default-branch>`. Success -> done; the record's `integration:` is `direct`.
+   `git push origin <default-branch>`. Success -> done; `integration: direct` (or the field omitted).
 2. **Refused AND cloud** (non-zero exit from the push) -> do **not** retry with force and do not try other
    branch names:
    1. Push the integrated commits to the session branch:
@@ -46,11 +49,11 @@ No such phrase -> this document does not apply; push as the skill says.
       finds this PR (see "Reading earlier runs").
    3. Merge it **via REST**:
       `gh api -X PUT repos/<owner>/<repo>/pulls/<number>/merge -f merge_method=merge`.
-      A 200 with `"merged": true` -> done; `integration: pr-merged <url>`.
+      A 200 with `"merged": true` -> done; write nothing further (see "The `integration:` field").
 3. **If the REST merge is refused too** (branch protection, required reviews, the connected GitHub identity
    not allowed to merge, a 405/409): **leave the PR open.** Do not close it, do not try to bypass the
    protection. Commit a one-line update to the run record, `integration: pr-open <html_url>` (force-add it,
-   `git add -f`), and push that commit to the same session branch — the open PR picks it up. Print the PR
+   `git add -f`), and push that commit to the same session branch — the open PR picks it up and shows its own state. Print the PR
    URL in the run's final summary. The run outcome is `partial`, not `failure`: the work exists and is
    reviewable.
 4. **No PR could be opened either** (REST refused, no `claude/*` session branch): leave everything
@@ -58,15 +61,24 @@ No such phrase -> this document does not apply; push as the skill says.
    the skill already files escalation issues — in an issue created via REST
    (`gh api -X POST repos/<owner>/<repo>/issues -f title=... -f body=...`).
 
-Never `gh pr create` / `gh pr merge` on the cloud runtime (GraphQL).
+Never `gh pr create` / `gh pr merge` on the cloud runtime (GraphQL). The prohibition is about the blocked
+GraphQL endpoint, not about PRs: **any** PR opened on the cloud runtime is opened with
+`gh api -X POST repos/<owner>/<repo>/pulls`, including the upstream PR of an invoked `propose-to-core`
+(whose own files still say `gh pr create` and are not changed here).
 
 ### The `integration:` field of the run record
 
-Optional line in the `scheduled-runs/` frontmatter (additive; absent = `direct`):
-`integration: direct | pr-merged <url> | pr-open <url> | local-only`. The record is committed *before*
-the push, so at that moment it cannot know the final value; leave it out (or `pending`) and rewrite it
-only in the one case that matters — `pr-open` / `local-only` — with the follow-up commit in step 3.
-For `direct` and `pr-merged` the record is part of what landed.
+Optional line in the `scheduled-runs/` frontmatter (additive). Allowed values everywhere:
+`direct | pending | pr-open <url> | local-only`. One rule:
+
+- The record is committed *before* the PR exists, so on the cloud runtime the committed record says
+  `integration: pending`. On a non-cloud runtime it says `integration: direct` (or omits the field).
+- Merged by REST: write nothing further. The merged PR is the evidence; `review-history` reconciles a
+  `pending` record against the merged `[opos-run]` PR when it reads it.
+- Merge refused: push one follow-up commit to the same session branch that sets `integration: pr-open <url>`.
+- No PR could be opened: the record stays local and says `local-only`.
+
+Every other file (both skills, both `PROCESS.md`, the run-record template) refers here and does not restate it.
 
 ### Reading earlier runs (so a record on an unmerged PR is not invisible)
 
@@ -83,7 +95,7 @@ or closes them, and the run notes each one in its own record.
 
 No new authority is introduced. Opening and merging the PR is the *same act* as the ff-merge-and-push
 the skill already performs under its declared `commit` + `push` authority (the Scheduled-run authority
-exception in `chief-of-staff.md`): same commits, same target branch, only the transport differs because the
+exception in `chief-of-staff.md`): the default branch receives the same changes (via a merge commit rather than a fast-forward), only the transport differs because the
 proxy refuses the direct push. It stays inside `commit` + `push` even for processes that do not declare
 `open_pr`.
 
@@ -95,6 +107,19 @@ a *prefix* match and therefore does **not** cover `gh api -X POST repos/...`. Th
 They are still write-capable, and glob matching is not a security boundary; as everywhere on the cloud runtime they are an
 in-prompt contract, not a sandbox (RISKS Risk 18). `/schedule-process` step 5b shows them to the human
 for confirmation like any other entry.
+
+A consumer who wants a human to review cloud-run PRs must use branch rules that also apply to administrators:
+if the connected GitHub identity is a repo admin, GitHub may let the REST merge through branch protection.
+
+## Existing routines
+
+The allow-list and prompt of a cloud routine are frozen at registration. A routine registered before this
+change keeps its old prompt, so it knows nothing of the fallback. A human must update it, either by
+re-running `/schedule-process` or by editing the routine on claude.ai: add the three REST patterns
+(`Bash(gh api -X POST repos/*/pulls *)`, `Bash(gh api -X POST repos/*/issues *)`,
+`Bash(gh api -X PUT repos/*/pulls/*/merge *)`) plus `Bash(git remote get-url:*)` to the allowed-command list,
+and add the fallback sentence from `/schedule-process` to the prompt. A routine prompt is not a framework
+file, so `copier update` cannot change it, and editing it is a human act: it changes a schedule's authority.
 
 ## What is NOT verified
 
