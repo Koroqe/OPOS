@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
-from ui.scheduling import validate_frontmatter
+from ui.scheduling import _parse_frontmatter, validate_frontmatter
+
+REPO = Path(__file__).resolve().parents[2]
 
 
 def _write_process_md(tmp: Path, frontmatter: str) -> Path:
@@ -193,6 +196,61 @@ class TestValidateFrontmatter(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("every-minute" in e for e in errors))
 
+
+class TestCloudIntegrationPath(unittest.TestCase):
+    """The cloud push-restriction fallback (shared/cloud-integration.md) must stay wired."""
+
+    DOC = REPO / "shared" / "cloud-integration.md"
+    SKILLS = REPO / ".claude" / "skills"
+
+    def test_doc_exists_and_states_the_untested_part(self) -> None:
+        text = self.DOC.read_text(encoding="utf-8")
+        self.assertIn("gh api -X POST repos/<owner>/<repo>/pulls", text)
+        self.assertIn("merge_method=merge", text)
+        self.assertIn("pr-open", text)
+        self.assertIn("have not been exercised in the cloud runtime", text)
+
+    def test_default_branch_pushers_reference_it_and_allow_rest_writes(self) -> None:
+        for name in ("review-history", "auto-sync"):
+            skill = (self.SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+            process = (self.SKILLS / name / "PROCESS.md").read_text(encoding="utf-8")
+            self.assertIn("shared/cloud-integration.md", skill, name)
+            self.assertIn('"Bash(gh api -X POST repos/*/pulls *)"', process, name)
+            self.assertIn('"Bash(gh api -X POST repos/*/issues *)"', process, name)
+            self.assertIn('"Bash(gh api -X PUT repos/*/pulls/*/merge *)"', process, name)
+
+    def test_gh_api_write_entries_are_exactly_the_three_narrow_patterns(self) -> None:
+        # Parse the real `commands:` list; a substring check would miss `gh api:*`,
+        # `-X POST:*`, PATCH, DELETE and `--method`.
+        allowed = {
+            "Bash(gh api -X POST repos/*/pulls *)",
+            "Bash(gh api -X POST repos/*/issues *)",
+            "Bash(gh api -X PUT repos/*/pulls/*/merge *)",
+        }
+        # Any method flag in any spelling (-X, -X=M, -XM, --method, --method=M) or any
+        # field/input flag (which makes `gh api` an implicit POST) marks a write. `:` is a
+        # delimiter too (`Bash(gh api -X:*)`).
+        write_re = re.compile(
+            r"(?:^|\s)(?:-X|--method|-f|-F|--field|--raw-field|--input)(?=$|[\s=:A-Za-z])"
+        )
+        for name in ("review-history", "auto-sync"):
+            fm = _parse_frontmatter(self.SKILLS / name / "PROCESS.md")
+            self.assertIsNotNone(fm, name)
+            commands = fm.get("commands")
+            self.assertIsInstance(commands, list, name)
+            self.assertTrue(allowed <= set(commands), name)
+            for entry in commands:
+                self.assertNotIn(entry, ("Bash(gh api:*)", "Bash(gh api *)"), name)
+                # GraphQL is blocked on cloud and can write.
+                self.assertNotIn("gh api graphql", entry, name)
+                if "gh api" in entry and write_re.search(entry):
+                    self.assertIn(entry, allowed, f"{name}: widened write pattern {entry!r}")
+
+    def test_schedule_process_documents_the_restriction(self) -> None:
+        text = (self.SKILLS / "schedule-process" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Cloud push restriction", text)
+        self.assertIn("shared/cloud-integration.md", text)
+        self.assertIn("untested in the cloud runtime", text)
 
 if __name__ == "__main__":
     unittest.main()

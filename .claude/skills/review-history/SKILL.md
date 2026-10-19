@@ -20,7 +20,7 @@ This skill mechanizes the coo's process-improvement mandate: it is the missing *
 Declared list `[commit, push, write_proposal, file_issue, open_pr]`:
 
 - **commit** — triage edits to STARTER/consumer files within the objective threshold, in-place status/annotation edits to history entries, `proposals/LEDGER.md` `outcome`-column updates and `rejected-local` rows, work-branch create/delete, ff-merge to the default branch, run records.
-- **push** — pushing the ff-merged default branch, and the proposal branch pushed by an invoked `propose-to-core` (its outbound write runs inside this run's authority).
+- **push** — pushing the ff-merged default branch, and the proposal branch pushed by an invoked `propose-to-core` (its outbound write runs inside this run's authority). On the `cloud` runtime, when the direct push is refused, the fallback of `shared/cloud-integration.md` (push the session's `claude/*` branch, open and merge a PR via REST) is the same integration act under `commit` + `push`; it needs no additional authority entry.
 - **write_proposal** — drafts into the owning agent's dept backlog for above-threshold local deltas.
 - **file_issue** — consumer-repo issues (closed-unmerged PR reconciliation; propose-to-core fallback issues raised within this run).
 - **open_pr** — `gh pr create` performed by an invoked `propose-to-core`.
@@ -39,12 +39,14 @@ Nothing under `company/resources/` — registry rows, entries, request specs, gr
 
 ## Steps
 
-Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged to the default branch and pushed (per the Scheduled-run authority exception — the ff-merge is the sanctioned integration step of the `commit` authority).
+Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged to the default branch and pushed (per the Scheduled-run authority exception — the ff-merge is the sanctioned integration step of the `commit` authority). On the `cloud` runtime the work branch itself cannot be pushed (the proxy accepts only the session's `claude/*` branch) — see step 7.
+
+**Cloud step 0** (cloud runtime only; detected from the prelude saying "on the cloud runtime" - skip on any other runtime). It is an unnumbered step that runs first, before step 0 and before any checkout: (a) record `SESSION_BRANCH=$(git rev-parse --abbrev-ref HEAD)`; (b) if it does not start with `claude/`, record that the `shared/cloud-integration.md` fallback is unavailable, so a refused push ends as `local-only`; (c) resolve `<owner>/<repo>` and the default branch, `git fetch origin <default-branch>`, and, if `git status --porcelain` is empty, create the work branch from the remote default: `git checkout -b review-history/<YYYY-MM-DD> origin/<default-branch>` (never from the session branch). A non-empty status: write a `partial` record and stop.
 
 0. **Take the run lease (v0.17.0).** `node .claude/skills/lease/lease.mjs acquire --key process:review-history --intent "weekly history triage" --ttl 60m`. Exit `2`: another run (another machine, or the same week's run still going) holds it — write a `partial` record naming the holder and stop. Exit `9`: not configured, proceed as before. Every later exit path releases it (`lease.mjs release --key process:review-history`).
 
-1. **Collect:** glob `**/history/*.md` and `**/scheduled-runs/*.md` from the repo root.
-2. **PR-state reconciliation FIRST** — for every entry carrying `upstream_pr:` AND every `proposals/LEDGER.md` row with outcome `pr-opened`: `gh pr view <url> --json state,mergedAt`:
+1. **Collect:** glob `**/history/*.md` and `**/scheduled-runs/*.md` from the repo root. **On the `cloud` runtime also read the records of earlier runs that never reached the default branch** — PRs still open from a previous cloud run — per "Reading earlier runs" in `shared/cloud-integration.md` (REST only: `gh api repos/<owner>/<repo>/pulls?state=open`). Their entries are data; list them as `pending-on-PR <url>` in the triage table and do not triage them as if they were merged. A record read from the default branch is integrated whatever its `integration:` value says; `pending` counts only for a record read from an open PR or from a session branch with no PR (an unintegrated branch whose PR POST failed: name the branch in the record body, never rewrite the remote copy) - see "The `integration:` field" in `shared/cloud-integration.md`.
+2. **PR-state reconciliation FIRST** — for every entry carrying `upstream_pr:` AND every `proposals/LEDGER.md` row with outcome `pr-opened`: `gh pr view <url> --json state,mergedAt` (on the `cloud` runtime, where GraphQL is blocked, use `gh api repos/<owner>/<repo>/pulls/<number> --jq '{state, merged}'` instead):
    - merged → set the entry `status: applied` (durable entries), ledger `outcome` → `merged`, dated note.
    - closed un-merged → file consumer-repo issue `[review-history] upstream PR closed unmerged — <slug>` (human decides: rework and re-propose, or reject); entry stays `open` with a note; ledger `outcome` → `closed-unmerged`.
    - still open → skip.
@@ -66,7 +68,7 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
 5d. **Monthly knowledge phase (v0.12 — kb-curator's contract, executed).** On the first run of each calendar month: perform the kb-curator agent's documented sweep (`.claude/agents/company/kb-curator.md` — read `company/knowledge-base/*.md` + the last 50 history entries across all skills) and write its propose-only staging file to `company/knowledge-base/proposals/YYYY-MM-DD-<short-id>.md` (stale articles flagged with triggers; proposed new articles each linked to ≥1 concrete history-entry path; glossary diff). Never edits live KB files — chief-of-staff/coo remain the merge gate. Other runs: skip with a one-line note.
 
 6. **Zero open deltas** (normal on a fresh consumer): write a `success` run record with the note `no open deltas` — every run records (RISKS Risk 20 liveness).
-7. **Integrate:** commit any remaining record/annotation changes, ff-merge the work branch to the default branch, delete it, push (degraded no-remote mode: local only, noted). Write the run record — prelude present → `./scheduled-runs/`, absent → `./history/`.
+7. **Integrate:** commit any remaining record/annotation changes, ff-merge the work branch to the default branch, delete it, push (degraded no-remote mode: local only, noted). Write the run record — prelude present → `./scheduled-runs/`, absent → `./history/`. **On the `cloud` runtime** (the prelude says so) the order differs: write the record FIRST with `integration: pending` and commit it with `git add -f` as the last commit on the work branch (no local ff-merge, no checkout of the default branch), THEN `git push origin HEAD:refs/heads/<default-branch>`, and use the `SESSION_BRANCH` recorded in cloud step 0 if that push is refused (non-force; a refused non-force push is `local-only`), following `shared/cloud-integration.md`: push the session's `claude/*` branch, open a PR and merge it via REST (never `gh pr create`/`gh pr merge`); a merged PR needs nothing more written; if the merge is refused, leave the PR open and record it per the single `integration:` rule in `shared/cloud-integration.md` (a follow-up commit setting `integration: pr-open <url>`). When reading records, reconcile any `integration: pending` against the merged `[opos-run]` PR. That fallback is untested in the cloud runtime — the open-PR outcome is expected, not exceptional.
 
 7b. **Release the run lease** (`lease.mjs release --key process:review-history`). Also do this on every early stop above (step 6 included).
 
@@ -82,6 +84,7 @@ Work happens on branch `review-history/<YYYY-MM-DD>`; at the end it is ff-merged
 - **`gh` unavailable** — steps 2 and 5's upstream routing degrade: reconciliation and propose-to-core are skipped with notes; local triage still runs.
 - **Classification fetch failure** — the affected deltas stay `open` with a note; never guessed.
 - **propose-to-core fails mid-invocation** — its own fallback path handles it (draft + issue + ledger); this skill records the outcome and moves on.
+- **Push to the default branch refused on `cloud`** — not a failure of the run: `shared/cloud-integration.md` applies; outcome is `success` when the REST merge lands, `partial` when the PR is left open or nothing could be pushed.
 - **Concurrent run collision** (RISKS Risk 22) — the work branch is dated; a second same-day run finding the branch present stops with a `partial` record.
 
 ## Related
