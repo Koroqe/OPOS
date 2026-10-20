@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.22.2] - 2026-10-21
+
+One consumer-proposed fix ([#65](https://github.com/Koroqe/OPOS/pull/65)).
+
+### Fixed
+
+- **`adopt-proposal` deleted every bundle file except SKILL.md and PROCESS.md** ([#65](https://github.com/Koroqe/OPOS/pull/65)). Step 4 moved only those two files into `intended_placement:` and then deleted the bundle folder. Anything else the design shipped was lost with it: a routine prompt, a launch checklist, a build spec, nested bundles, and the cover sheet `PROPOSAL.md` with its consultation record and UNVERIFIED list. Step 2 now lists every file in the bundle folder, nested bundles included, with where each one will land, so the human sees all of it before deciding. Step 4 moves every bundle file except the cover sheet into the placement, moves the cover sheet to `<placement>/proposal-record.md` so the decision record survives, and deletes the bundle folder only once step 2's listing shows every file moved. Skill text only; no code changed. Files lost in earlier adoptions are not restored by this release: if the bundle had been committed, they are in the parent of its `feat(core): adopt <name> process from draft proposal` commit.
+
 ## [0.22.1] - 2026-10-19
 
 Two consumer-proposed fixes ([#63](https://github.com/Koroqe/OPOS/pull/63), [#64](https://github.com/Koroqe/OPOS/pull/64)).
