@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { analyzeTurn, findCta, readTurnEntries, buildReason, CTA_PATTERNS } from './human-prompt-gate.mjs';
+import { analyzeTurn, findCta, finalAssistantText, stripFences, readTurnEntries, buildReason, CTA_PATTERNS } from './human-prompt-gate.mjs';
 
 const SCRIPT = path.resolve(import.meta.dirname, 'human-prompt-gate.mjs');
 
@@ -39,12 +39,15 @@ test('AskUserQuestion called then more CTA prose blocks', () => {
 test('CTA only inside a fenced code block passes', () => {
   const text = 'Paste this to the lawyer:\n```\nPlease reply "approve" and confirm.\nReply `1` or `2`\n```\nSent.';
   assert.equal(analyzeTurn([user('go'), say(text)]).block, false);
-  assert.equal(findCta('```\nunterminated: reply `1`'), null);
+  assert.equal(findCta('Done.\n```\nReply `1`\n```'), null);
 });
 
-test('a tool_result user entry is not the turn boundary', () => {
+test('only the final message of the turn is analysed (a request from an earlier stop is not re-flagged)', () => {
+  // A background-task wake-up re-enters the turn: the request from the earlier stop is not repeated.
   const r = analyzeTurn([user('go'), say('Reply `1` or `2`.'), bash(), toolResult(), say('Ran the check.')]);
-  assert.equal(r.block, true);
+  assert.equal(r.block, false);
+  const r2 = analyzeTurn([user('go'), say('Working.'), bash(), toolResult(), say('Reply `1` or `2`.')]);
+  assert.equal(r2.block, true);
 });
 
 test('text from before the genuine user message is ignored', () => {
@@ -55,8 +58,9 @@ test('text from before the genuine user message is ignored', () => {
 test('meta and system-injected user entries are not turn boundaries', () => {
   const meta = { type: 'user', isMeta: true, message: { role: 'user', content: 'caveat' } };
   const reminder = user('<system-reminder>hooks ran</system-reminder>');
-  const r = analyzeTurn([user('go'), say('Your call: ship or hold?'), meta, reminder, say('Working.')]);
+  const r = analyzeTurn([user('go'), say('Working.'), meta, reminder, say('Reply `1` or `2`.')]);
   assert.equal(r.block, true);
+  assert.equal(analyzeTurn([user('go'), say('Reply `1` or `2`.'), meta, reminder, say('Working.')]).block, false);
 });
 
 test('plain report text passes', () => {
@@ -76,10 +80,122 @@ test('English CTA variants block', () => {
   }
 });
 
-test('last_assistant_message counts when the transcript lags, but not when it is pre-ask text', () => {
+test('last_assistant_message wins over a lagging transcript', () => {
   assert.equal(analyzeTurn([user('go')], 'Reply `1` or `2`').block, true);
-  const preAsk = 'Reply `1` or `2`.';
-  assert.equal(analyzeTurn([user('go'), say(preAsk), ask()], preAsk).block, false);
+  assert.equal(analyzeTurn([user('go'), say('Reply `1` or `2`.')], 'All done.').block, false);
+});
+
+test('finalAssistantText joins the records of one message and skips sidechains and tool-only records', () => {
+  const rec = (id, text) => ({ type: 'assistant', message: { id, role: 'assistant', content: [{ type: 'text', text }] } });
+  const side = { type: 'assistant', isSidechain: true, message: { id: 'm9', content: [{ type: 'text', text: 'Reply `1`' }] } };
+  assert.equal(finalAssistantText([rec('m1', 'first'), rec('m2', 'A'), rec('m2', 'B'), side, bash()]), 'A\n\nB');
+  assert.equal(finalAssistantText([user('x')]), '');
+});
+
+test('an unpaired fence does not hide the rest of the text; paired ones are still stripped', () => {
+  assert.equal(findCta('Stray ``` fence here.\nReply `1` or `2`.')?.id, 'en-reply');
+  assert.equal(findCta('```\nopen block never closed\nReply `1` or `2`.')?.id, 'en-reply');
+  assert.equal(findCta('Intro.\n```\nReply `1`\n```\nDone.'), null);
+  assert.equal(findCta('Intro.\n~~~\nReply `1`\n~~~\nDone.'), null);
+  assert.ok(!stripFences('a ```x``` b').includes('x'));
+});
+
+test('a prose request after an AskUserQuestion call still blocks (the final message is analysed)', () => {
+  assert.equal(analyzeTurn([user('go'), ask(), toolResult(), say('Thanks. Reply `1` or `2` for the rest.')]).block, true);
+});
+
+test('false-positive corpus passes (reporting text that merely contains the words)', () => {
+  const pass = [
+    'The column is now of type `numeric`.',
+    'The handler should respond with 200 on success.',
+    'I traced your call to the billing API.',
+    'The user picked answer 3.',
+    'Got reply 200 from Stripe.',
+    "Set the param type 'string' in the schema.",
+    "type 'string'",
+    'Earlier you asked me to reply `go`.',
+    'The form field needs your input.',
+    'needs your input',
+    'Logged your call with Ihor.',
+    'All four hosts answer 200.',
+    'The proxy routes answer "unauthorised" for expired tokens.',
+    'routes answer "unauthorised"',
+    'The defaults still say "escalate above $X".',
+    'still say "escalate above $X"',
+    'When you type "work autonomously" the steward skips the greeting.',
+    'Your remaining founder-action items are listed in the issue.',
+    'your remaining founder-action items',
+    'Answer: the column is numeric.',
+    'Reply sent to Ihor.',
+    'Merged the branch. 12 tests pass.\n\nThe renewal is filed as a founder-action for the vendor review.',
+    'Why does this matter? Because the hook fires once per turn.',
+  ];
+  for (const t of pass) assert.equal(analyzeTurn([user('go'), say(t)]).block, false, t);
+});
+
+test('false-negative corpus blocks (prose requests in common forms)', () => {
+  const block = [
+    'Please approve the draft.',
+    'Can you sign the NDA?',
+    'Can you sign…?',
+    'Let me know which one you prefer.',
+    'Let me know which…',
+    'Should I proceed?',
+    'Choose 1 or 2',
+    'Reply A or B',
+    'Reply **yes**',
+    'Reply `1` or `2`:',
+    'What I need from you',
+    'Here is what I need from you: the invoice.',
+    'Type "approve" and I\'ll push',
+    'Next step for you:',
+    'Action required:',
+    '**Action required**',
+    'Your call.',
+    'This needs your decision.',
+    'This needs your sign-off.',
+    'Подтверди',
+    'Дай знать',
+    'Дайте знать, как поступаем.',
+    'Что выбираешь?',
+    'Ответь «да»',
+    'Ответь `1` или `2`:',
+    'Если согласен, ответь «да».',
+    'Хочешь, чтобы я отправил?',
+    'От тебя нужно решение.',
+    'Твой ход.',
+    'Done. If that works, reply yes.',
+    '- Reply `1` or `2`\n- something else',
+    '1. Approve the PR\n2. Merge it',
+    'Pushed the fix and opened the PR.\n\nWant me to merge it now?\n\nIssue: https://github.com/o/r/issues/5',
+    'I filed a founder-action for you.',
+  ];
+  for (const t of block) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});
+
+test('a generic question outside the closing paragraph does not block; a strong one does', () => {
+  const t = 'Which one broke? The cache.\n\nAll 12 tests pass.\n\nMerged.';
+  assert.equal(analyzeTurn([user('go'), say(t)]).block, false);
+  const strong = 'The fix is in.\n\nShould I rewrite the history?\n\nI can also turn this into a page.';
+  assert.equal(analyzeTurn([user('go'), say(strong)]).block, true);
+});
+
+test('real-transcript forms: "Y/n", "Reply e.g.", "Decision for you:", "want your call", "say the word"', () => {
+  for (const t of [
+    'I am about to commit the draft. Commit? Y/n.',
+    '- Reply e.g. **`1a 2a 3b 4b`**.',
+    '**Decision for you:** shipping means pushing to main.',
+    '**Still waiting on you:**\n1. Grant access.',
+    "Two things I'd want your call on before I touch anything:",
+    "Both are Notice-tier — say the word and I'll open them.",
+    'What should this session work on?',
+    'Fill it in. Then pick one:\n- a\n- b',
+    'Your next step is an SDLC session on the issue.',
+    "There is one item that needs you, about the daily jobs.",
+  ])assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  for (const t of ['Decide by risk, not rank.', 'Nothing is waiting on you.', 'Nothing needs you right now.', 'The regex accepts y/n flags.']) {
+    assert.equal(analyzeTurn([user('go'), say(t)]).block, false, t);
+  }
 });
 
 test('pattern list is exported and well-formed', () => {

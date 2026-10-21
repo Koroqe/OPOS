@@ -119,6 +119,44 @@ class ReconcileHooksTest(unittest.TestCase):
             "node shared/scripts/opos-session-update.mjs",
         ])
 
+    def test_legacy_inline_rearm_entry_counts_as_the_mjs_entry(self):
+        """A settings file with the old inline `python3 -c` re-arm reminder must not get
+        scheduler-rearm-notice.mjs appended on top (two reminders per session)."""
+        legacy = hook(
+            "python3 -c \"import json,os; p='.claude/scheduled-processes.json'; "
+            "rows=[r for r in (json.load(open(p)) if os.path.exists(p) else []) "
+            "if not str(r.get('routine_id','')).startswith('gha:')]; "
+            "print('[opos-scheduler] ' + str(len(rows)) + ' registration(s)') if rows else None\""
+        )
+        settings = copy.deepcopy(CONSUMER)
+        settings["hooks"]["SessionStart"][0] = legacy
+        self.write(settings)
+        r = self.run_script("--apply")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        start = self.read()["hooks"]["SessionStart"]
+        self.assertEqual(start[0], legacy)  # untouched
+        cmds = [h["hooks"][0]["command"] for h in start]
+        self.assertFalse(any("scheduler-rearm-notice.mjs" in c for c in cmds), cmds)
+        self.assertEqual(len(start), 3)
+
+    def test_legacy_alias_does_not_swallow_an_unrelated_python_hook(self):
+        settings = copy.deepcopy(CONSUMER)
+        own = hook("python3 -c \"print('my own hook')\"")
+        settings["hooks"]["SessionStart"] = [own]
+        self.write(settings)
+        self.run_script("--apply")
+        cmds = [h["hooks"][0]["command"] for h in self.read()["hooks"]["SessionStart"]]
+        self.assertIn("node shared/scripts/scheduler-rearm-notice.mjs", cmds)
+        self.assertEqual(cmds[0], own["hooks"][0]["command"])
+
+    def test_shipped_scaffold_settings_use_the_mjs_rearm_entry(self):
+        """.claude/settings.json is what copier ships to new scaffolds; it must not carry the
+        legacy inline command that reconciliation would otherwise duplicate."""
+        shipped = json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))
+        cmds = [h["command"] for e in shipped["hooks"]["SessionStart"] for h in e["hooks"]]
+        self.assertIn("node shared/scripts/scheduler-rearm-notice.mjs", cmds)
+        self.assertFalse(any(c.startswith("python3 -c") for c in cmds), cmds)
+
     def test_real_getdeal_style_copy_gets_stop_and_nothing_else_changes(self):
         """The shape of a production consumer file (copied, never edited in place)."""
         self.write(CONSUMER)

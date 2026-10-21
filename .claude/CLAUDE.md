@@ -126,7 +126,7 @@ department's own `deploy` skill), not through the SDLC commands.
 - **Human prompts go through AskUserQuestion.** In an interactive session every
   decision or action the human owes is asked with `AskUserQuestion` before the
   turn ends; prose like "reply 1 or 2" does not count. The Stop hook
-  `shared/scripts/human-prompt-gate.mjs` enforces it. Canonical text: the
+  `shared/scripts/human-prompt-gate.mjs` checks the final message of the turn. Canonical text: the
   steward's **Human prompts go through AskUserQuestion**.
 
 ## Framework updates and how they reach you

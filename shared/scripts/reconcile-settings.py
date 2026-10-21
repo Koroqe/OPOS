@@ -80,8 +80,23 @@ def set_at(doc, top, sub, value):
 _SCRIPT_RE = re.compile(r"[\w./\-]+\.(?:mjs|cjs|js|py|sh)(?![\w])")
 
 
+# Legacy hook commands that are the SAME hook as a current manifest script, written differently.
+# Each pair is (pattern that identifies the legacy command, identity of the current script).
+# A settings file carrying the legacy form is treated as already having the current entry, so
+# reconciliation does not append a second copy (two reminders per session). Extend this list when
+# a manifest hook replaces an inline command; it is deliberately explicit, never heuristic.
+LEGACY_COMMAND_ALIASES = [
+    # Before v0.19.x the scheduler re-arm reminder was an inline `python3 -c "..."` reading
+    # .claude/scheduled-processes.json; it is now shared/scripts/scheduler-rearm-notice.mjs.
+    (re.compile(r"python3?\s+-c\b.*\.claude/scheduled-processes\.json", re.S), "scheduler-rearm-notice.mjs"),
+]
+
+
 def _command_key(command):
     """Identity of a hook command: its script file name when it names one, else the whole string."""
+    for pattern, identity in LEGACY_COMMAND_ALIASES:
+        if pattern.search(command or ""):
+            return identity
     m = _SCRIPT_RE.search(command or "")
     return m.group(0).replace("\\", "/").rsplit("/", 1)[-1] if m else (command or "").strip()
 
