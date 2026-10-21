@@ -20,7 +20,13 @@ SAFETY CONTRACT
 
     `managed` keys are framework posture: the value is overwritten if it differs.
     `additive` keys are framework defaults: written only when absent, so a
-    consumer's own value always wins.
+    consumer's own value always wins. One exception, for hook registrations
+    (`hooks.<Event>` arrays): when the consumer already has the event, hook
+    entries whose command is not yet registered there are APPENDED (existing
+    entries are never edited, reordered or removed, and a command that is
+    already present - matched by script file name, else by exact string - is
+    never duplicated). Without this, a new framework hook on an event the
+    consumer already uses (e.g. a second SessionStart script) could never arrive.
 
 USAGE
     reconcile-settings.py --check    exit 0 = in sync, exit 2 = drift (writes nothing)
@@ -30,6 +36,7 @@ USAGE
 import argparse
 import json
 import pathlib
+import re
 import sys
 
 MANIFEST_REL = "shared/templates/required-settings.json"
@@ -68,6 +75,51 @@ def set_at(doc, top, sub, value):
     if not isinstance(doc.get(top), dict):
         doc[top] = {}
     doc[top][sub] = value
+
+
+_SCRIPT_RE = re.compile(r"[\w./\-]+\.(?:mjs|cjs|js|py|sh)(?![\w])")
+
+
+# Legacy hook commands that are the SAME hook as a current manifest script, written differently.
+# Each pair is (pattern that identifies the legacy command, identity of the current script).
+# A settings file carrying the legacy form is treated as already having the current entry, so
+# reconciliation does not append a second copy (two reminders per session). Extend this list when
+# a manifest hook replaces an inline command; it is deliberately explicit, never heuristic.
+LEGACY_COMMAND_ALIASES = [
+    # Before v0.19.x the scheduler re-arm reminder was an inline `python3 -c "..."` reading
+    # .claude/scheduled-processes.json; it is now shared/scripts/scheduler-rearm-notice.mjs.
+    (re.compile(r"python3?\s+-c\b.*\.claude/scheduled-processes\.json", re.S), "scheduler-rearm-notice.mjs"),
+]
+
+
+def _command_key(command):
+    """Identity of a hook command: its script file name when it names one, else the whole string."""
+    for pattern, identity in LEGACY_COMMAND_ALIASES:
+        if pattern.search(command or ""):
+            return identity
+    m = _SCRIPT_RE.search(command or "")
+    return m.group(0).replace("\\", "/").rsplit("/", 1)[-1] if m else (command or "").strip()
+
+
+def _commands(entries):
+    for entry in entries:
+        if isinstance(entry, dict):
+            for hook in entry.get("hooks", []) or []:
+                if isinstance(hook, dict) and hook.get("command"):
+                    yield hook["command"]
+
+
+def missing_hook_entries(current, wanted):
+    """Entries of `wanted` (a hook-event array) with a command absent from `current`."""
+    have = {_command_key(c) for c in _commands(current)}
+    missing = []
+    for entry in wanted:
+        cmds = list(_commands([entry]))
+        if cmds and all(_command_key(c) in have for c in cmds):
+            continue
+        missing.append(entry)
+        have.update(_command_key(c) for c in cmds)
+    return missing
 
 
 def is_protected(dotted, never_write):
@@ -123,10 +175,16 @@ def reconcile(root, apply_changes):
             skipped.append((dotted, "additive key is also on never_write — manifest bug"))
             continue
         top, sub = split_path(dotted)
-        _, present = get_at(settings, top, sub)
+        current, present = get_at(settings, top, sub)
         if not present:
             set_at(settings, top, sub, default)
             changes.append(f"added   {dotted} (framework default; consumer value would have won)")
+        elif top == "hooks" and isinstance(current, list) and isinstance(default, list):
+            extra = missing_hook_entries(current, default)
+            if extra:
+                current.extend(extra)
+                names = ", ".join(sorted({_command_key(c) for c in _commands(extra)}))
+                changes.append(f"appended {len(extra)} hook entr{'y' if len(extra) == 1 else 'ies'} to {dotted}: {names}")
 
     for path in sorted(never_write):
         skipped.append((path, "never written — human-approved at Confirm tier only"))
