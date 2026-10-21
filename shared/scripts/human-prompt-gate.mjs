@@ -60,7 +60,7 @@ const NONE = `(?!\\s*[:\\-—–]?\\s*(?:nothing|none|nil|n\\/a|ничего|н�
 // "does not / doesn't / never need your approval", "Nothing here needs you".
 const NOT_BEFORE = "(?<!n['’]t\\s)(?<!\\b(?:not|never)\\s)";
 // "Nothing / nobody / no action ..." neutralises a request only inside the same clause.
-const CLAUSE_BOUNDARY = /[;.!?\n]|\s(?:but|however|so)\s|,\s*(?:а|но)\s|\s[—–]\s/giu;
+const CLAUSE_BOUNDARY = /[;.!?\n,:]|\s(?:but|however)\s|,\s*(?:so|and|а|но)\s|\s[—–-]\s/giu;
 const NEGATION_TAIL = /(?<![\p{L}\p{N}_])(?:nothing|nobody|no\s+one|no\s+action|никто|никому|ничего|никаких)(?![\p{L}\p{N}_])[\s\S]{0,40}$/iu;
 export function negatedInClause(text, index) {
   const seg = text.slice(Math.max(0, index - 120), index);
@@ -146,20 +146,26 @@ export function stripFences(text) {
 }
 
 const QUOTE_LEAD = /(?:reply|answer|respond|type|say|write|ответь\p{L}*|напиши\p{L}*|скажи\p{L}*)(?:\s+(?:with|just|simply|me|to\s+me|мне|просто|one\s+word\s*:?))*\s*$/iu;
+const BQ_CALLOUT = /action required|нужно от|need from you|your decision/iu;
 const wordCount = (s) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 /**
  * Remove quoted third-party text before any rule runs: «…», "…", “…”, '…'/‘…’ (3+ words only, so
- * contractions are safe), '>' blockquote lines, and the rest of the sentence after "error:",
- * "error was:", "message:", "says:", "said:", "responded:", "replied:". A SHORT quote (1-3 words)
+ * contractions are safe), '>' blockquote lines (except an explicit action-required callout), and the
+ * rest of the sentence (or up to a dash) after "error:", "error was:", "message:". Reported speech
+ * (said / replied) is NOT stripped: it is an action handed to the reader. A span that ended a
+ * sentence leaves ' . ' so the next sentence keeps its start. A SHORT quote (1-6 words)
  * right after reply/answer/type/say/ответь/... is an answer token the human is asked to give
  * (Reply "go ahead"), so it stays.
  */
 export function stripQuoted(text) {
-  const keepToken = (m, off, str) => wordCount(m) <= 3 && QUOTE_LEAD.test(str.slice(Math.max(0, off - 40), off));
-  let out = String(text ?? '').replace(/^[ \t]*>.*$/gm, ' ');
-  out = out.replace(/(?<![\p{L}\p{N}_])(?:error(?:\s+was)?|message|says|said|responded|replied)\s*:\s*[^\n]*?(?:[.!?](?=\s|$)|$)/gimu, ' ');
-  out = out.replace(/«[^»\n]*»|“[^”\n]*”|"[^"\n]*"/gu, (m, off, str) => (keepToken(m, off, str) ? m : ' '));
-  out = out.replace(/(?<![\p{L}\p{N}])['‘][^'’\n]*['’](?![\p{L}\p{N}])/gu, (m, off, str) => (wordCount(m) >= 3 ? ' ' : m));
+  const keepToken = (m, off, str) => wordCount(m) <= 6 && QUOTE_LEAD.test(str.slice(Math.max(0, off - 40), off));
+  // A stripped span that ends a sentence leaves ' . ' behind, so the next sentence keeps its start.
+  const gap = (m) => (/[.!?]\s*[»”"]$/u.test(m) ? ' . ' : ' ');
+  // A blockquote line stays when it carries an explicit callout addressed to the reader.
+  let out = String(text ?? '').replace(/^[ \t]*>.*$/gm, (m) => (BQ_CALLOUT.test(m) ? m : ' '));
+  out = out.replace(/(?<![\p{L}\p{N}_])(?:error(?:\s+was)?|message)\s*:\s*[^\n]*?(?:([.!?])(?=\s|$)|(?=\s[—–]\s)|$)/gimu, (m, t) => ' ' + (t ?? '') + ' ');
+  out = out.replace(/«[^»\n]*»|“[^”\n]*”|(?<![^\s(\[:])"[^"\n]*"(?=$|[\s.,;:!?)\]—–-])/gu, (m, off, str) => (keepToken(m, off, str) ? m : gap(m)));
+  out = out.replace(/(?<![\p{L}\p{N}])['‘](?=\p{L})[^'’\n]*['’](?![\p{L}\p{N}])/gu, (m, off, str) => (wordCount(m) >= 3 ? ' ' : m));
   return out;
 }
 

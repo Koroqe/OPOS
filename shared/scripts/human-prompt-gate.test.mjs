@@ -329,9 +329,7 @@ test('round 4: quoted third-party text does not trigger any rule', () => {
     'The page showed “Session expired. Please sign in again.”',
     '> Too many attempts. Please try again later.',
     'The error was: Please run npm install first.',
-    'The service replied: Please confirm your email. Then all is fine.',
     "The log has 'Please reconnect to the server now' in it.",
-    'The modal says: Please approve the cookies. Deploy finished.',
   ];
   for (const t of quoted) assert.equal(findCta(t), null, t);
 });
@@ -372,4 +370,59 @@ test('round 4: Russian plural/formal imperative «пришлите» always bloc
   assert.equal(analyzeTurn([user('go'), say('Пришлите, пожалуйста, ссылку на документ.')]).block, true);
   assert.equal(analyzeTurn([user('go'), say('Пришлите код из SMS.')]).block, true);
   assert.equal(analyzeTurn([user('go'), say('Пришли ответы от юристов.')]).block, false);
+});
+
+test('round 5: stripping a quoted span keeps the sentence terminator (the next sentence still starts a sentence)', () => {
+  const asks = [
+    'The lawyer replied: they need the signed copy. Please upload it to Drive.',
+    'The deploy failed with error: missing secret. Please paste STRIPE_KEY into the repo settings.',
+    'CI failed, error: lint. Want me to fix it now?',
+    'Commit message: fix gate. Should I push it to main?',
+    'Vercel says "Build succeeded." Please approve the promotion to production.',
+    'The client wrote back "Looks good." Can you sign the SOW today?',
+    'The bot replied "Done." Should I merge the PR now?',
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});
+
+test('round 5: reported speech is not stripped; error/message strip stops at a dash', () => {
+  for (const t of ['Dima said: please sign the NDA today.', 'Error: build failed — please paste STRIPE_KEY into the settings.']) {
+    assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  }
+  for (const t of ['The error was: Please run npm install first.', 'Error: "Please approve the request" was shown by the CLI.']) {
+    assert.equal(findCta(t), null, t);
+  }
+});
+
+test('round 5: reported speech after replied/says blocks (conservative side, was a round-4 pass)', () => {
+  for (const t of ['The service replied: Please confirm your email. Then all is fine.', 'The modal says: Please approve the cookies. Deploy finished.']) assert.equal(findCta(t) !== null, true, t);
+});
+
+test('round 5: a blockquote with an action-required callout is not stripped', () => {
+  assert.equal(analyzeTurn([user('go'), say('> **Action required:** approve the DNS change.')]).block, true);
+  assert.equal(findCta('> Please approve the request, said the bot.'), null);
+});
+
+test('round 5: inch marks and decade apostrophes are not quote openers; a 6-word answer token stays', () => {
+  const asks = [
+    'The banner is 5" tall. Please approve the PR "fix: gate" today.',
+    'Width is 5". Should I merge "fix: gate" now?',
+    "Since the '90s, please approve the merge before the partners' review.",
+    'Type "yes, merge it now" to proceed.',
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});
+
+test('round 5: a comma, colon, " - " or ", and" ends the negation clause', () => {
+  const asks = [
+    'No action needed on DNS, the merge needs your approval.',
+    'Ничего не отправлено клиенту: нужно твоё одобрение на текст письма.',
+    'Никаких изменений в коде, нужно ваше подтверждение на деплой.',
+    'Никто не возражал, жду твоего решения по договору.',
+    'Nothing else is blocked, the merge needs your approval.',
+    'No one has reviewed it yet, and it needs your sign-off.',
+    'Nothing is blocked - the merge needs your approval.',
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  assert.equal(findCta("There's nothing so urgent that it needs your approval."), null);
 });
