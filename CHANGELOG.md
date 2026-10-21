@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.23.0] - 2026-10-21
+
+The steward now asks the human directly, and a hook checks that it did.
+
+### Added
+
+- **Human prompts go through `AskUserQuestion`.** A new steward section makes every decision or action the human owes an `AskUserQuestion` call before the turn ends, in interactive sessions. Prose such as "reply `1` or `2`" or a "What I need from you:" list is text the human can scroll past, and a law firm waited a month for an answer that sat in one. The section sets the shape: one question per item, at most 4 per call and more in consecutive calls, context plus the issue link in the question, the recommended option first with its cost, steps or draft text in `preview`, and "Done, verify it now" / "Not now" for actions the human must perform. The answers are acted on in the same turn; an answer that names a specific outbound action approves that action only. Anything still owed stays a `founder-action` issue (Capture duty 3 is unchanged and remains the only prompt in headless, scheduled and subagent contexts, where `AskUserQuestion` does not exist). First-touch gains step 6: after the greeting, the open `founder-action` issues owed by the current human (`--assignee @me`, plus the company's owner-label mapping if its root `CLAUDE.md` declares one) are asked, deadline first, at most 4, with the remainder counted in one line. Fresh scaffolds and an unauthenticated `gh` skip it silently. `.claude/CLAUDE.md` carries one bullet pointing at the section.
+- **`shared/scripts/human-prompt-gate.mjs`, a `Stop` hook.** At the end of a turn it reads the current turn from the end of the transcript (never the whole file) and blocks the stop once when the final text contains a call to action in prose (English and Russian patterns in one exported `CTA_PATTERNS` array) and no `AskUserQuestion` call came after it. Fenced code blocks are ignored, so paste-prompts do not trigger it. `stop_hook_active` prevents loops, the hook reads `last_assistant_message` because the transcript can lag, and every error exits 0 silently. `OPOS_HUMAN_PROMPT_GATE=off` disables it. Claude Code gives a `Stop` hook no signal for headless runs, so a headless run may spend one extra turn; the block message tells the model to file `founder-action` issues there. Tests: `shared/scripts/human-prompt-gate.test.mjs` (in CI).
+
+### Changed
+
+- **Settings reconciliation appends missing hook entries to an event the consumer already uses.** `required-settings.json` gains `hooks.Stop`. A consumer with no `Stop` key receives it as before. `reconcile-settings.py` now also appends a manifest hook entry to an existing `hooks.<Event>` array when no entry there runs the same script (matched by script file name, otherwise by exact command), without editing, reordering or removing anything the consumer wrote and without duplicates. This also delivers the `SessionStart` entries earlier releases could not add to a consumer that already had a `SessionStart` array. `permissions` is still never written. Tests: `ui/tests/test_reconcile_settings.py`.
+
+### Migration
+
+- None required. The `Stop` hook reaches a consumer through the next settings reconciliation (`sync-from-core`, `auto-sync`, or the unattended updater). To switch it off for a machine, set `OPOS_HUMAN_PROMPT_GATE=off`. A consumer whose root `CLAUDE.md` tells agents to end reports with "reply 1 or 2" style instructions should reword them to refer to the steward's new section.
+
 ## [0.22.2] - 2026-10-21
 
 One consumer-proposed fix ([#65](https://github.com/Koroqe/OPOS/pull/65)).
