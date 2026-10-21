@@ -320,3 +320,56 @@ test('readTurnEntries walks back across chunk boundaries and stops at the genuin
     assert.equal(analyzeTurn(got).block, true);
   });
 });
+
+test('round 4: quoted third-party text does not trigger any rule', () => {
+  const quoted = [
+    'LinkedIn said *«…invitations. Please try again next week»*.',
+    'The build output was "Deployment failed. Please check the build logs."',
+    'The error was: "Please run `npm install` first."',
+    'The page showed “Session expired. Please sign in again.”',
+    '> Too many attempts. Please try again later.',
+    'The error was: Please run npm install first.',
+    'The service replied: Please confirm your email. Then all is fine.',
+    "The log has 'Please reconnect to the server now' in it.",
+    'The modal says: Please approve the cookies. Deploy finished.',
+  ];
+  for (const t of quoted) assert.equal(findCta(t), null, t);
+});
+
+test('round 4: unquoted direct requests and requests with a quoted draft still block', () => {
+  const asks = [
+    'Please approve the PR.',
+    'Please check the build logs and tell me if it is green.',
+    'Пожалуйста, подтверди.',
+    'Please send this reply: «Thanks, see you Monday».',
+    'Reply "go ahead" to continue.',
+    'Ответь «да» или «нет».',
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});
+
+test('round 4: a contraction between apostrophes is not a quoted span', () => {
+  assert.equal(analyzeTurn([user('go'), say("It's fine and I don't mind. Please approve the PR, it's ready.")]).block, true);
+});
+
+test('round 4: a negation neutralises a request only inside its own clause', () => {
+  const asks = [
+    'Nothing else is blocked; the merge needs your approval.',
+    'Nobody objected, so the contract now needs your sign-off.',
+    'Action required: nothing from you, but the DNS change needs your approval.',
+    'No action on the invoice. However the filing needs your decision.',
+    'Ничего не горит, но нужно твоё решение.',
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  const passes = [
+    "It's R1, so it doesn't need your approval.", 'This is R1, so it does not need your approval.', 'Nothing here needs you.',
+    'What I need from you: nothing — all done.', 'Action required: none.', 'Нужно от тебя: ничего.', 'Nothing is waiting on you.', 'Nobody needs your approval here.',
+  ];
+  for (const t of passes) assert.equal(findCta(t), null, t);
+});
+
+test('round 4: Russian plural/formal imperative «пришлите» always blocks, «пришли» past tense still passes', () => {
+  assert.equal(analyzeTurn([user('go'), say('Пришлите, пожалуйста, ссылку на документ.')]).block, true);
+  assert.equal(analyzeTurn([user('go'), say('Пришлите код из SMS.')]).block, true);
+  assert.equal(analyzeTurn([user('go'), say('Пришли ответы от юристов.')]).block, false);
+});
