@@ -437,3 +437,24 @@ test('round 6: bare "message:" is not a lead word; elisions are not single-quote
   assert.equal(findCta('The error message: Please run npm install first.'), null);
   assert.equal(findCta("He said 'please sign the NDA today' twice."), null);
 });
+
+test('round 7: quoted errors wrapped in emphasis or dashes pass; inch marks still do not hide a request', () => {
+  const quiet = [
+    'The log said *"Deployment failed. Please check the build logs."*',
+    'The page showed **"Session expired. Please sign in again."**',
+    'The API printed—"Rate limited. Please retry later."—and stopped.',
+    '> Too many attempts. Please try again later.',
+  ];
+  for (const t of quiet) assert.equal(analyzeTurn([user('go'), say(t)]).block, false, t);
+  assert.equal(analyzeTurn([user('go'), say('The banner is 5" tall. Please approve the PR "fix: gate" today.')]).block, true);
+});
+
+test('round 7: blockquote callouts use the header list; error strip stops at a spaced hyphen', () => {
+  const asks = [
+    '> **Action needed:** approve the DNS change.',
+    '> **Next step for you:** sign the NDA.',
+    '> Нужно от тебя: подтвердить деплой.',
+    'Error: build failed - please paste STRIPE_KEY into the settings.',
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});

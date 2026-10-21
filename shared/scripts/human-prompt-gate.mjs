@@ -146,7 +146,13 @@ export function stripFences(text) {
 }
 
 const QUOTE_LEAD = /(?:reply|answer|respond|type|say|write|ответь\p{L}*|напиши\p{L}*|скажи\p{L}*)(?:\s+(?:with|just|simply|me|to\s+me|мне|просто|one\s+word\s*:?))*\s*$/iu;
-const BQ_CALLOUT = /action required|нужно от|need from you|your decision/iu;
+const BQ_OLD = /action required|нужно от|need from you|your decision/iu;
+// A blockquote line is a callout when it matches the old keywords or, once the '>' and emphasis marks are
+// removed, starts with any en-header / ru-header (same list as the rules, no second copy).
+const BQ_CALLOUT = { test: (line) => BQ_OLD.test(line) || (() => {
+  const body = line.replace(/^[ \t]*>[\s>*_]*/u, '').replace(/\*+|__/g, '');
+  return CTA_PATTERNS.some((p) => (p.id === 'en-header' || p.id === 'ru-header') && p.re.test(body));
+})() };
 const wordCount = (s) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 /**
  * Remove quoted third-party text before any rule runs: «…», "…", “…”, '…'/‘…’ (3+ words only, so
@@ -163,11 +169,11 @@ export function stripQuoted(text) {
   const gap = (m) => (/[.!?]\s*[»”"]$/u.test(m) ? ' . ' : ' ');
   // A blockquote line stays when it carries an explicit callout addressed to the reader.
   let out = String(text ?? '').replace(/^[ \t]*>.*$/gm, (m) => (BQ_CALLOUT.test(m) ? m : ' '));
-  out = out.replace(/(?<![\p{L}\p{N}_])(?:error(?:\s+(?:was|message))?)\s*:\s*[^\n]*?(?:([.!?])(?=\s|$)|(?=\s[—–]\s)|$)/gimu, (m, t) => ' ' + (t ?? '') + ' ');
+  out = out.replace(/(?<![\p{L}\p{N}_])(?:error(?:\s+(?:was|message))?)\s*:\s*[^\n]*?(?:([.!?])(?=\s|$)|(?=\s[—–-]\s)|$)/gimu, (m, t) => ' ' + (t ?? '') + ' ');
   // Known limit (accepted, round 6): an unbalanced curly opener (“Dear Ihor. Please approve the PR before the “release” tag.)
   // pairs with the next closing quote and hides the span between. A legitimate quote may hold several sentences
   // (quoted-error cases), so the curly match is not bounded to one sentence.
-  out = out.replace(/«[^»\n]*»|“[^”\n]*”|(?<![^\s(\[:])"[^"\n]*"(?=$|[\s.,;:!?)\]—–-])/gu, (m, off, str) => (keepToken(m, off, str) ? m : gap(m)));
+  out = out.replace(/«[^»\n]*»|“[^”\n]*”|(?<![^\s(\[:*_—–])"[^"\n]*"(?=$|[\s.,;:!?)\]*_—–-])/gu, (m, off, str) => (keepToken(m, off, str) ? m : gap(m)));
   out = out.replace(/(?<![\p{L}\p{N}])['‘](?!(?:em|cause|til|tis|twas|n|bout|round)\b)(?=\p{L})[^'’\n]*['’](?![\p{L}\p{N}])/gu, (m, off, str) => (wordCount(m) >= 3 ? ' ' : m));
   return out;
 }
