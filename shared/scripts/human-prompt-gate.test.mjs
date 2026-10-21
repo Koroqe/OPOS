@@ -426,3 +426,14 @@ test('round 5: a comma, colon, " - " or ", and" ends the negation clause', () =>
   for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
   assert.equal(findCta("There's nothing so urgent that it needs your approval."), null);
 });
+
+test('round 6: bare "message:" is not a lead word; elisions are not single-quote openers', () => {
+  const asks = [
+    'I drafted the client message: please review it and approve before 18:00.',
+    "Reply to Ihor's message: confirm the March numbers by 17:00.",
+    "We've pinged 'em twice; please sign the NDA before the founders' call.",
+  ];
+  for (const t of asks) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  assert.equal(findCta('The error message: Please run npm install first.'), null);
+  assert.equal(findCta("He said 'please sign the NDA today' twice."), null);
+});

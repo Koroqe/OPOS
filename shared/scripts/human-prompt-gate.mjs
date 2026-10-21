@@ -151,7 +151,7 @@ const wordCount = (s) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 /**
  * Remove quoted third-party text before any rule runs: «…», "…", “…”, '…'/‘…’ (3+ words only, so
  * contractions are safe), '>' blockquote lines (except an explicit action-required callout), and the
- * rest of the sentence (or up to a dash) after "error:", "error was:", "message:". Reported speech
+ * rest of the sentence (or up to a dash) after "error:", "error was:", "error message:". Reported speech
  * (said / replied) is NOT stripped: it is an action handed to the reader. A span that ended a
  * sentence leaves ' . ' so the next sentence keeps its start. A SHORT quote (1-6 words)
  * right after reply/answer/type/say/ответь/... is an answer token the human is asked to give
@@ -163,9 +163,12 @@ export function stripQuoted(text) {
   const gap = (m) => (/[.!?]\s*[»”"]$/u.test(m) ? ' . ' : ' ');
   // A blockquote line stays when it carries an explicit callout addressed to the reader.
   let out = String(text ?? '').replace(/^[ \t]*>.*$/gm, (m) => (BQ_CALLOUT.test(m) ? m : ' '));
-  out = out.replace(/(?<![\p{L}\p{N}_])(?:error(?:\s+was)?|message)\s*:\s*[^\n]*?(?:([.!?])(?=\s|$)|(?=\s[—–]\s)|$)/gimu, (m, t) => ' ' + (t ?? '') + ' ');
+  out = out.replace(/(?<![\p{L}\p{N}_])(?:error(?:\s+(?:was|message))?)\s*:\s*[^\n]*?(?:([.!?])(?=\s|$)|(?=\s[—–]\s)|$)/gimu, (m, t) => ' ' + (t ?? '') + ' ');
+  // Known limit (accepted, round 6): an unbalanced curly opener (“Dear Ihor. Please approve the PR before the “release” tag.)
+  // pairs with the next closing quote and hides the span between. A legitimate quote may hold several sentences
+  // (quoted-error cases), so the curly match is not bounded to one sentence.
   out = out.replace(/«[^»\n]*»|“[^”\n]*”|(?<![^\s(\[:])"[^"\n]*"(?=$|[\s.,;:!?)\]—–-])/gu, (m, off, str) => (keepToken(m, off, str) ? m : gap(m)));
-  out = out.replace(/(?<![\p{L}\p{N}])['‘](?=\p{L})[^'’\n]*['’](?![\p{L}\p{N}])/gu, (m, off, str) => (wordCount(m) >= 3 ? ' ' : m));
+  out = out.replace(/(?<![\p{L}\p{N}])['‘](?!(?:em|cause|til|tis|twas|n|bout|round)\b)(?=\p{L})[^'’\n]*['’](?![\p{L}\p{N}])/gu, (m, off, str) => (wordCount(m) >= 3 ? ' ' : m));
   return out;
 }
 
