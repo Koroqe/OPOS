@@ -55,6 +55,10 @@ const ANS = '(?:yes|no|y\\/n|ok|okay|go|go\\s+ahead|approve[d]?|confirm|proceed|
 // For "type"/"say" only an approval-like token counts: `type "string"` is documentation.
 const LEX = '(?:yes|no|ok|okay|go|go\\s+ahead|approve[d]?|confirm(?:ed)?|proceed|push|ship|merge|send|done|lgtm|skip|stop|да|нет|ок|давай|одобряю|\\d+)';
 const RU_ANS = '(?:да|нет|ок|\\d+)';
+// "What I need from you: nothing" is a negation, not a request.
+const NONE = `(?!\\s*[:\\-—–]?\\s*(?:nothing|none|nil|n\\/a|ничего|нет|никаких|no\\s+(?:action|decision)s?)${R})`;
+// "does not / doesn't / never need your approval", "Nothing here needs you".
+const NOT_BEFORE = "(?<!n['’]t\\s)(?<!\\b(?:not|never)\\s)(?<!\\b(?:nothing|nobody|no\\s+one)\\b[^.\\n]{0,40})";
 
 /**
  * Each entry: { id, scope, re }. Patterns run case-insensitively with the `u` flag on text with
@@ -86,15 +90,21 @@ export const CTA_PATTERNS = [
   { id: 'ru-reply', scope: 'both', re: new RegExp(`^(?:ответь|ответьте|напиши|напишите|скажи|скажите)${R}\\s+(?:мне\\s+)?(?:просто\\s+)?(?:${TOKEN}|${WRAP}${RU_ANS}${R})`, 'iu') },
   { id: 'ru-reply-open', scope: 'sentence', re: new RegExp(`^(?:ответь|ответьте|напиши|напишите|скажи|скажите)${R}`, 'iu') },
   { id: 'ru-confirm', scope: 'both', re: new RegExp(`^(?:подтверди|подтвердите|одобри|одобрите|дай(?:те)?\\s+знать)${R}`, 'iu') },
-  { id: 'ru-choose', scope: 'sentence', re: new RegExp(`^(?:выбери|выберите|реши|решите|пришли|пришлите)${R}`, 'iu') },
+  { id: 'ru-choose', scope: 'sentence', re: new RegExp(`^(?:выбери|выберите|реши|решите)${R}`, 'iu') },
+  // «пришли» is also past tense ("arrived"): the imperative "send" only with an addressee or object.
+  { id: 'ru-send', scope: 'both', re: new RegExp(`^(?:пришли|пришлите)${R}\\s+(?:мне|нам|сюда|в\\s+чат|агенту|вывод|результат|скрин\\p{L}*|лог\\p{L}*|ответ|текст|файл|ссылку)${R}`, 'iu') },
+  // sentence-initial "Please <action verb>" (not "Please note / be aware")
+  { id: 'en-please', scope: 'polite', re: new RegExp(`^(?:sign|log|check|click|run|paste|reply|respond|answer|confirm|approve|authori[sz]e|send|open|go\\s+to|copy|press|enter|type|tell|review|verify|grant|share|forward|restart|install|select|choose|pick|upload|accept|decline|complete|fill|try|visit|reconnect|re-?authenticate|retry)${R}`, 'iu') },
   // (b) headers and phrases addressed to the human
-  { id: 'en-what-i-need', scope: 'anywhere', re: new RegExp(`${L}what\\s+(?:i|we)\\s+(?:'d\\s+|would\\s+)?need\\s+from\\s+you${R}|${L}what(?:'s|\\s+is)\\s+needed\\s+from\\s+you${R}`, 'iu') },
-  { id: 'en-header', scope: 'sentence', re: new RegExp(`^(?:next\\s+steps?\\s+for\\s+you|your\\s+next\\s+step|action\\s+(?:required|needed)|actions\\s+(?:required|needed)|your\\s+(?:move|turn)|(?:still\\s+)?waiting\\s+on\\s+you|decisions?\\s+for\\s+you|(?:need|needed)\\s+from\\s+you)${R}`, 'iu') },
-  { id: 'ru-what-i-need', scope: 'anywhere', re: new RegExp(`${L}(?:что|чего)\\s+(?:мне\\s+|нам\\s+)?(?:нужно|надо|жду)\\s+от\\s+(?:тебя|вас)${R}|${L}от\\s+(?:тебя|вас)\\s+(?:нужн\\p{L}*|требуется)${R}`, 'iu') },
-  { id: 'ru-header', scope: 'sentence', re: new RegExp(`^(?:твой\\s+ход|ваш\\s+ход|следующий\\s+шаг\\s+(?:за\\s+тобой|за\\s+вами|для\\s+тебя|для\\s+вас)|нужно\\s+от\\s+(?:тебя|вас)|требуется\\s+действие)${R}`, 'iu') },
+  { id: 'en-what-i-need', scope: 'anywhere', re: new RegExp(`${L}what\\s+(?:i|we)\\s+(?:'d\\s+|would\\s+)?need\\s+from\\s+you${R}${NONE}|${L}what(?:'s|\\s+is)\\s+needed\\s+from\\s+you${R}${NONE}`, 'iu') },
+  { id: 'en-header', scope: 'sentence', re: new RegExp(`^(?:next\\s+steps?\\s+for\\s+you|your\\s+next\\s+step|action\\s+(?:required|needed)|actions\\s+(?:required|needed)|your\\s+(?:move|turn)|(?:still\\s+)?waiting\\s+on\\s+you|decisions?\\s+for\\s+you|(?:need|needed)\\s+from\\s+you)${R}${NONE}`, 'iu') },
+  { id: 'en-lead-in', scope: 'sentence', re: new RegExp(`^(?:what(?:'s|\\s+is)\\s+left\\s+for\\s+you|\\p{L}+\\s+(?:things?|steps?|choices?|decisions?|items?|questions?)\\s+(?:for\\s+you|needing\\s+you|that\\s+need\\s+you)|your\\s+steps?(?=\\s*:))\\s*(?::|$)`, 'iu') },
+  { id: 'ru-what-i-need', scope: 'anywhere', re: new RegExp(`${L}(?:что|чего)\\s+(?:мне\\s+|нам\\s+)?(?:нужно|надо|жду)\\s+от\\s+(?:тебя|вас)${R}|${L}от\\s+(?:тебя|вас)\\s+(?:нужн\\p{L}*|требуется)${R}${NONE}`, 'iu') },
+  { id: 'ru-header', scope: 'sentence', re: new RegExp(`^(?:твой\\s+ход|ваш\\s+ход|следующий\\s+шаг\\s+(?:за\\s+тобой|за\\s+вами|для\\s+тебя|для\\s+вас)|нужно\\s+от\\s+(?:тебя|вас)|требуется\\s+действие)${R}${NONE}`, 'iu') },
+  { id: 'ru-lead-in', scope: 'sentence', re: new RegExp(`^(?:тебе\\s+осталось|вам\\s+осталось|твой\\s+шаг|ваш\\s+шаг|твои\\s+шаги|ваши\\s+шаги)\\s*(?::|$)`, 'iu') },
   // (d) "needs your decision / approval ..." (not "input": that is a form label)
-  { id: 'en-needs-your', scope: 'anywhere', re: new RegExp(`${L}(?:needs?|awaiting|waiting\\s+(?:on|for))\\s+your\\s+(?:decision|approval|go(?:-|\\s)?ahead|sign-?off|confirmation|answer|reply)${R}`, 'iu') },
-  { id: 'en-needs-you', scope: 'anywhere', re: new RegExp(`(?<!\\b(?:nothing|nobody|no\\s+one)\\s)${L}needs?\\s+you${R}`, 'iu') },
+  { id: 'en-needs-your', scope: 'anywhere', re: new RegExp(`${NOT_BEFORE}${L}(?:needs?|awaiting|waiting\\s+(?:on|for))\\s+your\\s+(?:decision|approval|go(?:-|\\s)?ahead|go|ok(?:ay)?|sign-?off|confirmation|answer|reply)${R}`, 'iu') },
+  { id: 'en-needs-you', scope: 'anywhere', re: new RegExp(`${NOT_BEFORE}${L}needs?\\s+you${R}`, 'iu') },
   { id: 'ru-needs-your', scope: 'anywhere', re: new RegExp(`${L}нужн\\p{L}*\\s+(?:твоё|твое|ваше)\\s+(?:решение|одобрение|подтверждение|согласие|добро)${R}|${L}жду\\s+(?:твоего|вашего)\\s+(?:решения|ответа|одобрения|подтверждения|добро)${R}`, 'iu') },
   // (e) "your call" only as a standalone phrase
   { id: 'en-want-your-call', scope: 'anywhere', re: new RegExp(`${L}(?:want|wants|need|needs|would\\s+like)\\s+your\\s+call${R}`, 'iu') },
@@ -102,8 +112,9 @@ export const CTA_PATTERNS = [
   { id: 'ru-your-call', scope: 'sentence', re: new RegExp(`^(?:тебе|вам)\\s+решать\\s*[.!:]*$`, 'iu') },
   // (c) a closing direct question to the user
   { id: 'en-question-strong', scope: 'question-any', re: new RegExp(`^(?:(?:should|shall|may)\\s+(?:i|we)${R}|(?:do|would)\\s+you\\s+(?:want|like|prefer|approve|agree)${R}|want\\s+me\\s+to${R}|(?:can|could|will|would)\\s+you${R})`, 'iu') },
-  { id: 'en-question', scope: 'question', re: new RegExp(`^(?:(?:should|shall|may|can|could|would|will|do|did|are)\\s+(?:i|we|you)${R}|want\\s+me\\s+to${R}|which${R}|what\\s+(?:should|shall|do\\s+you|would\\s+you)${R}|is\\s+that\\s+(?:ok|okay|fine|good|right|correct)${R}|does\\s+(?:that|this)\\s+(?:work|sound|look)${R}|(?:proceed|continue|go\\s+ahead)\\s*\\?|ready\\b)`, 'iu') },
-  { id: 'ru-question', scope: 'question', re: new RegExp(`^(?:хочешь|хотите|продолжа(?:ть|ем)|продолжить|что\\s+выбира(?:ешь|ете)|как\\s+поступ\\p{L}+|какой|какую|какое|какие|какого|согласен|согласна|согласны|можно\\s+ли|могу\\s+ли|стоит\\s+ли|нужно\\s+ли|делать\\s+ли|делаем)${R}`, 'iu') },
+  { id: 'en-question', scope: 'question', re: new RegExp(`^(?:(?:should|shall|may|can|could|would|will|do|did|are)\\s+(?:i|we|you)${R}|want\\s+me\\s+to${R}|which${R}|what\\s+(?:should|shall|do\\s+you|would\\s+you)${R}|is\\s+that\\s+(?:ok|okay|fine|good|right|correct)${R}|does\\s+(?:that|this)\\s+(?:work|sound|look)${R}|(?:proceed|continue|go\\s+ahead)\\s*\\?|ready\\b|ok(?:ay)?\\s+to\\s+\\p{L}+|\\p{L}+\\s+or\\s+(?:hold|wait|skip|not|stop|pause|cancel|later)\\s*\\?)`, 'iu') },
+  { id: 'en-need-your-ok', scope: 'anywhere', re: new RegExp(`${NOT_BEFORE}${L}i\\s+need\\s+your\\s+(?:ok(?:ay)?|go|go-ahead|approval|confirmation|decision|answer)${R}`, 'iu') },
+  { id: 'ru-question', scope: 'question', re: new RegExp(`^(?:хочешь|хотите|продолжа(?:ть|ем)|продолжить|что\\s+выбира(?:ешь|ете)|как\\s+поступ\\p{L}+|какой|какую|какое|какие|какого|согласен|согласна|согласны|можно\\s+ли|могу\\s+ли|стоит\\s+ли|нужно\\s+ли|делать\\s+ли|делаем|подтвержда\\p{L}+|отправля(?:ем|ть)|публику\\p{L}+|запускаем)${R}`, 'iu') },
   // a "Y/n" prompt
   { id: 'yn-prompt', scope: 'anywhere', re: /\?\s*\(?y\/n\)?(?=[\s.?!]|$)|\(y\/n\)/iu },
   // (f) a founder-action addressed to the reader ("your remaining founder-action items" is a report)
@@ -124,7 +135,7 @@ export function stripFences(text) {
     .replace(/```[^`\n]*```/g, ' ');
 }
 
-const FILLER = /^(?:(?:please|pls|kindly|just|now|so|then|also|and|but|ok(?:ay)?|пожалуйста|теперь|тогда|и|но|а|так)[,\s]+)+/iu;
+const FILLER = /^(?:(?:please|pls|kindly|just|now|so|then|also|and|but|ok(?:ay)?(?=,)|пожалуйста|теперь|тогда|и|но|а|так)[,\s]+)+/iu;
 const SENTENCE_SPLIT = /(?<=[.!?…:;][*_`"'”’»)\]]*)\s+|\s+[—–]\s+|\s+-\s+/u;
 const CLAUSE_SPLIT = /,\s+|\s+[—–]\s+|\s+-\s+|\s+(?:then|and|и|то)\s+/iu;
 
@@ -138,6 +149,9 @@ function tidy(s) {
   return out.trim();
 }
 
+// tidy() strips the filler "please": remember that the unit was a polite request.
+const isPolite = (s) => /^[\s>#*_\-•+]*(?:(?:\d{1,2}|[a-z])[.)]\s+)?(?:(?:and|but|ok(?:ay)?|so|then|also|now|just)[,\s]+)*(?:please|pls|kindly)[,\s]/i.test(s);
+
 /** Break text into units: sentences (kind 'sentence') and later clauses of a sentence (kind 'clause'). */
 export function toUnits(text) {
   const clean = stripFences(text);
@@ -149,10 +163,10 @@ export function toUnits(text) {
       for (const raw of line.split(SENTENCE_SPLIT)) {
         const sentence = tidy(raw);
         if (!sentence) continue;
-        units.push({ text: sentence, kind: 'sentence', para: p });
+        units.push({ text: sentence, kind: 'sentence', para: p, polite: isPolite(raw) });
         raw.split(CLAUSE_SPLIT).slice(1).forEach((c) => {
           const clause = tidy(c);
-          if (clause) units.push({ text: clause, kind: 'clause', para: p });
+          if (clause) units.push({ text: clause, kind: 'clause', para: p, polite: isPolite(c) });
         });
       }
     }
@@ -171,8 +185,13 @@ export function findCta(text) {
   const { clean, units, paragraphs } = toUnits(text);
   const byScope = (...scopes) => CTA_PATTERNS.filter((p) => scopes.includes(p.scope));
 
-  for (const u of units) {
+  // "Action required: none." - the colon split puts the negation in the next unit.
+  const NONE_NEXT = /^(?:nothing|none|nil|n\/a|ничего|нет|никаких|no\s+(?:action|decision)s?)(?![\p{L}\p{N}_])/iu;
+  const sentenceAfter = (i) => units.slice(i + 1).find((x) => x.kind === 'sentence');
+  for (const [i, u] of units.entries()) {
+    if (u.kind === 'sentence' && /:$/.test(u.text) && NONE_NEXT.test(sentenceAfter(i)?.text ?? '')) continue;
     const scopes = u.kind === 'sentence' ? ['sentence', 'both'] : ['clause', 'both'];
+    if (u.polite) scopes.push('polite');
     for (const pat of byScope(...scopes)) {
       // 'both' patterns are the strong forms: they apply at a sentence start AND at a clause start.
       if (pat.re.test(u.text)) return { id: pat.id, snippet: snip(clean, u.text) };
@@ -203,10 +222,15 @@ export function findCta(text) {
       if (pat.re.test(u.text)) return { id: pat.id, snippet: snip(clean, u.text) };
     }
   }
+  const sentences = units.filter((u) => u.kind === 'sentence');
   for (const u of candidates) {
     if (!endsWithQuestion(u.text)) continue;
+    // "How do we handle X: pay now or wait?" - the colon split must not let the question escape.
+    const i = sentences.indexOf(u);
+    const prev = i > 0 && sentences[i - 1].para === u.para && /:$/.test(sentences[i - 1].text) ? sentences[i - 1].text : '';
     for (const pat of byScope('question')) {
       if (pat.re.test(u.text)) return { id: pat.id, snippet: snip(clean, u.text) };
+      if (prev && pat.re.test(prev)) return { id: pat.id, snippet: snip(clean, `${prev} ${u.text}`) };
     }
   }
   return null;

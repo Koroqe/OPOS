@@ -198,6 +198,48 @@ test('real-transcript forms: "Y/n", "Reply e.g.", "Decision for you:", "want you
   }
 });
 
+test('round 3: Russian past tense "пришли" passes, the imperative "send" still blocks', () => {
+  for (const t of ['Пришли ответы от юристов: HLC и DLA.', 'Пришли деньги от клиента, 12 000 €.', 'Вчера пришли два письма.']) {
+    assert.equal(analyzeTurn([user('go'), say(t)]).block, false, t);
+  }
+  for (const t of ['Пришли мне вывод команды.', 'Пришли сюда скриншот.', 'Пришли вывод агенту.', 'Скопируй и пришли результат.']) {
+    assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  }
+});
+
+test('round 3: "Please <action>" blocks, "Please note / be aware" passes', () => {
+  for (const t of [
+    'Please sign in to the dashboard.', 'Please log out in that window and back in.', 'Please check two things in Telegram:',
+    'Please click "Yes"', 'Please run the migration.', 'Please paste the token here.', 'Please reply when done.',
+    'Done with the draft. Please confirm the amount.', 'Please approve the PR.', 'Fixed it, and please run the tests.',
+  ]) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+  for (const t of ['Please note the cache is cold.', 'Please be aware this is slow.', 'Note: please see the issue for details.']) {
+    assert.equal(analyzeTurn([user('go'), say(t)]).block, false, t);
+  }
+});
+
+test('round 3: lead-ins addressed to the human block', () => {
+  for (const t of [
+    "What's left for you:", 'Two things for you:', 'One choice for you:', 'Your step:', 'Your steps:', '## Two things needing you',
+    'Тебе осталось:', 'От тебя нужно:', 'Твой шаг:',
+  ]) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});
+
+test('round 3: short closing questions asking for a go block', () => {
+  for (const t of [
+    'Merged to the branch.\n\nMerge or hold?', 'Draft is ready.\n\nOK to send?', 'I need your OK before the push.',
+    'Waiting for your go to publish.', 'Готово.\n\nОтправляем?', 'Подтверждаешь?',
+    'Как поступим с инвойсом: платим сейчас или ждём?',
+  ]) assert.equal(analyzeTurn([user('go'), say(t)]).block, true, t);
+});
+
+test('round 3: negations pass', () => {
+  for (const t of [
+    "It's R1, so it doesn't need your approval.", 'This is R1, so it does not need your approval.', 'Nothing here needs you.',
+    'What I need from you: nothing — all done.', 'Action required: none.', 'Нужно от тебя: ничего.',
+  ]) assert.equal(analyzeTurn([user('go'), say(t)]).block, false, t);
+});
+
 test('pattern list is exported and well-formed', () => {
   assert.ok(CTA_PATTERNS.length >= 10);
   for (const p of CTA_PATTERNS) assert.ok(p.id && p.re instanceof RegExp);
