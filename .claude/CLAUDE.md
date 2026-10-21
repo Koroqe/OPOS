@@ -123,6 +123,11 @@ department's own `deploy` skill), not through the SDLC commands.
   a GitHub issue labelled `founder-action` before the turn ends — chat messages
   and issue comments are not the task store. Canonical statement: the steward's
   **Capture conventions, duty 3**. If the two disagree, the agent file wins.
+- **Human prompts go through AskUserQuestion.** In an interactive session every
+  decision or action the human owes is asked with `AskUserQuestion` before the
+  turn ends; prose like "reply 1 or 2" does not count. The Stop hook
+  `shared/scripts/human-prompt-gate.mjs` enforces it. Canonical text: the
+  steward's **Human prompts go through AskUserQuestion**.
 
 ## Framework updates and how they reach you
 
