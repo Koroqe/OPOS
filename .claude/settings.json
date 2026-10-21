@@ -28,6 +28,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node shared/scripts/human-prompt-gate.mjs"
+          }
+        ]
+      }
     ]
   }
 }
