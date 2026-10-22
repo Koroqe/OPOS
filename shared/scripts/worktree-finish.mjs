@@ -285,7 +285,6 @@ function adminDirsOf(wt, common) {
   return hits;
 }
 
-/** The lock is a file in the admin dir; older git (< 2.31) omits `locked` from `worktree list --porcelain`. */
 /** The admin dir named by the target's own `.git` file, or the single gitdir-file match when the directory is
  * missing; verified to be a direct child of <common>/worktrees, the only match, and to have HEAD == the checked HEAD. */
 function ownAdminDir(wt, common) {
@@ -329,6 +328,7 @@ function isFreshWorktree(wt, common) {
   return !!hl && hl.length <= 1;
 }
 
+/** The lock is a file in the admin dir; older git (< 2.31) omits `locked` from `worktree list --porcelain`. */
 function isLockedOnDisk(wt, common) {
   return adminDirsOf(wt, common).some((adm) => fs.existsSync(path.join(adm, 'locked')));
 }
@@ -520,6 +520,7 @@ export function run(argv, cwd = process.cwd(), log = console.log) {
     if (!hits.length) { log(`${want} is not a worktree of this repository`); return CODES.NOT_WORKTREE; }
     // never pick one of several records by position: the answer would depend on list order
     if (hits.length > 1) { log(`REFUSED ${want}: ${hits.length} worktree records point at this directory (a stale registration was reused); resolve by hand`); return CODES.AMBIGUOUS; }
+    if (opt.unregisterMissing && fs.existsSync(hits[0].path)) { log('usage: directory exists; --unregister-missing only applies to a missing directory'); return CODES.USAGE; }
     targets = [hits[0]];
   }
   if (opt.all && !targets.length) { log('no linked worktrees'); return CODES.OK; }

@@ -709,6 +709,17 @@ R3('N2: --path on a missing directory refuses (24) unless --unregister-missing; 
   assert.equal(f.finish(['--all-merged', '--unregister-missing']).status, CODES.USAGE);
 });
 
+R3('I1: --unregister-missing on a directory that exists is a usage error (2) and removes nothing', (f) => {
+  const wt = f.addWt('feat-exists', { merged: true });
+  for (const extra of [[], ['--apply']]) {
+    const r = f.finish(['--path', wt, '--unregister-missing', ...extra]);
+    assert.equal(r.status, CODES.USAGE, r.stdout + r.stderr);
+    assert.match(r.stdout + r.stderr, /directory exists; --unregister-missing only applies to a missing directory/);
+    assert.ok(fs.existsSync(wt));
+    assert.ok(listText(f).includes(wt));
+  }
+});
+
 R3('N3: a lossy clean filter + assume-unchanged cannot hide an edit (11)', (f) => {
   const wt = f.addWt('feat-filter', { merged: true });
   fs.writeFileSync(path.join(f.repo, '.git', 'info', 'attributes'), 'lossy.txt filter=strip\n');
