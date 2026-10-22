@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.24.0] - 2026-10-22
+
+A session now removes its own merged git worktree instead of leaving it behind.
+
+### Added
+
+- **`shared/scripts/worktree-finish.mjs`, a deterministic worktree cleanup (zero dependencies).** Worktrees piled up because nothing ever removed them once their branch was merged; a consumer had about twenty, most long merged. The script is a dry run by default (`--apply` removes), targets the current worktree or `--path <dir>`, and `--all-merged` lists or removes every merged, clean linked worktree and skips the rest. It refuses with a distinct exit code and a one-line message when the target is the main checkout (10), has uncommitted or untracked changes (11), has ignored files other than known OPOS local state (12, the files are listed), whose HEAD is not an ancestor of `origin/<default branch>` after a fetch (13, the default branch is detected, never hardcoded), holds leases (14), is locked (15), or contains the process's own cwd (16, `--apply` only). Removal uses `git worktree remove` on git 2.17 or newer and `rm -rf` plus `git worktree prune` on older git, then `git branch -d`; never `-D`, never a remote branch. When the main checkout sits on another branch and git's own merge test would refuse, the merge is already proven against `origin/<default>`, so the ref is dropped with a guarded `git update-ref -d`. Tests (`shared/scripts/worktree-finish.test.mjs`, 13) build throwaway origins and worktrees with real git and run under git 2.15; added to CI's `node --test` list.
+
+### Changed
+
+- **`task-complete` 0.3.0** gains a last step 17: when the session ran in a linked worktree whose work is merged and pushed, remove it and its merged branch with the script, from the main checkout. A refusal is reported, never forced.
+- **Steward permission tiers.** Removing the session's own merged worktree and branch is part of finishing its own work (Notice tier). Removing worktrees the session did not create (`--all-merged` over others') stays Confirm tier. The `tools:` frontmatter is unchanged.
+- **`.claude/CLAUDE.md`** git rule gains one line stating the same.
+
+### Migration
+
+- None required. To clear an existing backlog: `node shared/scripts/worktree-finish.mjs --all-merged` to preview, then add `--apply` (Confirm tier, as the worktrees are not the session's own).
+
 ## [0.23.0] - 2026-10-21
 
 The steward now asks the human directly, and a hook checks that it did.

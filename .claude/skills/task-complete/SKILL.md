@@ -56,6 +56,8 @@ When `--since_sha` is not passed, resolve in this order:
 15. Print one-line confirmation: `Completed: #<number> — closed; <N> commits, <M> PRs`.
 16. **Write history entry** to `$REPO_ROOT/.claude/skills/task-complete/history/<YYYY-MM-DD>-<short-run-id>.md`. Outcome: `success` if all steps succeeded; `partial` if there were no commits in range; `failure` if any required step failed.
 
+17. **Remove the session's own worktree (v0.24.0). Always the last step: it deletes the directory the session may be standing in.** Only when the work is merged into the default branch and pushed, and this session ran in a linked git worktree (`git rev-parse --git-dir` differs from `--git-common-dir`). Everything above, including the history entry and the step 13 archive move, must already be committed, merged and pushed: a dirty worktree is refused with exit 11 and simply stays. Run from the main checkout, never from inside the worktree: `cd <main-checkout> && node shared/scripts/worktree-finish.mjs --path <worktree>` (dry run), then the same with `--apply`. It removes the worktree and deletes the merged local branch with `git branch -d`; it never deletes remote branches. A non-zero exit (10 main checkout, 11 dirty, 12 ignored files, 13 not merged, 14 leases held, 15 locked, 16 own cwd) is reported in the final line, never forced. Skip silently when the session was not in a linked worktree.
+
 ## Outputs
 
 - A final comment on the issue.

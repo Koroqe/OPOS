@@ -3,9 +3,9 @@ process_name: task-complete
 owner: chief-of-staff
 collaborators: [eng-lead]
 inputs: [summary, since_sha, issue, deliverables]
-success_criteria: [update_check_attempted, active_task_resolved, final_comment_posted, lease_gate_passed_or_not_configured, status_done_label_applied, issue_closed_with_reason_completed, lease_released_or_not_configured, task_file_archived, current_task_cache_updated, missing_ref_warning_surfaced_if_applicable, history_entry_written]
+success_criteria: [update_check_attempted, active_task_resolved, final_comment_posted, lease_gate_passed_or_not_configured, status_done_label_applied, issue_closed_with_reason_completed, lease_released_or_not_configured, task_file_archived, own_worktree_removed_or_refusal_reported, current_task_cache_updated, missing_ref_warning_surfaced_if_applicable, history_entry_written]
 slo: "30 seconds"
-version: 0.2.0
+version: 0.3.0
 ---
 
 # task-complete
@@ -58,6 +58,10 @@ Mirrors the procedure in SKILL.md:
 14. Remove the issue from the local active cache: `node shared/scripts/task-state.mjs remove-active --issue "$ISSUE_NUM"` (a concurrent `task-complete` finding it already absent exits 0).
 15. Print one-line confirmation.
 16. Write the history entry.
+17. (v0.24.0) Last step. When the session ran in a linked git worktree whose work is merged and pushed
+    (the history entry and the archived task file committed with it), remove the worktree and its merged
+    branch: `shared/scripts/worktree-finish.mjs --path <worktree> --apply`, run from the main checkout.
+    Report a refusal, never force.
 
 ## Done when
 
