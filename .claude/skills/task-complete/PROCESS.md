@@ -63,11 +63,17 @@ Mirrors the procedure in SKILL.md:
     one-line note) and the session ran in a linked git worktree whose work is merged and pushed (the
     history entry and the archived task file committed with it): remove the worktree and its merged
     branch with `shared/scripts/worktree-finish.mjs --path <worktree> --apply`, run from the main checkout.
-    Report a refusal, never force. Refusals: 10 main checkout, 11 dirty (including an edit hidden by
+    The branch is deleted with `git branch -d`; only when git answers "not fully merged" (it judges against
+    the main checkout's HEAD, while the script already proved the merge into origin/<default>) the script
+    falls back to `git update-ref -d refs/heads/<branch> <old-sha>`, which fails if the branch moved. Any
+    other branch error keeps the branch and exits 17. Report a refusal, never force. Refusals: 10 main checkout, 11 dirty (including an edit hidden by
     skip-worktree or assume-unchanged), 12 ignored files or a nested git repo, 13 not merged, 14 leases,
     15 locked, 16 own cwd, 20 not this repo's worktree, 21 non-empty `.current-task` (another live task
-    remains), 22 contains another worktree; 17 removal failed or could not be verified; 18 default branch
-    or fetch unavailable.
+    remains), 22 contains another worktree, 23 more than one worktree record or admin dir claims the
+    directory (a stale registration was reused; resolve by hand), 24 the directory is missing (refused;
+    `--unregister-missing` unregisters only that record and keeps the branch), 26 `git status` itself
+    failed; 17 removal failed or could not be verified; 18 default branch or fetch unavailable. (25 "brand
+    new worktree" is only ever a SKIP of `--all-merged`, never of the session's own `--path`.)
 
 ## Done when
 

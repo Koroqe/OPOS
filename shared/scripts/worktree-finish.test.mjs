@@ -11,6 +11,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import * as WF from './worktree-finish.mjs';
 const { isAllowedIgnored, parseWorktrees, gitAtLeast, CODES } = WF;
+const R3 = (name, fn, opts = {}) => test(`round3 ${name}`, opts, () => { const f = fixture(); try { fn(f); } finally { f.cleanup(); } });
 
 const SCRIPT = path.resolve(import.meta.dirname, 'worktree-finish.mjs');
 const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
@@ -332,16 +333,16 @@ test('WARNING 3: a lock is found on disk even when the worktree directory is mis
   } finally { f.cleanup(); }
 });
 
-test('WARNING 3: a worktree whose directory is gone is pruned and its branch deleted; verified, not assumed', () => {
+test('WARNING 3 + round3 N2: a worktree whose directory is gone is only unregistered with --unregister-missing; reported as such, never as removed', () => {
   const f = fixture();
   try {
     const wt = f.addWt('feat-m', { merged: true });
     fs.rmSync(wt, { recursive: true, force: true });
-    const r = f.finish(['--path', wt, '--apply']);
+    const r = f.finish(['--path', wt, '--apply', '--unregister-missing']);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /REMOVED/);
+    assert.match(r.stdout, /UNREGISTERED .*unregistered \(directory missing\)/);
+    assert.doesNotMatch(r.stdout, /REMOVED|worktree removed/);
     assert.ok(!g(f.repo, 'worktree', 'list').includes('feat-m'));
-    assert.ok(!branchExists(f.repo, 'feat-m'));
   } finally { f.cleanup(); }
 });
 
@@ -596,4 +597,182 @@ test('round2 INFO 8: an unreadable ignored directory is refused (12), not assume
     assert.match(r.stdout, /cannot (read|enumerate|prove)|could not enumerate/);
     assert.ok(fs.existsSync(wt));
   } finally { if (locked && fs.existsSync(locked)) fs.chmodSync(locked, 0o755); f.cleanup(); }
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// round 3
+// ---------------------------------------------------------------------------------------------------------------
+const adminDirs = (f) => fs.readdirSync(path.join(f.repo, '.git', 'worktrees')).sort();
+const listText = (f) => g(f.repo, 'worktree', 'list', '--porcelain');
+
+/** N1 scenario: a merged `feat-x` worktree whose directory is deleted without prune, then the SAME path reused by a
+ * new detached worktree (git < 2.20 allows it) holding an unpushed commit. Returns { wt, precious }. */
+function duplicateRecords(f) {
+  const wt = f.addWt('feat-x', { merged: true });
+  fs.rmSync(wt, { recursive: true, force: true });
+  g(f.repo, 'worktree', 'add', '--detach', wt, 'origin/main');
+  commit(wt, 'precious.txt', 'UNPUSHED');
+  const precious = g(wt, 'rev-parse', 'HEAD');
+  return { wt, precious };
+}
+/** the reuse only happens on git < 2.20; on newer git the add refuses and there is nothing to test. */
+const reuseWorks = (() => {
+  const f = fixture();
+  try { duplicateRecords(f); return true; } catch { return false; } finally { f.cleanup(); }
+})();
+const R3dup = (name, fn) => R3(name, (f) => fn(f, duplicateRecords(f)), { skip: !reuseWorks && 'this git refuses to reuse a stale registered path' });
+
+R3dup('N1: --all-merged --apply skips both duplicate records and keeps the unpushed commit', (f, { wt, precious }) => {
+  assert.equal((listText(f).match(new RegExp('worktree ' + wt.replace(/[.*+?^$()|[\]\\]/g, '\\$&') + '\\n', 'g')) || []).length, 2, 'two records for one path');
+  const r = f.finish(['--all-merged', '--apply']);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /SKIP .*2 worktree records point at this directory/);
+  assert.doesNotMatch(r.stdout, /REMOVED/);
+  assert.ok(fs.existsSync(path.join(wt, 'precious.txt')));
+  assert.equal(g(wt, 'rev-parse', 'HEAD'), precious);
+  assert.equal(adminDirs(f).length, 2, 'neither admin dir was deleted');
+  assert.ok(branchExists(f.repo, 'feat-x'));
+});
+
+R3dup('N1: --path refuses with the dedicated code (23) whichever record is listed first', (f, { wt, precious }) => {
+  const orderOf = () => parseWorktrees(listText(f)).filter((w) => w.path === wt).map((w) => (w.branch ? 'branch' : 'detached')).join(',');
+  const seen = new Set();
+  for (const swap of [false, true]) {
+    if (swap) {
+      // swap the two admin dir names (and the new worktree's .git pointer) so git lists the records the other way round
+      const [a, b] = adminDirs(f);
+      const base = path.join(f.repo, '.git', 'worktrees');
+      fs.renameSync(path.join(base, a), path.join(base, 'tmp-swap'));
+      fs.renameSync(path.join(base, b), path.join(base, a));
+      fs.renameSync(path.join(base, 'tmp-swap'), path.join(base, b));
+      const link = fs.readFileSync(path.join(wt, '.git'), 'utf8');
+      fs.writeFileSync(path.join(wt, '.git'), link.includes(path.join(base, b)) ? link.replace(path.join(base, b), path.join(base, a)) : link.replace(path.join(base, a), path.join(base, b)));
+    }
+    seen.add(orderOf());
+    const r = f.finish(['--path', wt, '--apply']);
+    assert.equal(r.status, CODES.AMBIGUOUS, r.stdout + r.stderr);
+    assert.ok(fs.existsSync(path.join(wt, 'precious.txt')), 'directory kept');
+    assert.equal(adminDirs(f).length, 2);
+    assert.equal(f.finish(['--path', wt]).status, CODES.AMBIGUOUS, 'dry run refuses too');
+  }
+  assert.equal(seen.size, 2, 'both record orders were exercised: ' + [...seen].join(' | '));
+  assert.equal(g(wt, 'rev-parse', 'HEAD'), precious);
+});
+
+R3dup('N1(b): remove() itself refuses to delete anything when the admin dir is not unique (defence in depth)', (f, { wt, precious }) => {
+  const all = parseWorktrees(listText(f));
+  const stale = all.find((w) => w.path === wt && w.branch === 'feat-x');
+  const common = fs.realpathSync(path.join(f.repo, '.git'));
+  const r = WF.remove(stale, { main: f.repo, gitVersion: 'git version 2.15.0', base: 'main', common });
+  assert.equal(r.code, CODES.AMBIGUOUS, r.message);
+  assert.ok(fs.existsSync(path.join(wt, 'precious.txt')));
+  assert.equal(adminDirs(f).length, 2);
+  assert.equal(g(wt, 'rev-parse', 'HEAD'), precious);
+});
+
+R3('N1(b): remove() refuses when the admin dir HEAD is not the checked HEAD', (f) => {
+  const wt = f.addWt('feat-y', { merged: true });
+  const rec = parseWorktrees(listText(f)).find((w) => w.path === wt);
+  const common = fs.realpathSync(path.join(f.repo, '.git'));
+  const r = WF.remove({ ...rec, head: g(f.repo, 'rev-parse', 'origin/main~0').replace(/.$/, (c) => (c === '0' ? '1' : '0')) }, { main: f.repo, gitVersion: 'git version 2.15.0', base: 'main', common });
+  assert.equal(r.code, CODES.AMBIGUOUS, r.message);
+  assert.match(r.message, /not the checked HEAD/);
+  assert.ok(fs.existsSync(wt));
+  assert.equal(adminDirs(f).length, 1);
+});
+
+R3('N2: --all-merged skips a record whose directory is missing; nothing is unregistered and the branch stays', (f) => {
+  const wt = f.addWt('feat-gone', { merged: true });
+  fs.renameSync(wt, wt + '-moved');
+  const r = f.finish(['--all-merged', '--apply']);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /SKIP .*feat-gone.*directory is missing/);
+  assert.doesNotMatch(r.stdout, /REMOVED|UNREGISTERED/);
+  assert.ok(listText(f).includes(wt));
+  assert.ok(branchExists(f.repo, 'feat-gone'));
+  fs.renameSync(wt + '-moved', wt);
+  assert.equal(g(wt, 'rev-parse', '--is-inside-work-tree'), 'true', 'moving the directory back still works');
+});
+
+R3('N2: --path on a missing directory refuses (24) unless --unregister-missing; the flag unregisters only that record, branch kept', (f) => {
+  const wt = f.addWt('feat-gone2', { merged: true });
+  const other = f.addWt('feat-other', { merged: true });
+  fs.renameSync(wt, wt + '-moved');
+  let r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.MISSING_DIR, r.stdout);
+  assert.match(r.stdout, /--unregister-missing/);
+  assert.ok(listText(f).includes(wt));
+  r = f.finish(['--path', wt]);
+  assert.equal(r.status, CODES.MISSING_DIR, 'dry run refuses too');
+  r = f.finish(['--path', wt, '--apply', '--unregister-missing']);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /unregistered \(directory missing\)/);
+  assert.doesNotMatch(r.stdout, /REMOVED|worktree removed/);
+  assert.ok(!listText(f).includes(wt));
+  assert.ok(listText(f).includes(other), 'the other worktree is untouched');
+  assert.ok(branchExists(f.repo, 'feat-gone2'));
+  assert.equal(f.finish(['--all-merged', '--unregister-missing']).status, CODES.USAGE);
+});
+
+R3('N3: a lossy clean filter + assume-unchanged cannot hide an edit (11)', (f) => {
+  const wt = f.addWt('feat-filter', { merged: true });
+  fs.writeFileSync(path.join(f.repo, '.git', 'info', 'attributes'), 'lossy.txt filter=strip\n');
+  g(f.repo, 'config', 'filter.strip.clean', 'grep -v SECRET; true');
+  g(f.repo, 'config', 'filter.strip.smudge', 'cat');
+  commit(wt, 'lossy.txt', 'one\ntwo\n'); g(wt, 'push', '-q', 'origin', 'feat-filter:main');
+  g(wt, 'update-index', '--assume-unchanged', 'lossy.txt');
+  fs.appendFileSync(path.join(wt, 'lossy.txt'), 'SECRET only on disk\n');
+  assert.equal(g(wt, 'status', '--porcelain'), '', 'status is blind');
+  assert.equal(g(wt, 'hash-object', 'lossy.txt'), g(wt, 'rev-parse', ':lossy.txt'), 'and so is the hash comparison (the filter drops the line)');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.DIRTY, r.stdout);
+  assert.match(r.stdout, /lossy\.txt/);
+  assert.match(fs.readFileSync(path.join(wt, 'lossy.txt'), 'utf8'), /SECRET/);
+  // same size, different mode: also seen
+  fs.writeFileSync(path.join(wt, 'lossy.txt'), 'one\ntwo\n');
+  assert.equal(f.finish(['--path', wt]).status, 0, 'restored content is removable');
+  fs.chmodSync(path.join(wt, 'lossy.txt'), 0o755);
+  assert.equal(f.finish(['--path', wt]).status, CODES.DIRTY, 'exec-bit change on a hidden file is refused');
+});
+
+R3('N4: a git status failure has its own code and message, and still refuses', (f) => {
+  const wt = f.addWt('feat-badidx', { merged: true });
+  const adm = fs.readFileSync(path.join(wt, '.git'), 'utf8').replace(/^gitdir:\s*/, '').trim();
+  fs.writeFileSync(path.join(adm, 'index'), 'garbage, not an index');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.STATUS_FAILED, r.stdout);
+  assert.match(r.stdout, /git status failed: /);
+  assert.notEqual(r.status, CODES.NOT_REPO);
+  assert.ok(fs.existsSync(wt));
+});
+
+R3('N5: --all-merged skips a brand-new worktree (reflog shows only its creation); --path and a worktree with work are unaffected', (f) => {
+  const fresh = path.join(f.root, 'fresh');
+  g(f.repo, 'worktree', 'add', '-b', 'fresh', fresh, 'origin/main'); // HEAD is an ancestor of origin/main: "merged"
+  const det = path.join(f.root, 'fresh-det');
+  g(f.repo, 'worktree', 'add', '--detach', det, 'origin/main');
+  const r = f.finish(['--all-merged', '--apply']);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /SKIP .*fresh \[fresh\].*brand new/);
+  assert.match(r.stdout, /SKIP .*fresh-det.*brand new/);
+  assert.ok(fs.existsSync(fresh) && fs.existsSync(det));
+  assert.ok(branchExists(f.repo, 'fresh'));
+  // a commit inside the detached one is activity: it is no longer "fresh" (merged by pushing it)
+  commit(det, 'work.txt'); g(det, 'push', '-q', 'origin', 'HEAD:main');
+  assert.match(f.finish(['--all-merged']).stdout, /OK .*fresh-det/);
+  // explicit --path (the session's own worktree at task-complete) is unaffected
+  const own = f.finish(['--path', fresh, '--apply']);
+  assert.equal(own.status, 0, own.stdout);
+  assert.ok(!fs.existsSync(fresh));
+});
+
+R3('N3: a skip-worktree symlink replaced by a regular file with the same bytes is refused (11)', (f) => {
+  const wt = f.addWt('feat-link', { merged: true });
+  fs.symlinkSync('feat-link.txt', path.join(wt, 'ln')); g(wt, 'add', 'ln'); g(wt, 'commit', '-q', '-m', 'ln'); g(wt, 'push', '-q', 'origin', 'feat-link:main');
+  g(wt, 'update-index', '--skip-worktree', 'ln');
+  assert.equal(f.finish(['--path', wt]).status, 0, 'untouched symlink is removable');
+  fs.unlinkSync(path.join(wt, 'ln')); fs.writeFileSync(path.join(wt, 'ln'), 'feat-link.txt');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.DIRTY, r.stdout);
+  assert.ok(fs.existsSync(path.join(wt, 'ln')));
 });

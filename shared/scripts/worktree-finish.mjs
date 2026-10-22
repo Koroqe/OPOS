@@ -8,17 +8,37 @@
  *   node shared/scripts/worktree-finish.mjs --all-merged         dry run over every linked worktree
  *   ... --apply                                                  actually remove
  *   ... --no-fetch                                               do not `git fetch origin` first (offline)
+ *   ... --path <dir> --unregister-missing                        unregister (only) a record whose directory is gone
  *
  * The gate is the exit code, not a convention. A target is removed only when ALL hold:
  *   10  it is a linked worktree, not the main checkout
  *   15  it is not locked (`git worktree lock`)
  *   20  the directory belongs to this repository (its git common dir equals the main checkout's)
  *   22  no other worktree (or the main checkout) lies inside it
+ *   23  exactly one worktree record and exactly one admin dir (<common>/worktrees/<id>, matched by its
+ *       `gitdir` file) must claim the target's directory. Git < 2.20 lets `worktree add` reuse a path that is
+ *       still registered but whose directory is missing, leaving two records for one directory: which one is
+ *       "the" worktree is undecidable, so every mode refuses (--path never picks one with find(); the answer
+ *       would depend on list order). remove() independently deletes only the admin dir named by the target's
+ *       own `.git` file, and only after confirming that dir is the only match and its HEAD is the checked HEAD.
+ *   24  its directory exists. A record whose directory is missing is SKIPped by --all-merged and refused by
+ *       --path (the content checks cannot run and the admin dir's index, i.e. staged state, would be lost).
+ *       `--path <dir> --unregister-missing` unregisters only that record (rule 23 still applies), keeps its
+ *       branch, and reports "unregistered (directory missing)", never "removed".
+ *   25  (--all-merged only) it is not brand new: SKIPped when the branch reflog
+ *       (<common>/logs/refs/heads/<branch>) shows only "branch: Created from" and the worktree's own HEAD reflog
+ *       (<admin>/logs/HEAD) has at most one entry, i.e. a live session may be about to use it (a fresh branch
+ *       off origin/<default> is trivially "merged"). Chosen over a time window because it needs no clock and
+ *       works on git 2.15; a missing reflog counts as not fresh. Explicit --path is unaffected.
+ *   26  `git status` itself failed (e.g. a corrupt index); the first stderr line is shown. Still refuses.
  *   11  it has no uncommitted or untracked changes (status is read with --untracked-files=all
  *       --ignore-submodules=none, so user config cannot hide anything), and no edit hidden from status
  *       by `git update-index --skip-worktree` / `--assume-unchanged`: `git ls-files -v` lists those
- *       files and each one is compared to the index (`git hash-object` vs the index blob); a differing
- *       or deleted one refuses. A skip-worktree file that is simply absent (sparse checkout) is fine.
+ *       files and each one is compared to the index: the on-disk size (and, with core.fileMode, the exec bit)
+ *       against the index stat data from `git ls-files --debug`, then `git hash-object` against the index
+ *       blob. The size check matters because a lossy clean filter can make an edited file hash like the index
+ *       blob. A differing or deleted one refuses. A skip-worktree file that is simply absent (sparse checkout)
+ *       is fine.
  *   12  it has no ignored files other than known OPOS local state (they would be lost), the ignored
  *       files could be enumerated (fail closed), and it holds no nested git repository (any `.git`
  *       below its own root `.git` file, ignored or not). The `.git` walk never skips a subtree, not
@@ -30,7 +50,7 @@
  *       worktree (task-complete step 14 removes only the completed issue)
  *   13  its HEAD is an ancestor of refs/remotes/origin/<default branch>, after a fetch (merge proven, not assumed)
  *   16  (--apply only) the process is not running inside it
- * Other codes: 0 ok / removed, 2 usage, 3 not a git repo, 17 removal failed or could not be verified,
+ * Other codes: 0 ok / removed / unregistered, 2 usage, 3 not a git repo, 17 removal failed or could not be verified,
  * 18 default branch or fetch unavailable (merge cannot be proven), 19 --path is not a worktree of this repo.
  * 15 locked is read from <git-common-dir>/worktrees/<name>/locked, so it works when the directory is missing.
  *
@@ -59,7 +79,7 @@ import { spawnSync } from 'node:child_process';
 export const CODES = {
   OK: 0, USAGE: 2, NOT_REPO: 3, MAIN: 10, DIRTY: 11, IGNORED: 12, NOT_MERGED: 13,
   LEASES: 14, LOCKED: 15, CWD: 16, REMOVE_FAILED: 17, NO_BASE: 18, NOT_WORKTREE: 19,
-  FOREIGN: 20, ACTIVE_TASK: 21, NESTED_WORKTREE: 22,
+  FOREIGN: 20, ACTIVE_TASK: 21, NESTED_WORKTREE: 22, AMBIGUOUS: 23, MISSING_DIR: 24, FRESH: 25, STATUS_FAILED: 26,
 };
 
 /** Ignored paths that are known OPOS local state and safe to lose with the worktree. */
@@ -99,7 +119,13 @@ function git(args, cwd) {
   return { status: r.status ?? 1, out: (r.stdout || '').trim(), err: (r.stderr || '').trim(), raw: r.stdout || '' };
 }
 
-const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
+const real = (p) => {
+  try { return fs.realpathSync(p); } catch { /* missing: resolve through the parent so /tmp and /private/tmp compare equal */ }
+  const abs = path.resolve(p);
+  const parent = path.dirname(abs);
+  if (parent === abs) return abs;
+  return path.join(real(parent), path.basename(abs));
+};
 
 export function parseWorktrees(porcelain) {
   const list = [];
@@ -193,13 +219,17 @@ export function hiddenEdits(dir) {
     if (tag === 'S' || (tag >= 'a' && tag <= 'z')) cand.push({ p: rec.slice(2), skip: tag === 'S' || tag === 's' });
   }
   if (!cand.length) return { error: null, paths: [] };
-  const ls = git(['ls-files', '-s', '-z'], dir);
-  if (ls.status !== 0) return { error: `git ls-files -s failed: ${ls.err || `exit ${ls.status}`}`, paths: [] };
+  // --debug adds the index stat data (size) after each record: "<mode> <sha> <stage>\t<path>\0  ctime..\n  mtime..\n  dev..\n  uid..\n  size: N\tflags: F\n"
+  const ls = git(['ls-files', '-s', '--debug', '-z'], dir);
+  if (ls.status !== 0) return { error: `git ls-files -s --debug failed: ${ls.err || `exit ${ls.status}`}`, paths: [] };
   const sha = new Map();
-  for (const rec of ls.raw.split('\0')) {
-    const m = /^\d+ ([0-9a-f]{40,64}) (\d)\t(.*)$/s.exec(rec);
-    if (m && (m[2] === '0' || !sha.has(m[3]))) sha.set(m[3], m[1]);
+  const meta = new Map();
+  const recRe = /(\d+) ([0-9a-f]{40,64}) (\d)\t([^\0]*)\0 +ctime:[^\n]*\n +mtime:[^\n]*\n +dev:[^\n]*\n +uid:[^\n]*\n +size: (\d+)\tflags: [0-9a-f]+\n/g;
+  let rm;
+  while ((rm = recRe.exec(ls.raw)) !== null) {
+    if (rm[3] === '0' || !sha.has(rm[4])) { sha.set(rm[4], rm[2]); meta.set(rm[4], { mode: rm[1], size: Number(rm[5]) }); }
   }
+  const fileMode = git(['config', '--bool', 'core.fileMode'], dir).out !== 'false';
   const differ = [];
   const batch = [];
   for (const { p, skip } of cand) {
@@ -212,7 +242,12 @@ export function hiddenEdits(dir) {
       const h = spawnSync('git', ['hash-object', '--stdin'], { cwd: dir, input: fs.readlinkSync(path.join(dir, p)), encoding: 'utf8' });
       if (h.status !== 0 || h.stdout.trim() !== sha.get(p)) differ.push(p);
     } else if (!st.isFile()) differ.push(p);
-    else if (/[\n\r]/.test(p)) {
+    else if (!meta.has(p) || meta.get(p).mode === '120000') differ.push(p); // cannot compare, or a symlink replaced by a regular file: fail closed
+    else if (st.size !== meta.get(p).size || (fileMode && /^100[67]/.test(meta.get(p).mode) && ((st.mode & 0o111) !== 0) !== (meta.get(p).mode === '100755'))) {
+      // size or exec bit differs from the index stat data. Checked before the hash because a lossy clean filter
+      // can make an edited file hash like the index blob while the edit is still on disk only.
+      differ.push(p);
+    } else if (/[\n\r]/.test(p)) {
       const h = git(['hash-object', '--', p], dir);
       if (h.status !== 0 || h.out !== sha.get(p)) differ.push(p);
     } else batch.push(p);
@@ -251,6 +286,46 @@ function adminDirsOf(wt, common) {
 }
 
 /** The lock is a file in the admin dir; older git (< 2.31) omits `locked` from `worktree list --porcelain`. */
+/** The admin dir named by the target's own `.git` file, or the single gitdir-file match when the directory is
+ * missing; verified to be a direct child of <common>/worktrees, the only match, and to have HEAD == the checked HEAD. */
+function ownAdminDir(wt, common) {
+  if (!common) return { error: 'git common dir unknown' };
+  const root = path.join(common, 'worktrees');
+  const matches = adminDirsOf(wt, common).map((a) => real(a));
+  let adm;
+  const linkFile = path.join(wt.path, '.git');
+  if (fs.existsSync(wt.path)) {
+    let m = null;
+    try { m = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(linkFile, 'utf8')); } catch { /* handled below */ }
+    if (!m) return { error: 'its .git file does not name an admin dir' };
+    adm = real(path.resolve(wt.path, m[1].trim()));
+  } else {
+    if (matches.length !== 1) return { error: `${matches.length} admin dirs claim this path, expected exactly 1` };
+    adm = matches[0];
+  }
+  if (path.dirname(adm) !== root) return { error: 'its admin dir is not a direct child of this repository\'s worktrees/ dir' };
+  if (matches.length !== 1 || matches[0] !== adm) return { error: `${matches.length} admin dirs claim this path (or not the one its .git file names), expected exactly 1` };
+  let head;
+  try { head = fs.readFileSync(path.join(adm, 'HEAD'), 'utf8').trim(); } catch (e) { return { error: `cannot read admin HEAD: ${e.code || e.message}` }; }
+  const ref = /^ref:\s*(.+)$/.exec(head);
+  if (ref) { const r = git(['rev-parse', '--verify', '-q', ref[1]], common); head = r.status === 0 ? r.out : null; }
+  if (!head || !wt.head || head !== wt.head) return { error: `its admin dir's HEAD (${head ? head.slice(0, 8) : 'unresolved'}) is not the checked HEAD (${wt.head ? wt.head.slice(0, 8) : 'none'})` };
+  return { adm };
+}
+
+/** A brand-new worktree of a live session has nothing but its creation in the reflog: branch reflog
+ * (<common>/logs/refs/heads/<branch>) shows only "branch: Created from", and the worktree's own HEAD reflog
+ * (<admin>/logs/HEAD) has at most one entry. A missing reflog is "not fresh" (core.logAllRefUpdates=false). */
+function isFreshWorktree(wt, common) {
+  const lines = (f) => { try { return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean); } catch { return null; } };
+  const adm = adminDirsOf(wt, common)[0];
+  const headLog = adm ? lines(path.join(adm, 'logs', 'HEAD')) : null;
+  if (!headLog || headLog.length > 1) return false;
+  if (!wt.branch) return true;
+  const bl = lines(path.join(common, 'logs', 'refs', 'heads', ...wt.branch.split('/')));
+  return !!bl && bl.length === 1 && /\tbranch: Created from/.test(bl[0]);
+}
+
 function isLockedOnDisk(wt, common) {
   return adminDirsOf(wt, common).some((adm) => fs.existsSync(path.join(adm, 'locked')));
 }
@@ -261,7 +336,7 @@ const inside = (child, parent) => (child + path.sep).startsWith(parent + path.se
  * assume-unchanged, ignored files, nested repos. Returns a refusal or null. Run again right before the delete. */
 function contentChecks(wt) {
   const st = git(['status', '--porcelain', '-z', '--untracked-files=all', '--ignore-submodules=none'], wt.path);
-  if (st.status !== 0) return { code: CODES.NOT_REPO, message: `git status failed: ${st.err}` };
+  if (st.status !== 0) return { code: CODES.STATUS_FAILED, message: `git status failed: ${(st.err.split('\n')[0] || `exit ${st.status}`)}` };
   if (st.raw.replace(/\0/g, '').trim()) return { code: CODES.DIRTY, message: `has uncommitted or untracked changes (${st.raw.split('\0').filter(Boolean).length} paths)` };
   const hid = hiddenEdits(wt.path);
   if (hid.error) return { code: CODES.DIRTY, message: `cannot prove there are no hidden edits: ${hid.error}` };
@@ -277,8 +352,25 @@ function contentChecks(wt) {
 export function check(wt, ctx) {
   const { main, base, applying, cwd, common, all } = ctx;
   if (real(wt.path) === real(main)) return { code: CODES.MAIN, message: 'is the main checkout, not a linked worktree' };
+  {
+    // Git < 2.20 lets `worktree add` reuse a registered path whose directory is gone, leaving two records (and two
+    // admin dirs) for one directory. Which one is "the" worktree is then undecidable: refuse, in every mode.
+    const me0 = real(wt.path);
+    const dups = (all || []).filter((o) => o.path && real(o.path) === me0);
+    if (dups.length > 1) return { code: CODES.AMBIGUOUS, message: `${dups.length} worktree records point at this directory (a stale registration was reused); resolve with \`git worktree prune\` after checking each one by hand` };
+    const n = adminDirsOf(wt, common).length;
+    if (n !== 1) return { code: CODES.AMBIGUOUS, message: `${n} worktree admin dirs claim this directory, expected exactly 1; refusing to guess` };
+  }
   if (wt.locked || isLockedOnDisk(wt, common)) return { code: CODES.LOCKED, message: 'is locked (git worktree lock); unlock it deliberately first' };
   const exists = fs.existsSync(wt.path);
+  if (!exists) {
+    // Content checks cannot run, and the admin dir holds the index (staged state) that would be lost.
+    if (ctx.allMode) return { code: CODES.MISSING_DIR, message: 'its directory is missing (staged state in its admin dir would be lost); not touched in --all-merged. Use --path <dir> --unregister-missing for a deliberate unregister' };
+    if (!ctx.unregisterMissing) return { code: CODES.MISSING_DIR, message: 'its directory is missing; moving it back would restore it, unregistering loses its staged state. Pass --unregister-missing to unregister only this record' };
+  }
+  if (exists && ctx.allMode && isFreshWorktree(wt, common)) {
+    return { code: CODES.FRESH, message: 'looks brand new (its reflog shows only its creation); a live session may be about to use it' };
+  }
   if (exists) {
     if (commonDirOf(wt.path) !== common) {
       return { code: CODES.FOREIGN, message: 'does not belong to this repository (its git common dir differs); refusing to touch it' };
@@ -308,16 +400,18 @@ export function check(wt, ctx) {
     }
     return { code: CODES.OK, message: `removable (to apply, run from outside it: cd ${main} && node shared/scripts/worktree-finish.mjs --path ${wt.path} --apply)` };
   }
+  if (!exists) return { code: CODES.OK, message: 'would unregister (directory missing); branch kept' };
   return { code: CODES.OK, message: 'removable' };
 }
 
-function remove(wt, ctx) {
+export function remove(wt, ctx) {
   const { main, gitVersion, base, common } = ctx;
   const linkFile = path.join(wt.path, '.git');
   const pre = git(['worktree', 'list', '--porcelain'], main);
   if (pre.status !== 0) return { code: CODES.REMOVE_FAILED, message: 'cannot snapshot git worktree list before removal; left untouched' };
   const beforePaths = parseWorktrees(pre.raw).map((w) => path.resolve(w.path));
-  if (fs.existsSync(wt.path)) {
+  const existed = fs.existsSync(wt.path);
+  if (existed) {
     if (real(wt.path) === real(main) || !fs.existsSync(linkFile) || !fs.statSync(linkFile).isFile()) {
       return { code: CODES.REMOVE_FAILED, message: 'refusing to delete: not a linked worktree directory' };
     }
@@ -330,6 +424,14 @@ function remove(wt, ctx) {
     // shrink the check-then-delete window: re-run the content checks immediately before deleting
     const again = contentChecks(wt);
     if (again) return { code: again.code, message: `changed since the check, left untouched: ${again.message}` };
+  } else if (!ctx.unregisterMissing) {
+    return { code: CODES.MISSING_DIR, message: 'directory is missing; left untouched (pass --unregister-missing)' };
+  }
+  // Decide the one admin dir to delete BEFORE touching anything: the one the target's own .git file names, the only
+  // match, whose HEAD is the checked HEAD. Never "every dir whose gitdir file matches the path".
+  const own = ownAdminDir(wt, common);
+  if (own.error) return { code: CODES.AMBIGUOUS, message: `refusing to delete, left untouched: ${own.error}` };
+  if (existed) {
     if (gitAtLeast(gitVersion, 2, 17)) {
       const r = git(['worktree', 'remove', wt.path], main);
       if (r.status !== 0) return { code: CODES.REMOVE_FAILED, message: `git worktree remove failed: ${r.err}` };
@@ -342,10 +444,9 @@ function remove(wt, ctx) {
   // Drop only this worktree's own admin dir. Never a global `git worktree prune`: that would also delete the
   // admin dir of any other worktree whose directory is temporarily missing and orphan its commits.
   if (fs.existsSync(wt.path)) return { code: CODES.REMOVE_FAILED, message: 'worktree directory still exists after removal' };
-  for (const adm of adminDirsOf(wt, common)) {
-    if (!inside(real(adm), path.join(common, 'worktrees')) || real(adm) === path.join(common, 'worktrees')) continue;
-    try { fs.rmSync(adm, { recursive: true, force: true }); } catch (e) {
-      return { code: CODES.REMOVE_FAILED, message: `could not delete the worktree's admin dir ${adm}: ${e.message}` };
+  if (fs.existsSync(own.adm)) {
+    try { fs.rmSync(own.adm, { recursive: true, force: true }); } catch (e) {
+      return { code: CODES.REMOVE_FAILED, message: `could not delete the worktree's admin dir ${own.adm}: ${e.message}` };
     }
   }
   const after = git(['worktree', 'list', '--porcelain'], main);
@@ -358,6 +459,9 @@ function remove(wt, ctx) {
   const lost = beforePaths.filter((q) => !want.has(q) && !want.has(real(q)) && !afterPaths.includes(q));
   if (lost.length) {
     return { code: CODES.REMOVE_FAILED, message: `another worktree disappeared from git worktree list during removal: ${lost.join(', ')}` };
+  }
+  if (!existed) {
+    return { code: CODES.OK, verb: 'UNREGISTERED', message: `unregistered (directory missing)${wt.branch ? `; branch ${wt.branch} kept` : ''}` };
   }
   let note = 'worktree removed';
   if (wt.branch) {
@@ -376,15 +480,17 @@ function remove(wt, ctx) {
 }
 
 export function run(argv, cwd = process.cwd(), log = console.log) {
-  const opt = { apply: false, all: false, fetch: true, path: null };
+  const opt = { apply: false, all: false, fetch: true, path: null, unregisterMissing: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') opt.apply = true;
     else if (a === '--all-merged') opt.all = true;
     else if (a === '--no-fetch') opt.fetch = false;
+    else if (a === '--unregister-missing') opt.unregisterMissing = true;
     else if (a === '--path') opt.path = argv[++i];
-    else { log(`usage: worktree-finish.mjs [--path <dir> | --all-merged] [--apply] [--no-fetch]  (unknown: ${a})`); return CODES.USAGE; }
+    else { log(`usage: worktree-finish.mjs [--path <dir> | --all-merged] [--apply] [--no-fetch] [--unregister-missing]  (unknown: ${a})`); return CODES.USAGE; }
   }
+  if (opt.all && opt.unregisterMissing) { log('usage: --unregister-missing needs --path and cannot be combined with --all-merged'); return CODES.USAGE; }
   if (opt.all && opt.path) { log('usage: --path and --all-merged are mutually exclusive'); return CODES.USAGE; }
   if (opt.path !== null && !opt.path) { log('usage: --path needs a directory'); return CODES.USAGE; }
 
@@ -401,15 +507,17 @@ export function run(argv, cwd = process.cwd(), log = console.log) {
     const f = git(['fetch', 'origin'], main);
     if (f.status !== 0) { log(`git fetch origin failed, merge cannot be proven: ${f.err}`); return CODES.NO_BASE; }
   }
-  const ctx = { main, base, gitVersion, applying: opt.apply, cwd, common: commonDirOf(main), all };
+  const ctx = { main, base, gitVersion, applying: opt.apply, cwd, common: commonDirOf(main), all, allMode: opt.all, unregisterMissing: opt.unregisterMissing };
 
   let targets;
   if (opt.all) targets = all.slice(1).filter((w) => !w.bare);
   else {
     const want = real(opt.path || top.out);
-    const hit = all.find((w) => real(w.path) === want);
-    if (!hit) { log(`${want} is not a worktree of this repository`); return CODES.NOT_WORKTREE; }
-    targets = [hit];
+    const hits = all.filter((w) => real(w.path) === want);
+    if (!hits.length) { log(`${want} is not a worktree of this repository`); return CODES.NOT_WORKTREE; }
+    // never pick one of several records by position: the answer would depend on list order
+    if (hits.length > 1) { log(`REFUSED ${want}: ${hits.length} worktree records point at this directory (a stale registration was reused); resolve by hand`); return CODES.AMBIGUOUS; }
+    targets = [hits[0]];
   }
   if (opt.all && !targets.length) { log('no linked worktrees'); return CODES.OK; }
 
@@ -425,7 +533,7 @@ export function run(argv, cwd = process.cwd(), log = console.log) {
     let r;
     try { r = remove(wt, ctx); } catch (e) { r = { code: CODES.REMOVE_FAILED, message: `unexpected error while removing: ${e.message}` }; }
     lastCode = r.code;
-    if (r.code !== CODES.OK) { failed = true; log(`FAILED ${tag}: ${r.message}`); } else log(`REMOVED ${tag}: ${r.message}`);
+    if (r.code !== CODES.OK) { failed = true; log(`FAILED ${tag}: ${r.message}`); } else log(`${r.verb || 'REMOVED'} ${tag}: ${r.message}`);
   }
   if (opt.all) return failed ? CODES.REMOVE_FAILED : CODES.OK;
   return lastCode;
