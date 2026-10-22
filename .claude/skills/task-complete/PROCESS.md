@@ -58,13 +58,16 @@ Mirrors the procedure in SKILL.md:
 14. Remove the issue from the local active cache: `node shared/scripts/task-state.mjs remove-active --issue "$ISSUE_NUM"` (a concurrent `task-complete` finding it already absent exits 0).
 15. Print one-line confirmation.
 16. Write the history entry.
-17. (v0.24.0) Last step. When the session ran in a linked git worktree whose work is merged and pushed
-    (the history entry and the archived task file committed with it), remove the worktree and its merged
-    branch: `shared/scripts/worktree-finish.mjs --path <worktree> --apply`, run from the main checkout.
-    Report a refusal, never force. Refusals: 10 main checkout, 11 dirty, 12 ignored files or a nested git
-    repo, 13 not merged, 14 leases, 15 locked, 16 own cwd, 20 not this repo's worktree, 22 contains another
-    worktree; 17 removal failed or could not be verified; 18 default branch or fetch unavailable. Code 21
-    (non-empty `.current-task`) applies to `--all-merged` only; step 14 has already emptied this session's.
+17. (v0.24.0) Last step. Only when no other active task remains in this worktree (step 14 removes just the
+    completed issue; if `.claude/.current-task` still lists another issue, keep the worktree and add a
+    one-line note) and the session ran in a linked git worktree whose work is merged and pushed (the
+    history entry and the archived task file committed with it): remove the worktree and its merged
+    branch with `shared/scripts/worktree-finish.mjs --path <worktree> --apply`, run from the main checkout.
+    Report a refusal, never force. Refusals: 10 main checkout, 11 dirty (including an edit hidden by
+    skip-worktree or assume-unchanged), 12 ignored files or a nested git repo, 13 not merged, 14 leases,
+    15 locked, 16 own cwd, 20 not this repo's worktree, 21 non-empty `.current-task` (another live task
+    remains), 22 contains another worktree; 17 removal failed or could not be verified; 18 default branch
+    or fetch unavailable.
 
 ## Done when
 

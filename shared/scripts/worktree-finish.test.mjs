@@ -50,6 +50,10 @@ test('pure helpers', () => {
   assert.ok(isAllowedIgnored('.claude/skills/lease/.state/'));
   assert.ok(isAllowedIgnored('sub/.DS_Store'));
   assert.ok(isAllowedIgnored('web/node_modules/'));
+  assert.ok(!isAllowedIgnored('web/node_modules/notes.txt'), 'node_modules only as an ignored directory entry');
+  assert.ok(!isAllowedIgnored('src/__pycache__/draft.py'));
+  assert.ok(!isAllowedIgnored('src/__pycache__/'));
+  assert.ok(!isAllowedIgnored('x/.DS_Store/'), '.DS_Store only as a file');
   for (const f of ['.claude/.sessions/abc.ctx', '.claude/.opos-update-check', '.claude/.opos-update-state.json',
     '.claude/.opos-update.lock', '.claude/.last-update-check', '.claude/.update-probe', 'x/__pycache__/a.pyc']) {
     assert.ok(isAllowedIgnored(f), f);
@@ -413,7 +417,7 @@ test('INFO 10: a relative gitdir in the worktree is resolved against the worktre
   } finally { f.cleanup(); }
 });
 
-test('INFO 11: --all-merged skips a worktree with a non-empty .current-task (21); a single --path does not', () => {
+test('INFO 11 / WARNING 4: a non-empty .current-task refuses (21) in --all-merged AND --path mode; empty or absent is removable', () => {
   const f = fixture();
   try {
     const live = ignoringWt(f, 'live', ['.claude/.current-task']);
@@ -427,10 +431,14 @@ test('INFO 11: --all-merged skips a worktree with a non-empty .current-task (21)
     fs.writeFileSync(path.join(live, '.claude', '.current-task'), '');
     assert.equal(f.finish(['--all-merged', '--apply']).status, 0);
     assert.ok(!fs.existsSync(live));
-    // the single-target own-worktree path does not apply the check
+    // WARNING 4: the own-worktree --path mode refuses too: another live task remains in that worktree
     const own = ignoringWt(f, 'own', ['.claude/.current-task', '# own']);
     fs.mkdirSync(path.join(own, '.claude'), { recursive: true });
     fs.writeFileSync(path.join(own, '.claude', '.current-task'), '456\n');
+    const ro = f.finish(['--path', own, '--apply']);
+    assert.equal(ro.status, CODES.ACTIVE_TASK, ro.stdout);
+    assert.ok(fs.existsSync(own));
+    fs.writeFileSync(path.join(own, '.claude', '.current-task'), '');
     assert.equal(f.finish(['--path', own]).status, 0);
   } finally { f.cleanup(); }
 });
@@ -471,4 +479,121 @@ test('INFO 12: a detached-HEAD worktree is removed without touching any branch',
     assert.ok(!fs.existsSync(wt));
     assert.ok(branchExists(f.repo, 'feat-d2'), 'no branch is associated with a detached worktree, so none is deleted');
   } finally { f.cleanup(); }
+});
+
+// ---- PR #68 round 2 -------------------------------------------------------------------------------
+
+test('round2 BLOCKER 1: an edit hidden by skip-worktree or assume-unchanged is refused (11); a sparse absence is not', () => {
+  const f = fixture();
+  try {
+    const wt = f.addWt('feat-h', { merged: true });
+    commit(wt, 'sw.txt', 'orig'); commit(wt, 'au.txt', 'orig'); commit(wt, 'sparse.txt', 'orig'); commit(wt, 'gone.txt', 'orig');
+    g(wt, 'push', '-q', 'origin', 'feat-h:main');
+    g(wt, 'update-index', '--skip-worktree', 'sw.txt', 'sparse.txt');
+    g(wt, 'update-index', '--assume-unchanged', 'au.txt', 'gone.txt');
+    assert.equal(g(wt, 'status', '--porcelain'), '', 'status really is blind to the flagged files');
+    // a sparse-checkout style absence (skip-worktree, not on disk) is not an edit
+    fs.unlinkSync(path.join(wt, 'sparse.txt'));
+    assert.equal(f.finish(['--path', wt]).status, 0, 'skip-worktree + absent + untouched is removable');
+    fs.writeFileSync(path.join(wt, 'sw.txt'), 'EDITED');
+    let r = f.finish(['--path', wt, '--apply']);
+    assert.equal(r.status, CODES.DIRTY, r.stdout); assert.match(r.stdout, /sw\.txt/);
+    assert.equal(fs.readFileSync(path.join(wt, 'sw.txt'), 'utf8'), 'EDITED');
+    fs.writeFileSync(path.join(wt, 'sw.txt'), 'orig');
+    fs.writeFileSync(path.join(wt, 'au.txt'), 'EDITED');
+    r = f.finish(['--path', wt, '--apply']);
+    assert.equal(r.status, CODES.DIRTY, r.stdout); assert.match(r.stdout, /au\.txt/);
+    fs.writeFileSync(path.join(wt, 'au.txt'), 'orig');
+    fs.unlinkSync(path.join(wt, 'gone.txt')); // a hidden DELETION of an assume-unchanged file
+    r = f.finish(['--path', wt, '--apply']);
+    assert.equal(r.status, CODES.DIRTY, r.stdout); assert.match(r.stdout, /gone\.txt/);
+    assert.ok(fs.existsSync(wt));
+    fs.writeFileSync(path.join(wt, 'gone.txt'), 'orig');
+    assert.equal(f.finish(['--path', wt, '--apply']).status, 0, 'restored content is removable again');
+    assert.ok(!fs.existsSync(wt));
+  } finally { f.cleanup(); }
+});
+
+test('round2 WARNING 2: removal never prunes another worktree whose directory is temporarily missing', () => {
+  const f = fixture();
+  try {
+    const target = f.addWt('feat-t', { merged: true });
+    const other = f.addWt('feat-o');            // unmerged work
+    g(other, 'checkout', '-q', '--detach');
+    commit(other, 'unique.txt', 'only here');   // reachable only from that worktree's detached HEAD
+    const uniq = g(other, 'rev-parse', 'HEAD');
+    const moved = other + '-moved';
+    fs.renameSync(other, moved);                // e.g. an unmounted volume or a rename in progress
+    const r = f.finish(['--path', target, '--apply']);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.ok(!fs.existsSync(target));
+    assert.ok(g(f.repo, 'worktree', 'list', '--porcelain').includes(other), 'the other worktree is still registered');
+    fs.renameSync(moved, other);
+    assert.equal(g(other, 'rev-parse', 'HEAD'), uniq, 'the other worktree works again once its directory is back');
+    assert.equal(g(other, 'show', '-s', '--format=%s', 'HEAD'), 'unique.txt');
+  } finally { f.cleanup(); }
+});
+
+const w3 = (name, fn) => test(`round2 WARNING 3: ${name}`, () => { const f = fixture(); try { fn(f); } finally { f.cleanup(); } });
+
+w3('ignored/node_modules/notes.txt is refused (node_modules is allowed only as a git-ignored directory entry)', (f) => {
+  const wt = ignoringWt(f, 'feat-n1', ['ignored/']);
+  fs.mkdirSync(path.join(wt, 'ignored', 'node_modules'), { recursive: true });
+  fs.writeFileSync(path.join(wt, 'ignored', 'node_modules', 'notes.txt'), 'my notes');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.IGNORED, r.stdout); assert.match(r.stdout, /ignored\/node_modules\/notes\.txt/);
+  assert.ok(fs.existsSync(path.join(wt, 'ignored', 'node_modules', 'notes.txt')));
+});
+
+w3('src/__pycache__/draft.py is refused; a *.pyc alone is fine', (f) => {
+  const wt = ignoringWt(f, 'feat-n2', ['src/', '__pycache__/']);
+  fs.mkdirSync(path.join(wt, 'src', '__pycache__'), { recursive: true });
+  fs.writeFileSync(path.join(wt, 'src', '__pycache__', 'a.cpython-311.pyc'), 'x');
+  assert.equal(f.finish(['--path', wt]).status, 0, 'a pyc file alone is fine');
+  fs.writeFileSync(path.join(wt, 'src', '__pycache__', 'draft.py'), 'print(1)');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.IGNORED, r.stdout); assert.match(r.stdout, /draft\.py/);
+  assert.ok(fs.existsSync(path.join(wt, 'src', '__pycache__', 'draft.py')));
+});
+
+w3('node_modules/dep/.git holding a local commit is refused', (f) => {
+  const wt = ignoringWt(f, 'feat-n3', ['node_modules/']);
+  const dep = path.join(wt, 'node_modules', 'dep');
+  fs.mkdirSync(dep, { recursive: true }); g(dep, 'init', '-q'); commit(dep, 'wip.txt', 'local only');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.IGNORED, r.stdout); assert.match(r.stdout, /nested git/);
+  assert.ok(fs.existsSync(path.join(dep, 'wip.txt')));
+});
+
+w3('.claude/.sessions/r/.git is refused', (f) => {
+  const wt = ignoringWt(f, 'feat-n4', ['.claude/.sessions']);
+  const rr = path.join(wt, '.claude', '.sessions', 'r');
+  fs.mkdirSync(rr, { recursive: true }); g(rr, 'init', '-q'); commit(rr, 'wip.txt', 'local only');
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.IGNORED, r.stdout); assert.match(r.stdout, /nested git/);
+  assert.ok(fs.existsSync(path.join(rr, 'wip.txt')));
+});
+
+w3('a plain ignored node_modules directory and .DS_Store still pass', (f) => {
+  const wt = ignoringWt(f, 'feat-n5', ['node_modules/', '.DS_Store']);
+  fs.mkdirSync(path.join(wt, 'node_modules', 'dep'), { recursive: true });
+  fs.writeFileSync(path.join(wt, 'node_modules', 'dep', 'index.js'), 'x');
+  fs.writeFileSync(path.join(wt, '.DS_Store'), '');
+  assert.equal(f.finish(['--path', wt, '--apply']).status, 0);
+  assert.ok(!fs.existsSync(wt));
+});
+
+test('round2 INFO 8: an unreadable ignored directory is refused (12), not assumed empty', { skip: process.getuid && process.getuid() === 0 }, () => {
+  const f = fixture();
+  let locked = null;
+  try {
+    const wt = ignoringWt(f, 'feat-p', ['out/']);
+    locked = path.join(wt, 'out', 'private');
+    fs.mkdirSync(locked, { recursive: true }); fs.writeFileSync(path.join(locked, 'x.txt'), 'x');
+    fs.chmodSync(locked, 0o000);
+    const r = f.finish(['--path', wt, '--apply']);
+    assert.equal(r.status, CODES.IGNORED, r.stdout + r.stderr);
+    assert.match(r.stdout, /cannot (read|enumerate|prove)|could not enumerate/);
+    assert.ok(fs.existsSync(wt));
+  } finally { if (locked && fs.existsSync(locked)) fs.chmodSync(locked, 0o755); f.cleanup(); }
 });
