@@ -26,8 +26,8 @@
  *       `--path <dir> --unregister-missing` unregisters only that record (rule 23 still applies), keeps its
  *       branch, and reports "unregistered (directory missing)", never "removed".
  *   25  (--all-merged only) it is not brand new: SKIPped when the branch reflog
- *       (<common>/logs/refs/heads/<branch>) shows only "branch: Created from" and the worktree's own HEAD reflog
- *       (<admin>/logs/HEAD) has at most one entry, i.e. a live session may be about to use it (a fresh branch
+ *       (<common>/logs/refs/heads/<branch>) holds only "branch: Created from" entries (for a detached HEAD: the
+ *       worktree's own HEAD reflog <admin>/logs/HEAD has at most one entry), i.e. a live session may be about to use it (a fresh branch
  *       off origin/<default> is trivially "merged"). Chosen over a time window because it needs no clock and
  *       works on git 2.15; a missing reflog counts as not fresh. Explicit --path is unaffected.
  *   26  `git status` itself failed (e.g. a corrupt index); the first stderr line is shown. Still refuses.
@@ -313,17 +313,20 @@ function ownAdminDir(wt, common) {
   return { adm };
 }
 
-/** A brand-new worktree of a live session has nothing but its creation in the reflog: branch reflog
- * (<common>/logs/refs/heads/<branch>) shows only "branch: Created from", and the worktree's own HEAD reflog
- * (<admin>/logs/HEAD) has at most one entry. A missing reflog is "not fresh" (core.logAllRefUpdates=false). */
+/** A brand-new worktree of a live session has nothing but its creation in the reflog: for a branch, every entry of
+ * <common>/logs/refs/heads/<branch> is "branch: Created from ..."; for a detached HEAD, the worktree's own reflog
+ * (<admin>/logs/HEAD) has at most one entry. A missing reflog counts as not fresh (core.logAllRefUpdates=false). */
 function isFreshWorktree(wt, common) {
   const lines = (f) => { try { return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean); } catch { return null; } };
+  const creation = (l) => /\tbranch: Created from/.test(l);
+  if (wt.branch) {
+    // the branch reflog is the reliable signal across git versions: every entry is a creation, no commit/checkout/reset
+    const bl = lines(path.join(common, 'logs', 'refs', 'heads', ...wt.branch.split('/')));
+    return !!bl && bl.length > 0 && bl.every(creation);
+  }
   const adm = adminDirsOf(wt, common)[0];
-  const headLog = adm ? lines(path.join(adm, 'logs', 'HEAD')) : null;
-  if (!headLog || headLog.length > 1) return false;
-  if (!wt.branch) return true;
-  const bl = lines(path.join(common, 'logs', 'refs', 'heads', ...wt.branch.split('/')));
-  return !!bl && bl.length === 1 && /\tbranch: Created from/.test(bl[0]);
+  const hl = adm ? lines(path.join(adm, 'logs', 'HEAD')) : null;
+  return !!hl && hl.length <= 1;
 }
 
 function isLockedOnDisk(wt, common) {

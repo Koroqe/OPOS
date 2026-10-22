@@ -605,25 +605,25 @@ test('round2 INFO 8: an unreadable ignored directory is refused (12), not assume
 const adminDirs = (f) => fs.readdirSync(path.join(f.repo, '.git', 'worktrees')).sort();
 const listText = (f) => g(f.repo, 'worktree', 'list', '--porcelain');
 
-/** N1 scenario: a merged `feat-x` worktree whose directory is deleted without prune, then the SAME path reused by a
- * new detached worktree (git < 2.20 allows it) holding an unpushed commit. Returns { wt, precious }. */
+/** N1 scenario: a merged `feat-x` worktree whose directory is deleted without prune, then the SAME path claimed by a
+ * new detached worktree holding an unpushed commit. Git < 2.20 does this by itself on `worktree add` (the stale
+ * registration is reused); the second admin dir is forged here so the test also runs on newer git. */
 function duplicateRecords(f) {
   const wt = f.addWt('feat-x', { merged: true });
   fs.rmSync(wt, { recursive: true, force: true });
-  g(f.repo, 'worktree', 'add', '--detach', wt, 'origin/main');
+  const tmp = wt + '-tmp';
+  g(f.repo, 'worktree', 'add', '--detach', tmp, 'origin/main');
+  const adm = fs.readFileSync(path.join(tmp, '.git'), 'utf8').replace(/^gitdir:\s*/, '').trim();
+  fs.renameSync(tmp, wt);
+  fs.writeFileSync(path.join(adm, 'gitdir'), path.join(wt, '.git') + '\n');
   commit(wt, 'precious.txt', 'UNPUSHED');
   const precious = g(wt, 'rev-parse', 'HEAD');
   return { wt, precious };
 }
-/** the reuse only happens on git < 2.20; on newer git the add refuses and there is nothing to test. */
-const reuseWorks = (() => {
-  const f = fixture();
-  try { duplicateRecords(f); return true; } catch { return false; } finally { f.cleanup(); }
-})();
-const R3dup = (name, fn) => R3(name, (f) => fn(f, duplicateRecords(f)), { skip: !reuseWorks && 'this git refuses to reuse a stale registered path' });
+const R3dup = (name, fn) => R3(name, (f) => fn(f, duplicateRecords(f)));
 
 R3dup('N1: --all-merged --apply skips both duplicate records and keeps the unpushed commit', (f, { wt, precious }) => {
-  assert.equal((listText(f).match(new RegExp('worktree ' + wt.replace(/[.*+?^$()|[\]\\]/g, '\\$&') + '\\n', 'g')) || []).length, 2, 'two records for one path');
+  assert.equal(parseWorktrees(listText(f)).filter((w) => w.path === wt).length, 2, 'two records for one path');
   const r = f.finish(['--all-merged', '--apply']);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /SKIP .*2 worktree records point at this directory/);
@@ -634,28 +634,23 @@ R3dup('N1: --all-merged --apply skips both duplicate records and keeps the unpus
   assert.ok(branchExists(f.repo, 'feat-x'));
 });
 
-R3dup('N1: --path refuses with the dedicated code (23) whichever record is listed first', (f, { wt, precious }) => {
-  const orderOf = () => parseWorktrees(listText(f)).filter((w) => w.path === wt).map((w) => (w.branch ? 'branch' : 'detached')).join(',');
-  const seen = new Set();
-  for (const swap of [false, true]) {
-    if (swap) {
-      // swap the two admin dir names (and the new worktree's .git pointer) so git lists the records the other way round
-      const [a, b] = adminDirs(f);
-      const base = path.join(f.repo, '.git', 'worktrees');
-      fs.renameSync(path.join(base, a), path.join(base, 'tmp-swap'));
-      fs.renameSync(path.join(base, b), path.join(base, a));
-      fs.renameSync(path.join(base, 'tmp-swap'), path.join(base, b));
-      const link = fs.readFileSync(path.join(wt, '.git'), 'utf8');
-      fs.writeFileSync(path.join(wt, '.git'), link.includes(path.join(base, b)) ? link.replace(path.join(base, b), path.join(base, a)) : link.replace(path.join(base, a), path.join(base, b)));
+R3dup('N1: --path refuses with the dedicated code (23); check() refuses whichever record is listed first', (f, { wt, precious }) => {
+  const r = f.finish(['--path', wt, '--apply']);
+  assert.equal(r.status, CODES.AMBIGUOUS, r.stdout + r.stderr);
+  assert.ok(fs.existsSync(path.join(wt, 'precious.txt')), 'directory kept');
+  assert.equal(adminDirs(f).length, 2);
+  assert.equal(f.finish(['--path', wt]).status, CODES.AMBIGUOUS, 'dry run refuses too');
+  // record order must not matter: feed check() both orders of the same two records
+  const all = parseWorktrees(listText(f));
+  const dups = all.filter((w) => w.path === wt);
+  assert.equal(dups.length, 2);
+  const common = fs.realpathSync(path.join(f.repo, '.git'));
+  for (const order of [all, [all[0], ...all.slice(1).reverse()]]) {
+    for (const rec of dups) {
+      const v = WF.check(rec, { main: f.repo, base: 'main', applying: true, cwd: f.repo, common, all: order, allMode: false });
+      assert.equal(v.code, CODES.AMBIGUOUS, v.message);
     }
-    seen.add(orderOf());
-    const r = f.finish(['--path', wt, '--apply']);
-    assert.equal(r.status, CODES.AMBIGUOUS, r.stdout + r.stderr);
-    assert.ok(fs.existsSync(path.join(wt, 'precious.txt')), 'directory kept');
-    assert.equal(adminDirs(f).length, 2);
-    assert.equal(f.finish(['--path', wt]).status, CODES.AMBIGUOUS, 'dry run refuses too');
   }
-  assert.equal(seen.size, 2, 'both record orders were exercised: ' + [...seen].join(' | '));
   assert.equal(g(wt, 'rev-parse', 'HEAD'), precious);
 });
 
