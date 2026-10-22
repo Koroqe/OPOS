@@ -12,19 +12,30 @@
  * The gate is the exit code, not a convention. A target is removed only when ALL hold:
  *   10  it is a linked worktree, not the main checkout
  *   15  it is not locked (`git worktree lock`)
- *   11  it has no uncommitted or untracked changes
- *   12  it has no ignored files other than known OPOS local state (they would be lost)
+ *   20  the directory belongs to this repository (its git common dir equals the main checkout's)
+ *   22  no other worktree (or the main checkout) lies inside it
+ *   11  it has no uncommitted or untracked changes (status is read with --untracked-files=all
+ *       --ignore-submodules=none, so user config cannot hide anything)
+ *   12  it has no ignored files other than known OPOS local state (they would be lost), the ignored
+ *       files could be enumerated (fail closed), and it holds no nested git repository (any `.git`
+ *       below its own root `.git` file, ignored or not)
  *   14  it holds no leases (.claude/skills/lease/.state/held/ is empty)
- *   13  its HEAD is an ancestor of origin/<default branch>, after a fetch (merge proven, not assumed)
+ *   21  (--all-merged only) .claude/.current-task is empty: a non-empty one is a live session's worktree
+ *   13  its HEAD is an ancestor of refs/remotes/origin/<default branch>, after a fetch (merge proven, not assumed)
  *   16  (--apply only) the process is not running inside it
- * Other codes: 0 ok / removed, 2 usage, 3 not a git repo, 17 removal failed,
+ * Other codes: 0 ok / removed, 2 usage, 3 not a git repo, 17 removal failed or could not be verified,
  * 18 default branch or fetch unavailable (merge cannot be proven), 19 --path is not a worktree of this repo.
+ * 15 locked is read from <git-common-dir>/worktrees/<name>/locked, so it works when the directory is missing.
  *
- * Removal: `git worktree remove` on git >= 2.17, else rm -rf + `git worktree prune`. Then the branch is
- * deleted with `git branch -d` (never -D). If git refuses only because the main checkout sits on another
- * branch, while this script has already proven the merge into origin/<default>, the ref is dropped with
- * `git update-ref -d <ref> <sha>` (same safety: it fails if the branch moved). Remote branches are never touched.
- * With --all-merged a worktree that fails a check is skipped and reported; the run still exits 0.
+ * Removal: `git worktree remove` on git >= 2.17, else rm -rf + `git worktree prune`; the prune exit is
+ * checked and the worktree must be gone from `git worktree list --porcelain`, else exit 17 (never a
+ * false "removed"). Then the branch is deleted with `git branch -d` (never -D). Only when git says the
+ * branch is "not fully merged" (it judges against the main checkout's HEAD, while this script has already
+ * proven the merge into origin/<default>) the ref is dropped with `git update-ref -d <ref> <sha>` (it fails if
+ * the branch moved). Any other branch-delete error (e.g. checked out elsewhere) keeps the branch and exits 17.
+ * Remote branches are never touched. A detached worktree has no branch to delete.
+ * With --all-merged a worktree that fails a check (or throws) is skipped and reported; the run never aborts
+ * mid-way and exits 0 unless a removal itself failed.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,13 +44,19 @@ import { spawnSync } from 'node:child_process';
 export const CODES = {
   OK: 0, USAGE: 2, NOT_REPO: 3, MAIN: 10, DIRTY: 11, IGNORED: 12, NOT_MERGED: 13,
   LEASES: 14, LOCKED: 15, CWD: 16, REMOVE_FAILED: 17, NO_BASE: 18, NOT_WORKTREE: 19,
+  FOREIGN: 20, ACTIVE_TASK: 21, NESTED_WORKTREE: 22,
 };
 
 /** Ignored paths that are known OPOS local state and safe to lose with the worktree. */
 export const ALLOWED_IGNORED = [
   '.claude/.clone-id', '.claude/.current-task', '.claude/.paused-tasks', '.claude/skills/lease/.state',
+  // framework-generated per-clone/per-session state (.gitignore, shared/templates/gitignore.core,
+  // opos-session-update.mjs RUNTIME_FILES). NOT listed on purpose: .claude/scratchpad.md and
+  // .claude/settings.local.json (user content), .claude/debug/, .claude/tmp/, scheduled-processes.json.
+  '.claude/.sessions', '.claude/.opos-update-check', '.claude/.opos-update-state.json',
+  '.claude/.opos-update.lock', '.claude/.last-update-check', '.claude/.update-probe',
 ];
-export const ALLOWED_IGNORED_ANYWHERE = ['.DS_Store', 'node_modules'];
+export const ALLOWED_IGNORED_ANYWHERE = ['.DS_Store', 'node_modules', '__pycache__'];
 
 export function isAllowedIgnored(rel) {
   const p = rel.replace(/\/+$/, '');
@@ -80,59 +97,116 @@ export function gitAtLeast(versionText, major, minor) {
 }
 
 function defaultBranch(main) {
-  const r = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], main);
-  if (r.status === 0 && r.out.startsWith('origin/')) return r.out.slice(7);
+  const r = git(['symbolic-ref', 'refs/remotes/origin/HEAD'], main);
+  if (r.status === 0 && r.out.startsWith('refs/remotes/origin/')) return r.out.slice('refs/remotes/origin/'.length);
   for (const c of ['main', 'master']) {
     if (git(['rev-parse', '--verify', '-q', `refs/remotes/origin/${c}`], main).status === 0) return c;
   }
   return null;
 }
 
-/** Ignored paths in a worktree that are NOT known OPOS local state. A collapsed ignored directory
- * (`!! .claude/`) is expanded to its files so allowed state inside it does not hide, or get blamed for, the rest. */
-function ignoredFiles(dir) {
-  const entries = git(['status', '--porcelain', '--ignored'], dir).raw.split('\n')
-    .filter((l) => l.startsWith('!! ')).map((l) => l.slice(3));
-  const out = [];
-  for (const e of entries) {
-    if (isAllowedIgnored(e)) continue;
-    if (e.endsWith('/')) {
-      const files = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--', e], dir).raw.split('\n').filter(Boolean);
-      out.push(...files.filter((f) => !isAllowedIgnored(f)));
-    } else out.push(e);
+/** Recursive walk that never follows symlinks. visit(rel, dirent) returns false to not descend. Throws on unreadable dirs. */
+function walk(abs, rel, visit) {
+  let ents;
+  try { ents = fs.readdirSync(abs, { withFileTypes: true }); } catch (e) { throw new Error(`cannot read ${rel || '.'}: ${e.code || e.message}`); }
+  for (const d of ents) {
+    const r = rel ? `${rel}/${d.name}` : d.name;
+    if (visit(r, d) === false) continue;
+    if (d.isDirectory()) walk(path.join(abs, d.name), r, visit);
   }
-  return out;
 }
 
-/** Older git (< 2.31) omits `locked` from `worktree list --porcelain`; the lock is a file in the admin dir. */
-function isLockedOnDisk(dir) {
+/** What would be lost with the worktree directory besides tracked, committed content. Fails closed:
+ * `error` is set when anything could not be enumerated. `files`: ignored paths that are not known OPOS
+ * local state. `nested`: every `.git` below the worktree's own root `.git` (nested repos, other worktrees,
+ * submodules), found by walking the tree because git does not descend into them. */
+export function ignoredFiles(dir) {
+  const st = git(['status', '--porcelain', '-z', '--ignored', '--untracked-files=all', '--ignore-submodules=none'], dir);
+  if (st.status !== 0) return { error: `git status --ignored failed: ${st.err || `exit ${st.status}`}`, files: [], nested: [] };
+  const entries = st.raw.split('\0').filter((l) => l.startsWith('!! ')).map((l) => l.slice(3));
+  const files = [];
+  const nested = [];
   try {
-    const m = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(path.join(dir, '.git'), 'utf8'));
-    return !!m && fs.existsSync(path.join(m[1].trim(), 'locked'));
-  } catch { return false; }
+    for (const e of entries) {
+      const p = e.replace(/\/+$/, '');
+      if (isAllowedIgnored(p)) continue;
+      if (!e.endsWith('/')) { files.push(p); continue; }
+      // an ignored directory is only trusted when fully enumerated here
+      walk(path.join(dir, p), p, (r, d) => {
+        if (d.name === '.git') return false;
+        if (isAllowedIgnored(r)) return false;
+        if (!d.isDirectory()) files.push(r);
+      });
+    }
+    walk(dir, '', (r, d) => {
+      if (r === '.git') return false;
+      if (d.name === '.git') { nested.push(r); return false; }
+      if (isAllowedIgnored(r)) return false;
+    });
+  } catch (e) { return { error: `could not enumerate the worktree: ${e.message}`, files, nested }; }
+  return { error: null, files: [...new Set(files)], nested };
 }
+
+function commonDirOf(cwd) {
+  const r = git(['rev-parse', '--git-common-dir'], cwd);
+  return r.status === 0 && r.out ? real(path.resolve(cwd, r.out)) : null;
+}
+
+/** The lock is a file in the admin dir; older git (< 2.31) omits `locked` from `worktree list --porcelain`.
+ * Matched to the worktree through the admin dir's `gitdir` file, so it works when the directory is missing. */
+function isLockedOnDisk(wt, common) {
+  if (!common) return false;
+  const base = path.join(common, 'worktrees');
+  let names;
+  try { names = fs.readdirSync(base); } catch { return false; }
+  const want = new Set([path.resolve(wt.path), real(wt.path)]);
+  for (const n of names) {
+    const adm = path.join(base, n);
+    let g;
+    try { g = fs.readFileSync(path.join(adm, 'gitdir'), 'utf8').trim(); } catch { continue; }
+    const dir = path.dirname(path.resolve(adm, g)); // a relative gitdir is relative to the admin dir
+    if ((want.has(dir) || want.has(real(dir))) && fs.existsSync(path.join(adm, 'locked'))) return true;
+  }
+  return false;
+}
+
+const inside = (child, parent) => (child + path.sep).startsWith(parent + path.sep);
 
 /** Run every check on one worktree entry. Returns { code, message, files? }; code 0 = removable. */
 export function check(wt, ctx) {
-  const { main, base, applying, cwd } = ctx;
+  const { main, base, applying, cwd, common, all } = ctx;
   if (real(wt.path) === real(main)) return { code: CODES.MAIN, message: 'is the main checkout, not a linked worktree' };
-  if (wt.locked || isLockedOnDisk(wt.path)) return { code: CODES.LOCKED, message: 'is locked (git worktree lock); unlock it deliberately first' };
+  if (wt.locked || isLockedOnDisk(wt, common)) return { code: CODES.LOCKED, message: 'is locked (git worktree lock); unlock it deliberately first' };
   const exists = fs.existsSync(wt.path);
   if (exists) {
-    const st = git(['status', '--porcelain'], wt.path);
+    if (commonDirOf(wt.path) !== common) {
+      return { code: CODES.FOREIGN, message: 'does not belong to this repository (its git common dir differs); refusing to touch it' };
+    }
+    const me = real(wt.path);
+    const inner = (all || []).filter((o) => o !== wt && o.path && inside(real(o.path), me) && real(o.path) !== me);
+    if (inner.length) return { code: CODES.NESTED_WORKTREE, message: `contains other worktrees that would be deleted with it: ${inner.map((o) => o.path).join(', ')}` };
+    if (ctx.checkTask) {
+      const ct = path.join(wt.path, '.claude', '.current-task');
+      if (fs.existsSync(ct) && fs.readFileSync(ct, 'utf8').trim()) {
+        return { code: CODES.ACTIVE_TASK, message: 'has a non-empty .claude/.current-task (a live session\'s worktree); run task-complete there first' };
+      }
+    }
+    const st = git(['status', '--porcelain', '-z', '--untracked-files=all', '--ignore-submodules=none'], wt.path);
     if (st.status !== 0) return { code: CODES.NOT_REPO, message: `git status failed: ${st.err}` };
-    if (st.raw.trim()) return { code: CODES.DIRTY, message: `has uncommitted or untracked changes (${st.raw.trim().split('\n').length} paths)` };
+    if (st.raw.replace(/\0/g, '').trim()) return { code: CODES.DIRTY, message: `has uncommitted or untracked changes (${st.raw.split('\0').filter(Boolean).length} paths)` };
     const ig = ignoredFiles(wt.path);
-    if (ig.length) return { code: CODES.IGNORED, message: `has ignored files that would be lost: ${ig.slice(0, 8).join(', ')}${ig.length > 8 ? ', ...' : ''}`, files: ig };
+    if (ig.error) return { code: CODES.IGNORED, message: `cannot prove nothing would be lost: ${ig.error}` };
+    if (ig.nested.length) return { code: CODES.IGNORED, message: `contains nested git repositories or worktrees (their commits would be lost): ${ig.nested.slice(0, 8).join(', ')}` };
+    if (ig.files.length) return { code: CODES.IGNORED, message: `has ignored files that would be lost: ${ig.files.slice(0, 8).join(', ')}${ig.files.length > 8 ? ', ...' : ''}`, files: ig.files };
     const held = path.join(wt.path, '.claude', 'skills', 'lease', '.state', 'held');
     if (fs.existsSync(held) && fs.readdirSync(held).some((f) => f.endsWith('.json'))) {
       return { code: CODES.LEASES, message: 'holds leases (.claude/skills/lease/.state/held/); release them with lease.mjs release first' };
     }
   }
   if (!wt.head) return { code: CODES.NOT_MERGED, message: 'has no HEAD commit' };
-  const anc = git(['merge-base', '--is-ancestor', wt.head, `origin/${base}`], main);
+  const anc = git(['merge-base', '--is-ancestor', wt.head, `refs/remotes/origin/${base}`], main);
   if (anc.status !== 0) return { code: CODES.NOT_MERGED, message: `HEAD ${wt.head.slice(0, 8)} is not an ancestor of origin/${base}; merge it first` };
-  if (exists && real(cwd) !== null && (real(cwd) + path.sep).startsWith(real(wt.path) + path.sep)) {
+  if (exists && (real(cwd) + path.sep).startsWith(real(wt.path) + path.sep)) {
     if (applying) {
       return { code: CODES.CWD, message: `is this process's own cwd; run from elsewhere: cd ${main} && node shared/scripts/worktree-finish.mjs --path ${wt.path} --apply` };
     }
@@ -141,12 +215,24 @@ export function check(wt, ctx) {
   return { code: CODES.OK, message: 'removable' };
 }
 
+function stillListed(wt, main) {
+  const l = git(['worktree', 'list', '--porcelain'], main);
+  if (l.status !== 0) return null;
+  const want = new Set([path.resolve(wt.path), real(wt.path)]);
+  return parseWorktrees(l.raw).some((w) => want.has(path.resolve(w.path)) || want.has(real(w.path)));
+}
+
 function remove(wt, ctx) {
-  const { main, gitVersion, base } = ctx;
+  const { main, gitVersion, base, common } = ctx;
   const linkFile = path.join(wt.path, '.git');
   if (fs.existsSync(wt.path)) {
     if (real(wt.path) === real(main) || !fs.existsSync(linkFile) || !fs.statSync(linkFile).isFile()) {
       return { code: CODES.REMOVE_FAILED, message: 'refusing to delete: not a linked worktree directory' };
+    }
+    // the .git file must point into THIS repo's admin area (a relative gitdir is relative to the worktree)
+    const m = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(linkFile, 'utf8'));
+    if (!m || !common || !inside(real(path.resolve(wt.path, m[1].trim())), path.join(common, 'worktrees'))) {
+      return { code: CODES.FOREIGN, message: 'refusing to delete: its .git file does not point into this repository' };
     }
     if (gitAtLeast(gitVersion, 2, 17)) {
       const r = git(['worktree', 'remove', wt.path], main);
@@ -157,19 +243,24 @@ function remove(wt, ctx) {
       }
     }
   }
-  git(['worktree', 'prune'], main);
+  const pr = git(['worktree', 'prune'], main);
+  if (pr.status !== 0) return { code: CODES.REMOVE_FAILED, message: `git worktree prune failed (exit ${pr.status}): ${pr.err}` };
+  const listed = stillListed(wt, main);
+  if (listed !== false) {
+    return { code: CODES.REMOVE_FAILED, message: listed === null ? 'cannot verify removal: git worktree list failed' : 'worktree is still registered in git worktree list after removal' };
+  }
   let note = 'worktree removed';
   if (wt.branch) {
     const d = git(['branch', '-d', wt.branch], main);
     if (d.status === 0) note += `, branch ${wt.branch} deleted`;
-    else {
+    else if (/not fully merged/i.test(d.err)) {
       // -d judges "merged" against the main checkout's HEAD; we already proved merge into origin/<base>.
       const u = git(['update-ref', '-d', `refs/heads/${wt.branch}`, wt.head], main);
       if (u.status === 0) {
         git(['config', '--remove-section', `branch.${wt.branch}`], main);
         note += `, branch ${wt.branch} deleted (merged into origin/${base})`;
-      } else return { code: CODES.REMOVE_FAILED, message: `worktree removed but branch ${wt.branch} kept: ${d.err || u.err}` };
-    }
+      } else return { code: CODES.REMOVE_FAILED, message: `worktree removed but branch ${wt.branch} kept: ${u.err}` };
+    } else return { code: CODES.REMOVE_FAILED, message: `worktree removed but branch ${wt.branch} kept: ${d.err}` };
   }
   return { code: CODES.OK, message: note };
 }
@@ -200,7 +291,7 @@ export function run(argv, cwd = process.cwd(), log = console.log) {
     const f = git(['fetch', 'origin'], main);
     if (f.status !== 0) { log(`git fetch origin failed, merge cannot be proven: ${f.err}`); return CODES.NO_BASE; }
   }
-  const ctx = { main, base, gitVersion, applying: opt.apply, cwd };
+  const ctx = { main, base, gitVersion, applying: opt.apply, cwd, common: commonDirOf(main), all, checkTask: opt.all };
 
   let targets;
   if (opt.all) targets = all.slice(1).filter((w) => !w.bare);
@@ -216,11 +307,13 @@ export function run(argv, cwd = process.cwd(), log = console.log) {
   let lastCode = CODES.OK;
   for (const wt of targets) {
     const tag = `${wt.path}${wt.branch ? ` [${wt.branch}]` : ''}`;
-    const v = check(wt, ctx);
+    let v;
+    try { v = check(wt, ctx); } catch (e) { v = { code: CODES.REMOVE_FAILED, message: `unexpected error while checking, left untouched: ${e.message}` }; }
     lastCode = v.code;
     if (v.code !== CODES.OK) { log(`${opt.all ? 'SKIP' : 'REFUSED'} ${tag}: ${v.message}`); continue; }
     if (!opt.apply) { log(`OK ${tag}: ${v.message}`); continue; }
-    const r = remove(wt, ctx);
+    let r;
+    try { r = remove(wt, ctx); } catch (e) { r = { code: CODES.REMOVE_FAILED, message: `unexpected error while removing: ${e.message}` }; }
     lastCode = r.code;
     if (r.code !== CODES.OK) { failed = true; log(`FAILED ${tag}: ${r.message}`); } else log(`REMOVED ${tag}: ${r.message}`);
   }

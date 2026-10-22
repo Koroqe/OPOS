@@ -61,7 +61,10 @@ Mirrors the procedure in SKILL.md:
 17. (v0.24.0) Last step. When the session ran in a linked git worktree whose work is merged and pushed
     (the history entry and the archived task file committed with it), remove the worktree and its merged
     branch: `shared/scripts/worktree-finish.mjs --path <worktree> --apply`, run from the main checkout.
-    Report a refusal, never force.
+    Report a refusal, never force. Refusals: 10 main checkout, 11 dirty, 12 ignored files or a nested git
+    repo, 13 not merged, 14 leases, 15 locked, 16 own cwd, 20 not this repo's worktree, 22 contains another
+    worktree; 17 removal failed or could not be verified; 18 default branch or fetch unavailable. Code 21
+    (non-empty `.current-task`) applies to `--all-merged` only; step 14 has already emptied this session's.
 
 ## Done when
 
