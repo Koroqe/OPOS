@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.24.1] - 2026-10-23
+
+The steward no longer recommends `git stash` for syncing a checkout.
+
+### Changed
+
+- **Steward Dispatch step 4** gains one sentence after the shared-index guidance: never `git stash` to sync or tidy a checkout. In a shared checkout a stash carries another session's work away; in a linked worktree on git 2.15 a `git stash && git merge --ff-only && git stash pop` sequence was observed once to leave the index with thousands of staged deletions while every file on disk was intact (a bare `git commit` would have deleted them). The cause was not established and this is not claimed as a git bug. The guidance is to commit your own paths first, then merge.
+- **`sync-from-core` 0.2.1** step 1: a dirty tree now aborts with "commit first (do not stash ...)" instead of "commit or stash first". `auto-sync` already said "Do not stash" and is unchanged.
+
+### Migration
+
+- None required.
+
 ## [0.24.0] - 2026-10-22
 
 A session now removes its own merged git worktree instead of leaving it behind.
