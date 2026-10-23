@@ -67,6 +67,7 @@ Mirrors the procedure in SKILL.md:
 | Crash while holding | The lease expires on TTL; `acquire` beats the corpse with no reaper involved. |
 | Clock skew | Expiry always uses server time. Warn above 120s, refuse above 600s. |
 | `gh` offline or unauthenticated | Exit 6, fail closed. `--offline-ok` is honoured only by `check`, `commit-gate` and `list`, and then only an unexpired cached lease opens a gate. |
+| Lease lost during `commit-gate`'s heartbeat | The gate re-derives its scope after the heartbeat renewal; if the clone fell behind (yield, exit `3`) or the lease was revoked (exit `5`) and the staged paths are no longer covered, the commit is refused. |
 | GitHub unreachable mid-`renew` | **Not** treated as revocation: the cache is kept and exit 6 returned. Only a true 404 means the claim is gone. |
 | Company has not opted in (no registry) | Exit `9` from every command. Callers skip the gate and behave exactly as before. |
 | Registry grows past `rotate_at_comments` | `reap` rotates it (see SKILL.md "The registry itself"). Crash-safe: re-running `reap` completes a half-done rotation. |

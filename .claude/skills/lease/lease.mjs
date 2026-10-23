@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import { identity, repoRoot, readJson, writeJson, stateDir } from './lib/identity.mjs';
 import { parseKey, conflicts, keyHash, claimTarget, matchesAny, KeyError } from './lib/keys.mjs';
 import { freshness, stagedFiles } from './lib/freshness.mjs';
+import { postRenewVerdict } from './lib/gate.mjs';
 import {
   renderRecord, listClaims, getClaim, postClaim, patchClaim, deleteClaim,
   addLabel, removeLabel, listIssuesByLabel, isLive, isExpired, sameHolder,
@@ -642,8 +643,24 @@ function cmdCommitGate(args) {
       outside.map((f) => `    ${f}`).join('\n') + '\n  Unstage them (git restore --staged <path>) — do not widen the commit.');
   }
   // A successful gate is also a heartbeat: work demonstrably happened, so the lease is alive.
-  if (!args['no-renew'] && !ctx.offline) { try { cmdRenew({ all: true, 'no-fetch': true, quiet: true }); } catch { /* best effort */ } }
-  out(`commit-gate OK: ${staged.length} staged path(s) within [${scope.join(', ')}]`);
+  // The heartbeat can also YIELD (stale clone) or find a lease revoked, which removes its cache
+  // file. Its result is therefore not best-effort for authorization: re-derive the scope from what
+  // is still held and refuse if the staged paths lost their cover. A thrown error stays best-effort.
+  let finalScope = scope;
+  if (!args['no-renew'] && !ctx.offline) {
+    let renewCode = null;
+    try { renewCode = cmdRenew({ all: true, 'no-fetch': true, quiet: true }); } catch { /* best effort */ }
+    const after = cachedKeys(ctx.root).map((kk) => readJson(heldFile(ctx.root, parseKey(kk)))).filter(Boolean)
+      .filter((c) => Date.parse(c.expires) > ctx.nowMs);
+    const v = postRenewVerdict({ staged, before: held, after, renewCode });
+    if (!v.ok) {
+      const why = v.code === EXIT.STALE ? 'yielded: clone fell behind' : v.code === EXIT.REVOKED ? 'revoked' : 'not renewed';
+      return soft(v.code, `LEASE LOST DURING GATE: ${v.lostKeys.join(', ') || 'lease'} no longer held (${why}) — nothing authorizes ${v.uncovered.length} staged path(s).\n` +
+        '  git pull --ff-only, re-acquire the lease, then re-run commit-gate.');
+    }
+    finalScope = after.flatMap((c) => c.scope ?? []);
+  }
+  out(`commit-gate OK: ${staged.length} staged path(s) within [${finalScope.join(', ')}]`);
   return EXIT.OK;
 }
 

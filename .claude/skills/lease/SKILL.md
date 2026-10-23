@@ -131,7 +131,7 @@ label, the lease must still be recorded somewhere you control.
 node .claude/skills/lease/lease.mjs acquire --key "path:company/ops/**" --scope "company/ops/**" --intent "regenerate projections"
 node .claude/skills/lease/lease.mjs check   --key "issue:<owner>/<repo>#<N>"
 node .claude/skills/lease/lease.mjs renew   --all
-node .claude/skills/lease/lease.mjs commit-gate
+node .claude/skills/lease/lease.mjs commit-gate             # also a heartbeat; a lease lost during it (yield/revoke) refuses the commit
 node .claude/skills/lease/lease.mjs release --key "..." --reason "done"
 node .claude/skills/lease/lease.mjs list [--mine] [--no-net] [--json]
 node .claude/skills/lease/lease.mjs steal   --key "..." --reason "clone silent 40 minutes"   # Confirm tier
