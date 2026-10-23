@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.25.0] - 2026-10-23
+
+Agents enumerate every browser surface before asking a human to sign in, and get a read-only script for it.
+
+### Added
+
+- **`shared/scripts/browser-sessions.mjs`** (+ `browser-sessions.test.mjs`, added to the CI test list): lists every Chrome/Edge/Chromium process with its `--remote-debugging-port` and `--user-data-dir`, probes the CDP ports (default 9222-9230, `--ports N-M` to change; ports named in `browser-cdp` registry entries are always probed), maps ports to registered `browser-cdp` resources, and names instances that have no debugging port. `--site <host>` shows which instances have a tab on that host and lists each tab by URL path, so separate client variants of one site are not conflated; its only login hint is a sign-in-looking URL, everything else is reported as unknown. Read-only: GET requests and a process listing only, it never opens a tab and never reads cookies or storage. Windows, macOS and Linux. An opt-in mode that opens its own tab and reads site-specific page facts is deliberately not included.
+
+### Changed
+
+- **Steward "Tools first, humans last"** gains a clause: before any login / open-a-site ask to a human, enumerate every browser surface (all browser processes with their debugging port and profile dir, all reachable CDP ports, the registry's `browser-cdp` rows, and the Claude in Chrome extension / computer-use if present) and, for a site, every client variant that holds its own session. The ask names each instance checked. Observed twice at one consumer.
+
+### Migration
+
+- None required.
+
 ## [0.24.2] - 2026-10-23
 
 `commit-gate` no longer authorizes a commit on a lease its own heartbeat just released.
