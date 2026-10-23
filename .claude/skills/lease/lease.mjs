@@ -446,7 +446,7 @@ function cmdRenew(args) {
     const k = parseKey(rawKey);
     const cached = readJson(heldFile(ctx.root, k));
     // Optional per-key outcome channel (commit-gate uses it); the return value is unchanged.
-    const note = (code) => args.onOutcome?.(cached?.key ?? k.norm, code);
+    const note = (code) => typeof args.onOutcome === 'function' && args.onOutcome(cached?.key ?? k.norm, code);
     if (!cached) { warn(`NO LEASE cached for ${k.norm}`); worst = Math.max(worst, EXIT.NO_LEASE); continue; }
     const got = getClaim(cached.repo, cached.comment_id);
     /*
@@ -659,13 +659,13 @@ function cmdCommitGate(args) {
       .filter((c) => Date.parse(c.expires) > ctx.nowMs);
     const v = postRenewVerdict({ staged, before: held, after, outcomes });
     if (!v.ok) {
-      const why = v.code === EXIT.STALE ? 'yielded: clone fell behind' : v.code === EXIT.REVOKED ? 'revoked' : 'not renewed';
+      const why = v.code === EXIT.STALE ? 'yielded: clone fell behind' : v.code === EXIT.REVOKED ? 'revoked' : 'no longer cached';
       return soft(v.code, `LEASE LOST DURING GATE: ${v.lostKeys.join(', ') || 'lease'} no longer held (${why}) — nothing authorizes ${v.uncovered.length} staged path(s).\n` +
         (v.code === EXIT.STALE ? '  git pull --ff-only, re-acquire the lease, then re-run commit-gate.'
           : v.code === EXIT.REVOKED ? '  Re-acquire the lease, or ask whoever holds it now.'
           : '  Re-acquire the lease, then re-run commit-gate.'));
     }
-    finalScope = after.flatMap((c) => c.scope ?? []);
+    finalScope = v.scope;
   }
   out(`commit-gate OK: ${staged.length} staged path(s) within [${finalScope.join(', ')}]`);
   return EXIT.OK;
