@@ -445,6 +445,8 @@ function cmdRenew(args) {
   for (const rawKey of keys) {
     const k = parseKey(rawKey);
     const cached = readJson(heldFile(ctx.root, k));
+    // Optional per-key outcome channel (commit-gate uses it); the return value is unchanged.
+    const note = (code) => args.onOutcome?.(cached?.key ?? k.norm, code);
     if (!cached) { warn(`NO LEASE cached for ${k.norm}`); worst = Math.max(worst, EXIT.NO_LEASE); continue; }
     const got = getClaim(cached.repo, cached.comment_id);
     /*
@@ -457,18 +459,18 @@ function cmdRenew(args) {
      */
     if (!got.ok && !got.missing) {
       warn(`renew: cannot reach GitHub for ${k.norm} (${String(got.err).split('\n')[0]}). Lease KEPT; retry before writing.`);
-      worst = Math.max(worst, EXIT.NO_AUTH); continue;
+      note(EXIT.NO_AUTH); worst = Math.max(worst, EXIT.NO_AUTH); continue;
     }
     if (!got.claim) {
       warn(`REVOKED: claim comment for ${k.norm} is gone (stolen or pruned). Stop writing.`);
       fs.rmSync(heldFile(ctx.root, k), { force: true });
-      worst = Math.max(worst, EXIT.REVOKED); continue;
+      note(EXIT.REVOKED); worst = Math.max(worst, EXIT.REVOKED); continue;
     }
     const rec = got.claim.rec;
     if (!sameHolder(rec.holder, ctx.id.holder) || rec.state !== 'held') {
       warn(`REVOKED: ${k.norm} is now state=${rec.state}, holder ${describeHolder(rec)}. Stop writing.`);
       fs.rmSync(heldFile(ctx.root, k), { force: true });
-      worst = Math.max(worst, EXIT.REVOKED); continue;
+      note(EXIT.REVOKED); worst = Math.max(worst, EXIT.REVOKED); continue;
     }
     // Re-check freshness: a clone that fell behind mid-run must YIELD, not silently continue.
     const f = freshness(ctx.root, { scope: rec.scope ?? [], maxAgeS: ctx.cfg.fetch_max_age_s ?? 600, autoFetch: !args['no-fetch'] });
@@ -482,7 +484,7 @@ function cmdRenew(args) {
       releaseIndex(ctx, k, cached);
       fs.rmSync(heldFile(ctx.root, k), { force: true });
       warn(`STALE MID-RUN: yielded ${k.norm} — clone fell ${f.behind} behind. git pull --ff-only, then re-acquire.`);
-      worst = Math.max(worst, EXIT.STALE); continue;
+      note(EXIT.STALE); worst = Math.max(worst, EXIT.STALE); continue;
     }
     const ttlS = parseDuration(args.ttl, rec.t.ttl_s ?? 2700);
     rec.t.heartbeat = new Date(ctx.nowMs).toISOString();
@@ -492,8 +494,9 @@ function cmdRenew(args) {
     rec.t.skew_s = ctx.id.clock.skew_s ?? 0;
     rec.clone.head = f.head; rec.clone.behind = f.behind; rec.clone.branch = f.branch;
     const p = patchClaim(cached.repo, cached.comment_id, renderRecord(rec));
-    if (!p.ok) { warn(`renew failed for ${k.norm}: ${p.err}`); worst = Math.max(worst, EXIT.ERROR); continue; }
+    if (!p.ok) { warn(`renew failed for ${k.norm}: ${p.err}`); note(EXIT.ERROR); worst = Math.max(worst, EXIT.ERROR); continue; }
     cacheHeld(ctx, k, { repo: cached.repo, issue: cached.issue, kind: cached.kind }, { id: cached.comment_id, rec });
+    note(EXIT.OK);
     if (!args.quiet) out(`RENEWED ${k.norm} until ${rec.t.expires.slice(11, 16)} UTC`);
   }
   return worst;
@@ -645,18 +648,22 @@ function cmdCommitGate(args) {
   // A successful gate is also a heartbeat: work demonstrably happened, so the lease is alive.
   // The heartbeat can also YIELD (stale clone) or find a lease revoked, which removes its cache
   // file. Its result is therefore not best-effort for authorization: re-derive the scope from what
-  // is still held and refuse if the staged paths lost their cover. A thrown error stays best-effort.
+  // is still held and refuse if the staged paths lost their cover. A thrown error stays best-effort,
+  // but renew's context() can end the process via die() (exit 6/8); catch cannot intercept that and
+  // it bypasses soft().
   let finalScope = scope;
   if (!args['no-renew'] && !ctx.offline) {
-    let renewCode = null;
-    try { renewCode = cmdRenew({ all: true, 'no-fetch': true, quiet: true }); } catch { /* best effort */ }
+    const outcomes = {};
+    try { cmdRenew({ all: true, 'no-fetch': true, quiet: true, onOutcome: (key, code) => { outcomes[key] = code; } }); } catch { /* best effort */ }
     const after = cachedKeys(ctx.root).map((kk) => readJson(heldFile(ctx.root, parseKey(kk)))).filter(Boolean)
       .filter((c) => Date.parse(c.expires) > ctx.nowMs);
-    const v = postRenewVerdict({ staged, before: held, after, renewCode });
+    const v = postRenewVerdict({ staged, before: held, after, outcomes });
     if (!v.ok) {
       const why = v.code === EXIT.STALE ? 'yielded: clone fell behind' : v.code === EXIT.REVOKED ? 'revoked' : 'not renewed';
       return soft(v.code, `LEASE LOST DURING GATE: ${v.lostKeys.join(', ') || 'lease'} no longer held (${why}) — nothing authorizes ${v.uncovered.length} staged path(s).\n` +
-        '  git pull --ff-only, re-acquire the lease, then re-run commit-gate.');
+        (v.code === EXIT.STALE ? '  git pull --ff-only, re-acquire the lease, then re-run commit-gate.'
+          : v.code === EXIT.REVOKED ? '  Re-acquire the lease, or ask whoever holds it now.'
+          : '  Re-acquire the lease, then re-run commit-gate.'));
     }
     finalScope = after.flatMap((c) => c.scope ?? []);
   }

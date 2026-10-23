@@ -12,7 +12,7 @@ In `0.x.y` releases breaking changes are allowed.
 
 ### Fixed
 
-- **`lease.mjs commit-gate`** computed the allowed scope from the cached leases before its heartbeat renewal and ignored the renewal's result. If the heartbeat yielded a lease (the clone had fallen behind the base) or found it revoked, the gate still printed OK and exited 0, so a commit went through from a stale clone with no live lease. The gate now re-derives the scope from the leases still held after the heartbeat and refuses (exit 3 for a yield, 5 for a revocation, 4 otherwise; still only a warning under `enforce: warn`) when any staged path lost its cover. A lost lease whose scope the staged paths do not need does not fail the gate. The decision is a small pure function with unit tests.
+- **`lease.mjs commit-gate`** computed the allowed scope from the cached leases before its heartbeat renewal and ignored the renewal's result. If the heartbeat yielded a lease (the clone had fallen behind the base) or found it revoked, the gate still printed OK and exited 0, so a commit went through from a stale clone with no live lease. The gate now re-derives the scope after the heartbeat, from the leases it held before it (a heartbeat can only shrink authorization), and refuses when a staged path lost its cover. The exit code is the lost covering lease's own result: 5 if one was revoked, else 3 if one yielded, else 4; it is still only a warning under `enforce: warn`. A lost lease whose scope the staged paths do not need does not fail the gate. If the heartbeat itself aborts the process (no network or auth, exit 6/8), that exit is returned as before. The decision is a small pure function with unit tests.
 
 ### Migration
 
