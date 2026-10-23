@@ -31,8 +31,9 @@ const REPO = CFG.ledger.repo;
 const results = [];
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
-function lease(args, { cwd = ROOT, env = {}, enforce = 'on' } = {}) {
-  const r = spawnSync(process.execPath, [cwd === ROOT ? LEASE : path.join(cwd, '.claude/skills/lease/lease.mjs'), ...args], {
+// `script` overrides which lease.mjs runs; default is the one in `cwd` (the ROOT's own for ROOT).
+function lease(args, { cwd = ROOT, env = {}, enforce = 'on', script = null } = {}) {
+  const r = spawnSync(process.execPath, [script ?? (cwd === ROOT ? LEASE : path.join(cwd, '.claude/skills/lease/lease.mjs')), ...args], {
     cwd, encoding: 'utf8',
     env: { ...process.env, OPOS_LEASE_ENFORCE: enforce, ...env },
   });
@@ -132,6 +133,27 @@ if (ONLY.includes('D')) {
       const r3 = lease(['renew', '--key', 'path:company/ops/**'], { cwd: c });
       check('renew from a clone that fell behind MID-RUN yields (exit 3)', r3.code === 3, `exit=${r3.code} ${r3.err.split('\n')[0]}`);
       check('the yield says so rather than continuing silently', /STALE MID-RUN|yield/i.test(r3.err), r3.err.split('\n')[0]);
+      // The renew above already yielded and removed the cache. Now the gate's OWN heartbeat:
+      // re-acquire after a pull, fall behind again, stage a probe, and run commit-gate directly
+      // (no renew first) with the ROOT script — the clone's old copy has no gate.mjs.
+      const probeRel = 'company/ops/.lease-scenario-yielded-probe.md';
+      try {
+        execFileSync('git', ['pull', '--quiet', '--ff-only'], { cwd: c });
+        const r5 = lease(['acquire', '--key', 'path:company/ops/**', '--scope', 'company/ops/**', '--intent', 'stale test gate'], { cwd: c });
+        check('re-acquire after pull exits 0', r5.code === 0, `exit=${r5.code} ${r5.err.split('\n')[0]}`);
+        if (r5.code === 0) {
+          execFileSync('git', ['reset', '--hard', '--quiet', base], { cwd: c });
+          fs.mkdirSync(path.dirname(path.join(c, probeRel)), { recursive: true });
+          fs.writeFileSync(path.join(c, probeRel), 'probe\n');
+          execFileSync('git', ['add', '-f', '--', probeRel], { cwd: c });
+          const r4 = lease(['commit-gate'], { cwd: c, script: LEASE });
+          check('commit-gate whose own heartbeat yields the lease exits 3', r4.code === 3, `exit=${r4.code} ${r4.err.split('\n')[0]}`);
+          check('the refusal says the lease was lost', /LEASE LOST DURING GATE/.test(r4.err), r4.err.split('\n')[0]);
+        }
+      } finally {
+        try { execFileSync('git', ['reset', '--quiet', '--', probeRel], { cwd: c }); } catch { /* best effort */ }
+        try { fs.rmSync(path.join(c, probeRel), { force: true }); } catch { /* best effort */ }
+      }
     }
     forceFree('path:company/ops/**');
     // Leave the clone at origin/main so the next scenario starts from a sane tree.
