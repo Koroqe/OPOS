@@ -12,8 +12,8 @@ The steward no longer recommends `git stash` for syncing a checkout.
 
 ### Changed
 
-- **Steward Dispatch step 4** gains one sentence after the shared-index guidance: never `git stash` to sync or tidy a checkout. In a shared checkout a stash carries another session's work away; in a linked worktree on git 2.15 a `git stash && git merge --ff-only && git stash pop` sequence was observed once to leave the index with thousands of staged deletions while every file on disk was intact (a bare `git commit` would have deleted them). The cause was not established and this is not claimed as a git bug. The guidance is to commit your own paths first, then merge.
-- **`sync-from-core` 0.2.1** step 1: a dirty tree now aborts with "commit first (do not stash ...)" instead of "commit or stash first". `auto-sync` already said "Do not stash" and is unchanged.
+- **Steward Dispatch step 4** gains one sentence after the shared-index guidance: never `git stash` to sync or tidy a checkout. In a shared checkout a stash carries another session's work away, and the stash stack (`refs/stash`) is shared by every worktree of a repository, so a `stash pop` in one worktree can apply another's entry. Separately, in a linked worktree on git 2.15 a `git stash && git merge --ff-only && git stash pop` sequence was observed once to leave the index with thousands of staged deletions while every file on disk was intact (a bare `git commit` would have committed those deletions). The cause was not established and this is not claimed as a git bug. The guidance is to commit your own paths first, then merge.
+- **`sync-from-core` 0.2.1** step 1: a dirty tree now aborts with "commit your own paths first; if the dirty paths are another session's, wait for it; do not stash" instead of "commit or stash first". Proposed by a consumer ([#70](https://github.com/Koroqe/OPOS/pull/70)). `auto-sync` already said "Do not stash" and is unchanged.
 
 ### Migration
 
