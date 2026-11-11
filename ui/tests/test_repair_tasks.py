@@ -1022,9 +1022,9 @@ class TestDecide(unittest.TestCase):
         calls = []
         real = repair_mod._decide
 
-        def spy(md):
+        def spy(md, *a, **k):
             calls.append(md.name)
-            return real(md)
+            return real(md, *a, **k)
 
         from ui.render import task_advice
         p = self.put("5.md", front_text("title: foo: bar\n" + TAIL))
@@ -1599,6 +1599,76 @@ class TestTheFileSystemDecision(unittest.TestCase):
             code, out = run(self.root, "--apply")
         self.assertIn("skipped tasks/5.md", out)
         self.assertEqual(p.read_bytes(), self.raw)
+
+    @staticmethod
+    def _open_fds():
+        """Descriptors this process holds, as {fd: (st_dev, st_ino)} (the directory listing's own fd is skipped)."""
+        out = {}
+        for n in os.listdir("/dev/fd"):
+            try:
+                st = os.fstat(int(n))
+            except OSError:
+                continue
+            out[int(n)] = (st.st_dev, st.st_ino)
+        return out
+
+    @unittest.skipUnless(os.path.isdir("/dev/fd"), "needs /dev/fd")
+    def test_the_decided_file_stays_open_until_the_replace_so_its_inode_cannot_be_reused(self):
+        p = self.put("5.md")
+        decided = os.stat(p)
+        ident = (decided.st_dev, decided.st_ino)
+        real = repair_mod.tempfile.mkstemp
+        held = []
+
+        def look_between_decision_and_replace(*a, **k):
+            made = real(*a, **k)
+            held.append(ident in self._open_fds().values())
+            os.unlink(p)  # with the descriptor held, the inode is not freed: no new file can get its number
+            p.write_bytes(self.raw)
+            held.append(os.stat(p).st_ino != ident[1])
+            return made
+
+        with mock.patch.object(repair_mod.tempfile, "mkstemp", look_between_decision_and_replace):
+            code, out = run(self.root, "--apply")
+        self.assertEqual(held, [True, True])
+        self.assertIn("skipped tasks/5.md", out)
+
+    @unittest.skipUnless(os.path.isdir("/dev/fd"), "needs /dev/fd")
+    def test_no_descriptor_is_leaked_on_any_path(self):
+        before = set(self._open_fds())
+        # success, a clean file, a file that cannot be repaired, a symlink, a dry run, the page path
+        self.put("5.md")
+        self.put("6.md").write_bytes(b"---\nissue_number: 6\ntitle: ok\ncreated: 2026-01-01\n---\nb\n")
+        (self.root / "tasks" / "7.md").write_bytes(b"---\nissue_number: 7\ntitle: a: b\n  - x\nstate:\n---\nb\n")
+        other = self.root / "other.md"
+        other.write_bytes(b"x\n")
+        os.symlink(other, self.root / "tasks" / "8.md")
+        self.assertEqual(run(self.root)[0], 1)  # dry run
+        decide(self.root / "tasks" / "5.md")
+        run(self.root, "--apply")
+        self.assertEqual(set(self._open_fds()), before)
+        # skipped because the target was replaced; a write error; an exception inside the write
+        for failure in ("replace", OSError(28, "No space left on device"), RuntimeError("boom")):
+            p = self.put("9.md")
+            real = repair_mod.tempfile.mkstemp
+
+            def hook(*a, _failure=failure, **k):
+                if isinstance(_failure, BaseException):
+                    raise _failure
+                made = real(*a, **k)
+                os.unlink(p)
+                p.write_bytes(self.raw)
+                return made
+
+            with mock.patch.object(repair_mod.tempfile, "mkstemp", hook):
+                run(self.root, "--apply")
+            self.assertEqual(set(self._open_fds()), before, repr(failure))
+            os.unlink(p)
+        # an error raised by the decision itself, after the file was opened
+        p = self.put("9.md")
+        with mock.patch.object(repair_mod, "plan_repair", side_effect=RuntimeError("boom")):
+            run(self.root, "--apply")
+        self.assertEqual(set(self._open_fds()), before)
 
     def test_the_temp_file_is_made_with_mkstemp_in_the_task_directory_and_removed_after(self):
         p = self.put("5.md")

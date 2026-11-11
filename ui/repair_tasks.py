@@ -62,7 +62,8 @@ wrote). A comment line that carries a word, a text line no key owns, a duplicate
 never closes makes the file "cannot repair": it is reported, exit 1, and left untouched. The new text
 goes to a temp file made with `mkstemp` in the file's own directory; just before `os.replace` the
 target is looked at again (same file, not a link, unchanged bytes), and if it changed since it was
-first read, it is skipped with a message. A full disk or an I/O error while writing removes this
+first read, it is skipped with a message. The file read for the decision stays open until the replace is
+done or refused, so its inode cannot be freed and given to another file, and "same file" is sound. A full disk or an I/O error while writing removes this
 run's temp file (and reports one it cannot remove), counts the file as "cannot repair" with a one-line reason, and the run goes on and
 still prints its summary; so does any other error on one file ("cannot repair <file>: internal
 error: <one line>").
@@ -571,6 +572,7 @@ class _Decision(NamedTuple):
     new_text: str | None  # the file's new text when the verdict is "repair"
     ident: "tuple[int, int] | None" = None  # (st_dev, st_ino) of the file the decision was made on
     cleared: tuple = ()  # the warnings a "repair" verdict clears (the reader's warnings of the file as read)
+    fd: "int | None" = None  # read-only descriptor of that file, held open for `--apply` (the caller closes it)
 
 
 # BSD/macOS file flags that make a file unreplaceable or append-only (0 where the platform has none).
@@ -603,32 +605,79 @@ def _cannot_write(md: Path, st: os.stat_result) -> str | None:
     return None
 
 
-def _decide(md: Path) -> _Decision:
+def _read_held(md: Path, lst: os.stat_result) -> "tuple[int, bytes]":
+    """Open the regular file `lst` was taken of (no link followed, never blocking), read its bytes from
+    that descriptor and return (fd, bytes). The descriptor stays open: while it is, the file's inode
+    cannot be freed, so (st_dev, st_ino) cannot be reused by another file and names this file for good.
+    The caller closes it. Raises OSError (descriptor already closed) if the path no longer names `lst`'s file."""
+    fd = os.open(md, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or (st.st_dev, st.st_ino) != (lst.st_dev, lst.st_ino):
+            raise OSError(0, "the file changed while it was opened")
+        chunks = []
+        while True:
+            chunk = os.read(fd, 1 << 20)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return fd, b"".join(chunks)
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _decide(md: Path, hold: bool = False) -> _Decision:
     """The one decision about a task file on disk, shared by `--apply` and the task page: look at the
     path first (lstat), read the raw bytes of a regular file only, plan the repair on them, and refuse
     what `--apply` could not replace: a symlink, a hard link, an immutable file, an unwritable
-    directory. Never raises and never blocks."""
+    directory. Never raises and never blocks. With `hold` (only `--apply` writes) a "repair" verdict
+    carries the open descriptor of the file it was made on (`fd`) and the caller must close it; every
+    other verdict closes it before returning."""
+    d = _decide_on(md, hold)
+    if d.fd is not None and d.verdict != "repair":
+        os.close(d.fd)
+        d = d._replace(fd=None)
+    return d
+
+
+def _decide_on(md: Path, hold: bool) -> _Decision:
+    fd: "int | None" = None
     try:
         lst = os.lstat(md)
         link = stat.S_ISLNK(lst.st_mode)
         if not link and not stat.S_ISREG(lst.st_mode):
             return _Decision("cannot", "not a regular file", b"", None)
-        data = read_regular_bytes(md, follow=link, limit=_LINK_READ_LIMIT if link else None)[0]
+        if hold and not link:
+            fd, data = _read_held(md, lst)
+        else:
+            data = read_regular_bytes(md, follow=link, limit=_LINK_READ_LIMIT if link else None)[0]
         raw = data.decode("utf-8")
     except (OSError, UnicodeDecodeError):
+        if fd is not None:
+            os.close(fd)
         return _Decision("cannot", "unreadable file", b"", None)
+    try:
+        return _decide_rest(md, lst, link, data, raw, fd)
+    except BaseException:
+        if fd is not None:
+            os.close(fd)
+        raise
+
+
+def _decide_rest(md: Path, lst: os.stat_result, link: bool, data: bytes, raw: str, fd: "int | None") -> _Decision:
     status, new_text, warnings = plan_repair(raw)
     reason = "; ".join(warnings)
     if status == "ok":
-        return _Decision("ok", "", data, None)
+        return _Decision("ok", "", data, None, fd=fd)
     if status == "cannot":
-        return _Decision("cannot", reason, data, None)
+        return _Decision("cannot", reason, data, None, fd=fd)
     if link:
-        return _Decision("cannot", "symlink (a link is never replaced by a regular file)", data, None)
+        return _Decision("cannot", "symlink (a link is never replaced by a regular file)", data, None, fd=fd)
     blocked = _cannot_write(md, lst)
     if blocked:
-        return _Decision("cannot", f"{reason}; {blocked}" if reason else blocked, data, None)
-    return _Decision("repair", reason, data, new_text, (lst.st_dev, lst.st_ino), tuple(warnings))
+        return _Decision("cannot", f"{reason}; {blocked}" if reason else blocked, data, None, fd=fd)
+    return _Decision("repair", reason, data, new_text, (lst.st_dev, lst.st_ino), tuple(warnings), fd)
 
 
 def decide(path: "Path | str") -> tuple[str, str, list[str]]:
@@ -793,21 +842,32 @@ def _unchanged(md: Path, d: _Decision) -> bool:
     if read_regular_bytes(md, follow=False)[0] != d.data:
         return False
     cur = os.lstat(md)  # last look before the replace
+    if d.fd is not None:  # the descriptor held since the decision names the decided file; the path must still name it
+        held = os.fstat(d.fd)
+        if (held.st_dev, held.st_ino) != d.ident:
+            return False
     return stat.S_ISREG(cur.st_mode) and cur.st_nlink == 1 and (cur.st_dev, cur.st_ino) == d.ident
 
 
 def _one_file(md: Path, rel: str, apply: bool) -> str:
     """Handle one task file; returns the counter it belongs to: "repaired", "pending", "cannot",
     "skipped", or "ok" when the file needs nothing."""
-    d = _decide(md)
+    d = _decide(md, hold=apply)
     if d.verdict == "ok":
         return "ok"
     if d.verdict == "cannot":
         print(f"cannot repair {rel}: {d.reason}")
         return "cannot"
     print(f"repair {rel}: {d.reason}")
-    if not apply:
+    if d.fd is None:  # a dry run holds nothing
         return "pending"
+    try:  # the decided file stays open until here: its inode cannot be freed and handed to another file
+        return _write_one(md, rel, d)
+    finally:
+        os.close(d.fd)
+
+
+def _write_one(md: Path, rel: str, d: _Decision) -> str:
     tmp: Path | None = None
     try:
         blocked = _cannot_write(md, os.lstat(md))  # the directory may have changed since `_decide`: no temp file then
