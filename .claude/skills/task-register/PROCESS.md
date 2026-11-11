@@ -51,8 +51,12 @@ Mirrors the procedure in SKILL.md:
 9. Create the issue via `gh issue create` (using `--body-file`, never `--body`).
 9b. **Acquire the lease** on the new issue: `lease.mjs acquire --key "issue:<repo>#<N>" --intent "<title>"`. `0` proceed · `9` not configured, print `lease: not configured, gate skipped` and proceed exactly as before · `3` stale clone, `git pull --ff-only` and re-acquire · anything else, the issue already exists, so report "issue #N created, but NOT leased: <reason>", finish the remaining steps, and record `outcome: partial`.
 10. Record the issue in the local cache: `node shared/scripts/task-state.mjs add-active --issue "$ISSUE_NUM"`.
-11. Create the task file from `shared/templates/TASK.md.tmpl` at `tasks/<issue-number>.md` (skip
-    silently if it already exists).
+11. Create the task file at `tasks/<issue-number>.md` with
+    `node shared/scripts/task-state.mjs write-task --issue "$ISSUE_NUM" --title "$TITLE" --depts "<comma list>" [--criterion "<text>" ...] [--related-skills "<comma list>"]`
+    (skips silently if it already exists). Never render `shared/templates/TASK.md.tmpl` by hand: a title
+    with `: ` or ` #` breaks or silently truncates hand-written YAML and the console shows a blank row.
+    Exit `0` written or already existed; `2` bad input (fix and re-run); anything else: report it and
+    record `outcome: partial`.
 12. Print a one-line confirmation summary.
 13. Write the history entry.
 
