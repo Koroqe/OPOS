@@ -42,7 +42,7 @@
     {% for t in tasks %}
     <tr>
       <td><a href="/tasks/{{ t.issue_number }}">#{{ t.issue_number }}</a></td>
-      <td>{{ t.title }}</td>
+      <td>{{ t.title }}{% if t.warnings %}<span class="warn" title="{{ t.warnings | join('; ') }}">⚠ frontmatter recovered</span>{% endif %}</td>
       <td>{% for d in t.depts %}<span class="dept" data-dept="{{ d }}">{{ d }}</span>{% if not loop.last %} {% endif %}{% endfor %}</td>
       <td><span class="badge {{ t.state }}">{{ t.state }}</span></td>
       <td>{{ t.created }}</td>
