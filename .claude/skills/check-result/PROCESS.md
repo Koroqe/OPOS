@@ -38,6 +38,10 @@ structural answer: the maker never certifies its own result.
 
 1. **Maker — frame the claim.** Rewrite "done / works / fixed" into what an outsider could observe
    ("GET https://example.com/ returns 200 and contains 'Y'"). Name the dependent action and its class.
+   When the subject is a document, the framed claim says only what the subject says: point to or quote
+   the subject's own sentence. A claim wider than the subject is rewritten before the checker is
+   spawned. Anything extra the maker wants answered goes in as a separate, labelled open question: the
+   checker reports on it, and it does not count toward the verdict.
 2. **Maker — spawn the checker.** `Task(subagent_type: result-checker)` with `claim`, `produced_by`,
    `risk`, `phase` (`plan` | `result`) and pointers. For R2 ask for at least two independent methods;
    honour a higher number from the calling process's `checker:` field.
