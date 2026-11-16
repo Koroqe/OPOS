@@ -86,8 +86,9 @@ The skill runs on the **consumer's repo AFTER `copier copy`**, where `.jinja` su
 
 8. **Smoke check (greppable subset only).** Run only the GREPPABLE steps of the RISKS.md verification recipe inline (`Bash` tool):
    ```bash
-   # Token-substitution check (must return 0 matches)
-   grep -rn "<<[A-Z_]*>>" . --include="*.md"
+   # Token-substitution check (must return 0 matches). Scoped to the consumer-owned files this
+   # setup renders: framework docs describe the token syntax and match by design.
+   grep -rn "<<[A-Z_]*>>" CLAUDE.md company departments --include="*.md"
    # Owner-binding check (must list every PROCESS.md)
    find . -name "PROCESS.md" -exec grep -l "^owner:" {} \;
    # New/modified files (informational)
