@@ -15,6 +15,10 @@ Follow [`PROCESS.md`](PROCESS.md) (authoritative). Quick facts:
   `Task` (`subagent_type: result-checker`), never the maker's own context.
 - **Write the claim as one falsifiable sentence** and say how you produced it, so the checker can pick a
   different method. Vague claims ("it works") are rejected — rewrite them first.
+- **Point the checker to every source the claim rests on**, including older documents the maker
+  cited: an inherited premise can be stale while the new text is right. The checker re-establishes
+  that premise where the fact lives; the cited source is not evidence, and its other content is not
+  part of the claim.
 - **Independent methods by risk**: R0 — none required; R1 "done" — 1; R2 — at least 2; negative claims
   about documents, money or obligations — every system the fact could live in, plus a behavioural check;
   external facts — sources of different types. A process may raise these numbers in its `checker:` field.
