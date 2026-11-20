@@ -53,10 +53,12 @@ structural answer: the maker never certifies its own result.
      the checker stated.
    - `UNVERIFIABLE` → treat the action one class higher (R2 → R3: a human decides). If the cause is
      missing access, file or increment a `kind: resource-gap` backlog item.
-5. **Record.** The verdict block goes in the issue comment or task report; a history entry goes in this
-   skill's `history/` (`outcome: success` means the check ran, whatever the verdict; the verdict goes in
-   the body). Evidence is recorded as **pointers** — a path, a hash, a query, a URL, a command — never
-   client figures, correspondence, personal data or confidential deal data.
+5. **Maker — record.** The checker is read-only and writes nothing, so the maker (the session that
+   spawned it) writes both records from the returned verdict. The verdict block goes in the issue
+   comment or task report; a history entry goes in this skill's `history/` (`actor:` names the checker
+   and the body says who wrote the entry; `outcome: success` means the check ran, whatever the verdict;
+   the verdict goes in the body). Evidence is recorded as **pointers** — a path, a hash, a query, a URL,
+   a command — never client figures, correspondence, personal data or confidential deal data.
 6. **Hand to the human where it matters.** For client, money and document classes, the PASS is evidence
    for the human who set the task, not a replacement of their check: name that human in the report.
 
