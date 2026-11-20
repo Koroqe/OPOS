@@ -39,8 +39,11 @@ structural answer: the maker never certifies its own result.
 1. **Maker — frame the claim.** Rewrite "done / works / fixed" into what an outsider could observe
    ("GET https://example.com/ returns 200 and contains 'Y'"). Name the dependent action and its class.
 2. **Maker — spawn the checker.** `Task(subagent_type: result-checker)` with `claim`, `produced_by`,
-   `risk`, `phase` (`plan` | `result`) and pointers. For R2 ask for at least two independent methods;
-   honour a higher number from the calling process's `checker:` field.
+   `risk`, `phase` (`plan` | `result`) and pointers — to the subject and to every source the claim
+   rests on, including older documents the maker cited. The checker re-establishes a premise taken
+   from a cited source where the fact lives; the source is not evidence, and its other content is
+   not part of the claim. For R2 ask for at least two independent methods; honour a higher number
+   from the calling process's `checker:` field.
 3. **Checker — verify** per its agent definition. `phase: plan` — is the class right (a secret, an
    access change, a schedule or client-data deletion is R3, whatever the plan says), is the rollback
    real, would the planned verification catch a failure? `phase: result` — the live system / primary

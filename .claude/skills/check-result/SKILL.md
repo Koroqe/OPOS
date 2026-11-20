@@ -13,11 +13,12 @@ Follow [`PROCESS.md`](PROCESS.md) (authoritative). Quick facts:
 
 - **Caller** = the maker (any agent, or the steward). **Checker** = a fresh `result-checker` subagent via
   `Task` (`subagent_type: result-checker`), never the maker's own context.
-- **Hand over every document the claim rests on**, including older documents the maker cited — a stale premise
-  usually lives in the cited source, not in the new text (field report: a week-old "record does not exist" claim,
-  repeated in a fresh triage, was false by the time it was repeated).
 - **Write the claim as one falsifiable sentence** and say how you produced it, so the checker can pick a
   different method. Vague claims ("it works") are rejected — rewrite them first.
+- **Point the checker to every source the claim rests on**, including older documents the maker
+  cited: an inherited premise can be stale while the new text is right. The checker re-establishes
+  that premise where the fact lives; the cited source is not evidence, and its other content is not
+  part of the claim.
 - **Independent methods by risk**: R0 — none required; R1 "done" — 1; R2 — at least 2; negative claims
   about documents, money or obligations — every system the fact could live in, plus a behavioural check;
   external facts — sources of different types. A process may raise these numbers in its `checker:` field.
