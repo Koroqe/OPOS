@@ -43,16 +43,20 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
 8. `gh issue comment <number> --repo <repo> --body "<rendered>"`.
 8b. **Heartbeat.** Posting an update is proof the work is alive, so renew the lease: `node .claude/skills/lease/lease.mjs renew --key "issue:<repo>#<number>" --quiet`. A non-zero exit here does not undo the posted comment, but exit `5` (revoked) must be reported: someone else now holds the task.
 
-9. If `--status` was provided: fetch the issue body, substitute the canonical `**Status:** ...` line, and write it back:
+9. If `--status` was provided: fetch the issue body, substitute the canonical `**Status:** ...` line, and write it back. Each stage writes a file and the next one runs only on exit `0` — **never pipe the helper into `gh issue edit`**:
 
    ```bash
    NEW_STATUS=review
-   gh issue view <number> --repo <repo> --json body --jq '.body' \
-     | node shared/scripts/task-state.mjs patch-status --status "$NEW_STATUS" \
-     | gh issue edit <number> --repo <repo> --body-file -
+   TMP=$(mktemp -d)
+   gh issue view <number> --repo <repo> --json body --jq '.body' > "$TMP/body" &&
+     node shared/scripts/task-state.mjs patch-status --status "$NEW_STATUS" < "$TMP/body" > "$TMP/patched" &&
+     gh issue edit <number> --repo <repo> --body-file "$TMP/patched"
+   rc=$?; rm -rf "$TMP"; echo "status patch exit=$rc"
    ```
 
-   The helper exits non-zero if the canonical line is missing (body hand-edited), and the pipeline then stops before `gh issue edit` runs. Treat that as ABORT: `issue body no longer has the canonical Status line — restore the line or skip --status`. The value travels as an argument, never interpolated into a shell string.
+   Why not a pipe: every stage of a pipeline runs, and the pipeline's exit code is the last stage's. When the helper refuses (exit `1`) it prints nothing, so a piped `gh issue edit --body-file -` still runs, reads an empty body, replaces the issue body with it, and the pipeline exits `0`. `set -o pipefail` would fix only the exit code, not the edit.
+
+   If the helper exits non-zero, the body has no canonical Status line (hand-edited, or written from the company's own issue template). Leave the body untouched: the new status is already in the comment posted at step 8 (`{{STATUS_LINE}}`). Print `status recorded in the comment only — the issue body has no canonical Status line` and record `outcome: partial`. Any other non-zero exit: stop and report it verbatim. The value travels as an argument, never interpolated into a shell string.
 
    This is still a read-modify-write against the API, but since v0.17.0 it is performed only by the lease holder (step 5b), so two sessions can no longer race on it. A human editing the body at the same instant can still lose their edit.
 
@@ -71,7 +75,7 @@ Mid-execution, to record meaningful progress: a slice committed, a blocker encou
 - **Ambiguous active task** (v0.7.0) → `.current-task` array has >1 entries AND `--issue` was not supplied. Recovery: re-run with `--issue <N>` naming one of the active issues; the abort message lists them all. `failure` entry.
 - **Issue is CLOSED** → exit; the user must reopen or run `task-complete`; `failure` entry.
 - **Duplicate idempotency key** → silent no-op; `partial` entry for traceability.
-- **Status-line regex no-match** → abort per step 8; `failure` entry.
+- **Status-line regex no-match** → body left untouched, status stated in the step-8 comment only (step 9); `partial` entry.
 - **Lost-update race** (human edits body between view and edit) → undetected in v0; documented as a known limitation.
 - **Network or rate-limit** → retry once with 2-second backoff; surface on second failure; `partial` entry.
 

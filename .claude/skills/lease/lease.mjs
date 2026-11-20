@@ -17,9 +17,10 @@ import { randomUUID } from 'node:crypto';
 import { identity, repoRoot, readJson, writeJson, stateDir } from './lib/identity.mjs';
 import { parseKey, conflicts, keyHash, claimTarget, matchesAny, KeyError } from './lib/keys.mjs';
 import { freshness, stagedFiles } from './lib/freshness.mjs';
+import { postRenewVerdict } from './lib/gate.mjs';
 import {
   renderRecord, listClaims, getClaim, postClaim, patchClaim, deleteClaim,
-  addLabel, removeLabel, isLive, isExpired, sameHolder,
+  addLabel, removeLabel, listIssuesByLabel, isLive, isExpired, sameHolder,
 } from './lib/claims.mjs';
 import { sleep, gh, ghJson } from './lib/sh.mjs';
 import { renderProjection } from './lib/render.mjs';
@@ -205,6 +206,12 @@ function listTarget(ctx, target) {
   const cur = listClaims(target);
   if (!cur.ok) return cur;
   const old = listClaims({ repo: target.repo, issue: ctx.cfg.ledger.prev });
+  // A failed predecessor read must never look like "no claims there": live leases recorded
+  // in the predecessor would silently vanish from every conflict check. Say so, loudly.
+  if (!old.ok) {
+    warn(`[lease] WARNING: predecessor registry #${ctx.cfg.ledger.prev} is unreadable (${String(old.err ?? 'unknown').split('\n')[0]}) — ` +
+      'leases recorded there are INVISIBLE to this check.');
+  }
   const claims = [...cur.claims, ...(old.ok ? old.claims : [])].sort((a, b) => a.id - b.id);
   return { ok: true, claims };
 }
@@ -438,6 +445,8 @@ function cmdRenew(args) {
   for (const rawKey of keys) {
     const k = parseKey(rawKey);
     const cached = readJson(heldFile(ctx.root, k));
+    // Optional per-key outcome channel (commit-gate uses it); the return value is unchanged.
+    const note = (code) => typeof args.onOutcome === 'function' && args.onOutcome(cached?.key ?? k.norm, code);
     if (!cached) { warn(`NO LEASE cached for ${k.norm}`); worst = Math.max(worst, EXIT.NO_LEASE); continue; }
     const got = getClaim(cached.repo, cached.comment_id);
     /*
@@ -450,18 +459,18 @@ function cmdRenew(args) {
      */
     if (!got.ok && !got.missing) {
       warn(`renew: cannot reach GitHub for ${k.norm} (${String(got.err).split('\n')[0]}). Lease KEPT; retry before writing.`);
-      worst = Math.max(worst, EXIT.NO_AUTH); continue;
+      note(EXIT.NO_AUTH); worst = Math.max(worst, EXIT.NO_AUTH); continue;
     }
     if (!got.claim) {
       warn(`REVOKED: claim comment for ${k.norm} is gone (stolen or pruned). Stop writing.`);
       fs.rmSync(heldFile(ctx.root, k), { force: true });
-      worst = Math.max(worst, EXIT.REVOKED); continue;
+      note(EXIT.REVOKED); worst = Math.max(worst, EXIT.REVOKED); continue;
     }
     const rec = got.claim.rec;
     if (!sameHolder(rec.holder, ctx.id.holder) || rec.state !== 'held') {
       warn(`REVOKED: ${k.norm} is now state=${rec.state}, holder ${describeHolder(rec)}. Stop writing.`);
       fs.rmSync(heldFile(ctx.root, k), { force: true });
-      worst = Math.max(worst, EXIT.REVOKED); continue;
+      note(EXIT.REVOKED); worst = Math.max(worst, EXIT.REVOKED); continue;
     }
     // Re-check freshness: a clone that fell behind mid-run must YIELD, not silently continue.
     const f = freshness(ctx.root, { scope: rec.scope ?? [], maxAgeS: ctx.cfg.fetch_max_age_s ?? 600, autoFetch: !args['no-fetch'] });
@@ -475,7 +484,7 @@ function cmdRenew(args) {
       releaseIndex(ctx, k, cached);
       fs.rmSync(heldFile(ctx.root, k), { force: true });
       warn(`STALE MID-RUN: yielded ${k.norm} — clone fell ${f.behind} behind. git pull --ff-only, then re-acquire.`);
-      worst = Math.max(worst, EXIT.STALE); continue;
+      note(EXIT.STALE); worst = Math.max(worst, EXIT.STALE); continue;
     }
     const ttlS = parseDuration(args.ttl, rec.t.ttl_s ?? 2700);
     rec.t.heartbeat = new Date(ctx.nowMs).toISOString();
@@ -485,8 +494,9 @@ function cmdRenew(args) {
     rec.t.skew_s = ctx.id.clock.skew_s ?? 0;
     rec.clone.head = f.head; rec.clone.behind = f.behind; rec.clone.branch = f.branch;
     const p = patchClaim(cached.repo, cached.comment_id, renderRecord(rec));
-    if (!p.ok) { warn(`renew failed for ${k.norm}: ${p.err}`); worst = Math.max(worst, EXIT.ERROR); continue; }
+    if (!p.ok) { warn(`renew failed for ${k.norm}: ${p.err}`); note(EXIT.ERROR); worst = Math.max(worst, EXIT.ERROR); continue; }
     cacheHeld(ctx, k, { repo: cached.repo, issue: cached.issue, kind: cached.kind }, { id: cached.comment_id, rec });
+    note(EXIT.OK);
     if (!args.quiet) out(`RENEWED ${k.norm} until ${rec.t.expires.slice(11, 16)} UTC`);
   }
   return worst;
@@ -636,8 +646,28 @@ function cmdCommitGate(args) {
       outside.map((f) => `    ${f}`).join('\n') + '\n  Unstage them (git restore --staged <path>) — do not widen the commit.');
   }
   // A successful gate is also a heartbeat: work demonstrably happened, so the lease is alive.
-  if (!args['no-renew'] && !ctx.offline) { try { cmdRenew({ all: true, 'no-fetch': true, quiet: true }); } catch { /* best effort */ } }
-  out(`commit-gate OK: ${staged.length} staged path(s) within [${scope.join(', ')}]`);
+  // The heartbeat can also YIELD (stale clone) or find a lease revoked, which removes its cache
+  // file. Its result is therefore not best-effort for authorization: re-derive the scope from what
+  // is still held and refuse if the staged paths lost their cover. A thrown error stays best-effort,
+  // but renew's context() can end the process via die() (exit 6/8); catch cannot intercept that and
+  // it bypasses soft().
+  let finalScope = scope;
+  if (!args['no-renew'] && !ctx.offline) {
+    const outcomes = {};
+    try { cmdRenew({ all: true, 'no-fetch': true, quiet: true, onOutcome: (key, code) => { outcomes[key] = code; } }); } catch { /* best effort */ }
+    const after = cachedKeys(ctx.root).map((kk) => readJson(heldFile(ctx.root, parseKey(kk)))).filter(Boolean)
+      .filter((c) => Date.parse(c.expires) > ctx.nowMs);
+    const v = postRenewVerdict({ staged, before: held, after, outcomes });
+    if (!v.ok) {
+      const why = v.code === EXIT.STALE ? 'yielded: clone fell behind' : v.code === EXIT.REVOKED ? 'revoked' : 'no longer cached';
+      return soft(v.code, `LEASE LOST DURING GATE: ${v.lostKeys.join(', ') || 'lease'} no longer held (${why}) — nothing authorizes ${v.uncovered.length} staged path(s).\n` +
+        (v.code === EXIT.STALE ? '  git pull --ff-only, re-acquire the lease, then re-run commit-gate.'
+          : v.code === EXIT.REVOKED ? '  Re-acquire the lease, or ask whoever holds it now.'
+          : '  Re-acquire the lease, then re-run commit-gate.'));
+    }
+    finalScope = v.scope;
+  }
+  out(`commit-gate OK: ${staged.length} staged path(s) within [${finalScope.join(', ')}]`);
   return EXIT.OK;
 }
 
@@ -674,8 +704,7 @@ function gatherAllClaims(ctx) {
   if (!res.ok) die(EXIT.NO_AUTH, res.err);
   const all = [...res.claims];
   if (ctx.cfg.index_label) {
-    const labelled = ghJson(['issue', 'list', '--repo', ledger.repo, '--label', ctx.cfg.index_label,
-      '--state', 'open', '--limit', '100', '--json', 'number,title']);
+    const labelled = listIssuesByLabel(ledger.repo, ctx.cfg.index_label, { limit: 100 });
     if (labelled.ok) {
       for (const it of labelled.data ?? []) {
         const own = listClaims({ repo: ledger.repo, issue: it.number });
@@ -707,7 +736,7 @@ function rotateLedger(ctx) {
   const marker = `opos-lease-ledger-prev: ${old} `;
 
   let num = null;
-  const open = ghJson(['issue', 'list', '--repo', repo, '--label', label, '--state', 'open', '--limit', '20', '--json', 'number,body']);
+  const open = listIssuesByLabel(repo, label, { limit: 20 });
   if (open.ok) {
     const existing = (open.data ?? []).find((i) => i.number !== old && String(i.body ?? '').includes(marker));
     if (existing) num = existing.number;
@@ -780,8 +809,7 @@ function cmdReap(args) {
   // Index reconciliation, BOTH directions. The label is an index, never a source of truth:
   // a crash between POST and label call makes it lie in one direction or the other.
   if (ctx.cfg.index_label) {
-    const labelled = ghJson(['issue', 'list', '--repo', ledger.repo, '--label', ctx.cfg.index_label,
-      '--state', 'open', '--limit', '100', '--json', 'number']);
+    const labelled = listIssuesByLabel(ledger.repo, ctx.cfg.index_label, { limit: 100 });
     if (labelled.ok) {
       for (const it of labelled.data ?? []) {
         const key = `issue:${ledger.repo}#${it.number}`;
@@ -945,8 +973,7 @@ function cmdInitLedger(args) {
     const label = cfg.ledger_label ?? 'lease-ledger';
     gh(['label', 'create', label, '--repo', cfg.ledger.repo, '--color', '5319E7',
       '--description', 'Lease registry. Exactly one open issue carries this label']);
-    const existing = ghJson(['issue', 'list', '--repo', cfg.ledger.repo, '--label', label,
-      '--state', 'open', '--limit', '5', '--json', 'number']);
+    const existing = listIssuesByLabel(cfg.ledger.repo, label, { limit: 5 });
     if (existing.ok && (existing.data ?? []).length) {
       num = existing.data[0].number;
       out(`found an existing open ledger: #${num}`);
@@ -1024,7 +1051,7 @@ function cmdAudit(args) {
 
   // paused + live lease: a pause issued on machine B while machine A is actually working.
   // Reported, never auto-fixed — auto-fixing would let the wrong machine kill live work.
-  const paused = ghJson(['issue', 'list', '--repo', cfg.ledger.repo, '--label', 'paused', '--state', 'open', '--limit', '100', '--json', 'number']);
+  const paused = listIssuesByLabel(cfg.ledger.repo, 'paused', { limit: 100 });
   if (paused.ok) {
     for (const it of paused.data ?? []) {
       const key = `issue:${cfg.ledger.repo}#${it.number}`;
@@ -1036,7 +1063,7 @@ function cmdAudit(args) {
 
   // Index drift, both directions. The label is an index, never a source of truth.
   if (cfg.index_label) {
-    const labelled = ghJson(['issue', 'list', '--repo', cfg.ledger.repo, '--label', cfg.index_label, '--state', 'open', '--limit', '100', '--json', 'number']);
+    const labelled = listIssuesByLabel(cfg.ledger.repo, cfg.index_label, { limit: 100 });
     if (labelled.ok) {
       const have = new Set((labelled.data ?? []).map((i) => i.number));
       for (const n of have) {

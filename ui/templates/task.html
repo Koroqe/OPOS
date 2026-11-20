@@ -2,6 +2,24 @@
 {% block content %}
 <p><a href="/tasks">← Tasks</a></p>
 <h1>#{{ task.issue_number }} — {{ task.title }}</h1>
+{% if task.warnings %}
+<div class="warn">
+  <p>This task file's frontmatter is malformed; the console recovered what it could.</p>
+  <ul>
+    {% for w in task.warnings %}<li>{{ w }}</li>{% endfor %}
+  </ul>
+  {% set rep = task_repair(task) %}
+  {% if rep[0] == 'repair' %}
+  <p>Fix: <code>python3 -m ui.repair_tasks --apply</code></p>
+  {% set left = rep[1] %}
+  {% if left %}
+  <p>After the repair, still fix by hand: {{ left | join('; ') }}</p>
+  {% endif %}
+  {% else %}
+  <p>Edit the file by hand: <code>python3 -m ui.repair_tasks</code> cannot fix this one.</p>
+  {% endif %}
+</div>
+{% endif %}
 
 <div class="split">
   <aside class="panel">

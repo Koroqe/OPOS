@@ -98,7 +98,10 @@ department's own `deploy` skill), not through the SDLC commands.
   empty `history/`.
 - Branch and commit per the standard git workflow: feature branches,
   conventional commits, one slice per commit. The steward runs git itself; it
-  does not ask the user to.
+  does not ask the user to. When a session's work is merged and its linked
+  worktree is no longer needed, the session removes the worktree and its merged
+  branch itself (`shared/scripts/worktree-finish.mjs`; the script refuses
+  anything unmerged, dirty, leased or locked).
 - **English is the working language of the repository.** Commit messages,
   branch names, code, code comments, `SKILL.md` / `PROCESS.md`, templates,
   agent definitions, and history entries are written in English — in every
@@ -123,6 +126,11 @@ department's own `deploy` skill), not through the SDLC commands.
   a GitHub issue labelled `founder-action` before the turn ends — chat messages
   and issue comments are not the task store. Canonical statement: the steward's
   **Capture conventions, duty 3**. If the two disagree, the agent file wins.
+- **Human prompts go through AskUserQuestion.** In an interactive session every
+  decision or action the human owes is asked with `AskUserQuestion` before the
+  turn ends; prose like "reply 1 or 2" does not count. The Stop hook
+  `shared/scripts/human-prompt-gate.mjs` checks the final message of the turn. Canonical text: the
+  steward's **Human prompts go through AskUserQuestion**.
 
 ## Framework updates and how they reach you
 
