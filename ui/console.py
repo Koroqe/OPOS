@@ -56,10 +56,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         try:
             self._dispatch()
-        except BadRequest as e:
-            self._write(400, "text/html; charset=utf-8", f"<h1>400 Bad Request</h1><p>{e}</p>")
+        except BadRequest:
+            # Never echo the message: validators quote the rejected value and
+            # query values arrive percent-decoded, so it can carry live markup.
+            self._write(400, "text/plain; charset=utf-8", "400 Bad Request\n")
         except Exception as e:  # last-resort guard
-            self._write(500, "text/html; charset=utf-8", f"<h1>500 Internal Server Error</h1><pre>{type(e).__name__}: {e}</pre>")
+            # %r: log_message bypasses the stdlib's control-character escaping.
+            self.log_message("unhandled %s: %r", type(e).__name__, str(e))
+            self._write(500, "text/plain; charset=utf-8", "500 Internal Server Error\n")
 
     def _dispatch(self) -> None:
         parsed = urllib.parse.urlsplit(self.path)
@@ -103,6 +107,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 

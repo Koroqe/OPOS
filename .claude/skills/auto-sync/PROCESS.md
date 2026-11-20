@@ -42,6 +42,7 @@ commands:
   - "Bash(awk:*)"
   - "Bash(grep:*)"
   - "Bash(date:*)"
+  - "Bash(node .claude/skills/lease/lease.mjs:*)"
   - "Read"
   - "Edit"
   - "Write"

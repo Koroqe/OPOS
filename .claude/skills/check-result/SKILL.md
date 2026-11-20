@@ -32,6 +32,7 @@ Follow [`PROCESS.md`](PROCESS.md) (authoritative). Quick facts:
 - **A PASS is evidence for the responsible human, not a replacement of their check** for client, money
   and document classes.
 - **Report the verdict with its method** in the issue comment or task report ("verified: <method>, PASS").
-- Every run writes `history/YYYY-MM-DD-<run-id>.md`.
+- Every run gets a `history/YYYY-MM-DD-<run-id>.md` entry, written by the caller from the checker's
+  verdict — the checker is read-only and cannot write it.
 
 Policy: [`company/policies/autonomy-and-decision-rights.md`](../../../company/policies/autonomy-and-decision-rights.md) §4.
