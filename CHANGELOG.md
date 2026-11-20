@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 In `0.x.y` releases breaking changes are allowed.
 
+## [0.25.0] - 2026-11-20
+
+The console's error pages no longer echo what a request sent, and several skills were corrected where their text did not match how they run.
+
+### Fixed
+
+- **Console error pages reflected request text (security).** The 400 and 500 pages of `ui/console.py` put the error message into HTML unescaped. A validator's message quotes the rejected value and query values arrive percent-decoded, so a crafted link such as `/activity?since=%3Cscript%3E...` ran script in the console's origin, with read access to every console page; binding to loopback does not prevent this, because the operator's own browser follows the link. Both errors now return a fixed `text/plain` body with nothing from the request or the exception in it, and the cause of a 500 goes to the server log as `unhandled <type>: <repr of the message>`. Every response written through `_write` (every page and every error) now also carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. New tests: `ui/tests/test_console.py`. Proposed by a consumer ([#69](https://github.com/Koroqe/OPOS/pull/69)).
+- **The lease command was missing from the scheduled command manifests.** `review-history` and `auto-sync` take a run lease as their first step, but the `commands:` manifest in their `PROCESS.md`, from which `/schedule-process` derives a routine's allowed commands, did not list it. A scheduled run had to either refuse its own first step or run a command outside its declared list. Both manifests now list `Bash(node .claude/skills/lease/lease.mjs:*)`. Proposed by a consumer ([#74](https://github.com/Koroqe/OPOS/pull/74)).
+- **`design-process` draft mode contradicted itself.** It said steps 10-11 "run normally", but step 10 lists the new process in the owner's `owns_processes:` and marks the backlog item `designed`, both of which belong to adoption. In draft mode step 10 is now skipped: step 9 already sets the item to `state: drafted`, and `/adopt-proposal` step 4 does the rest. Step 11's history entry now uses `status: n/a` when `proposed_delta` is `none` and `status: open` otherwise, as the history schema requires, instead of always `applied`. Proposed by a consumer ([#78](https://github.com/Koroqe/OPOS/pull/78)).
+- **`company-setup` step 8's token check could never pass.** It searched every `*.md` file in the repository for unsubstituted template tokens and expected zero matches, but framework docs describe the token syntax, so a fresh scaffold returned dozens of matches and a real leftover placeholder was lost among them. The check now searches only the consumer-owned files the setup writes (root `CLAUDE.md`, `company/`, `departments/`). Proposed by a consumer ([#79](https://github.com/Koroqe/OPOS/pull/79)).
+
+### Changed
+
+- **`check-result` 0.2.1** step 2: the maker points the checker to every source the claim rests on, including older documents the maker cited, not only to the subject. The checker re-establishes a premise taken from such a source where the fact lives; the cited source is not evidence, and its other content is not part of the claim. `SKILL.md` gains the same quick fact. Field report: a week-old cited "record does not exist" premise was already false when a new triage repeated it ([#54](https://github.com/Koroqe/OPOS/pull/54)).
+- **`check-result` 0.2.1** step 5 is now "Maker — record": the checker is read-only, so the session that spawned it writes the verdict block and the history entry from the returned verdict (`actor:` names the checker, and the body says who wrote the entry). The step named no writer before, and a check could end with a verdict and no history entry. `SKILL.md`'s last quick fact says the same. Proposed by a consumer ([#75](https://github.com/Koroqe/OPOS/pull/75)).
+- **Cloud routines are named per repository.** `/schedule-process` now registers a `runtime: cloud` routine as `opos-<process-name>-<repo-slug>` (the repository name, lowercased, limited to `[a-z0-9-]`). The routine list is account-wide, so a bare `opos-<process-name>` collides as soon as one account serves a second repository, and a lookup by name alone could update, disable or count another repository's routine. Every lookup (the idempotency step and the GHA mutual-exclusion check in `schedule-process`, the cloud branch of `unschedule-process`, the cloud liveness check in `list-scheduled-processes`) now matches the name and the routine's `sources` repository; a routine with a matching name on another repository is never updated, disabled or counted. A routine with the legacy bare name is still recognized when its source repository is this one. Proposed by a consumer ([#77](https://github.com/Koroqe/OPOS/pull/77)).
+- **`LICENSE`** names the copyright holder in full. The license is still MIT, and `LICENSE` is not copied into generated companies, so consumers see no change ([#80](https://github.com/Koroqe/OPOS/pull/80)).
+
+### Migration
+
+- None required. Existing cloud routines with the bare name `opos-<process-name>` keep working: they are still recognized when their source repository is this one. A `review-history` or `auto-sync` routine registered before this release keeps its old command list until it is registered again with `/schedule-process`.
+
 ## [0.24.2] - 2026-10-23
 
 Task files are now always readable by the console and the ones already broken can be repaired, and `lease.mjs commit-gate` no longer authorizes a commit on a lease its own heartbeat just released.

@@ -12,7 +12,7 @@ success_criteria:
   - "Every R2 action has a plan-phase PASS before it and a result-phase verdict after it; a result FAIL triggered the rollback"
   - "Verdict, methods and evidence are recorded where the result is reported (issue comment or task report), as pointers — no client data, correspondence or personal data"
 slo: 15 min
-version: 0.2.0
+version: 0.2.1
 ---
 
 # check-result
