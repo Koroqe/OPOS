@@ -46,6 +46,7 @@ commands:
   - "Bash(git -c:*)"
   - "Bash(grep:*)"
   - "Bash(date:*)"
+  - "Bash(node .claude/skills/lease/lease.mjs:*)"
   - "Read"
   - "Edit"
   - "Write"
