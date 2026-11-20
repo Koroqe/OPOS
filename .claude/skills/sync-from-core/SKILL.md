@@ -1,7 +1,7 @@
 ---
 name: sync-from-core
 description: Apply upstream changes via `copier update`; open a branch, show the diff, let user review before commit
-version: 0.2.0
+version: 0.2.1
 tags: [meta, framework, sync]
 owner_agent: chief-of-staff
 ---
@@ -22,7 +22,7 @@ Manually, after `check-for-updates` reports a new version is available. Or uncon
 
 ## Steps
 
-1. Resolve repo root via `git rev-parse --show-toplevel`. Ensure the working tree is clean (`git status --porcelain` returns empty). If not: ABORT with instruction to commit or stash first. Do NOT proceed with a dirty tree — `copier update` would mix consumer's in-progress edits with upstream changes.
+1. Resolve repo root via `git rev-parse --show-toplevel`. Ensure the working tree is clean (`git status --porcelain` returns empty). If not: ABORT with instruction to commit your own paths first (steward Dispatch step 4); if the dirty paths belong to another session, wait for it. Do not stash: in a shared checkout a stash carries another session's work away, and the stash stack is shared by every linked worktree. Do NOT proceed with a dirty tree — `copier update` would mix consumer's in-progress edits with upstream changes.
 2. Read `<repo-root>/.copier-answers.yml`. Extract `_src_path`. Classify it with the same four-shape logic as `check-for-updates` step 4 (remote GitHub → `<owner>/<repo>`; existing local clone → warn "local path, non-portable" and resolve tags via `git -C <path> tag`; missing local path or unparseable → ABORT with: `_src_path '<value>' cannot be used for updates on this machine. Edit .copier-answers.yml and set _src_path to gh:<owner>/<repo> (leave _commit untouched), commit, and re-run.`). If `.copier-answers.yml` is missing: ABORT with instruction to scaffold via `copier copy` first (this skill cannot bootstrap a repo).
 3. Resolve `target_version`:
    - If `--target_version` passed: use it.

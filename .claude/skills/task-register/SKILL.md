@@ -1,7 +1,7 @@
 ---
 name: task-register
 description: Open a GitHub issue tracking a newly initiated task; record the issue number locally so updates can reference it
-version: 0.1.0
+version: 0.2.0
 tags: [meta, framework, task-tracking, github]
 owner_agent: chief-of-staff
 ---
@@ -51,7 +51,12 @@ At the start of a NEW task — NOT a fix or continuation of in-flight work.
 
 10. **Record the issue in the local cache.** `node shared/scripts/task-state.mjs add-active --issue "$ISSUE_NUM"`. Since v0.17.0 `.current-task` is a **local convenience cache** — it remembers which issues this clone is working on so later steps need no `--issue` — and is no longer the source of truth for occupancy: the lease from step 9b is. The script replaces the old `echo >>` append, so the concurrent-append race of RISKS 30 is gone with it.
 
-11. **Create the task file from the TASK.md.tmpl template.** Render `shared/templates/TASK.md.tmpl` into `$REPO_ROOT/tasks/<issue-number>.md`, substituting: `<<ISSUE_NUMBER>>` (digits), `<<TITLE>>` (the issue title), `<<OWNER_AGENT>>` (= `chief-of-staff`), `<<DEPARTMENTS>>` (joined comma list), `<<STATE>>` (= `active`), `<<CREATED_DATE>>` (today's ISO date), `<<COMPLETED_DATE>>` (blank), `<<SUCCESS_CRITERIA>>` (parsed from issue body's "## Acceptance criteria" section if structured; empty list `[]` otherwise), `<<DEADLINE>>` (blank), `<<RELATED_SKILLS>>` (blank `[]` unless caller specifies). Skip silently if `tasks/<issue-number>.md` already exists (idempotency for retried invocations — don't overwrite). Create the `tasks/` directory first via `mkdir -p` if absent (consumer-side first task creates it; framework repo already has it).
+11. **Create the task file with the renderer.** Never render `shared/templates/TASK.md.tmpl` by hand: a title containing `: ` or ` #` breaks or silently truncates hand-written YAML, and the console then shows a blank row. Run
+    ```bash
+    node shared/scripts/task-state.mjs write-task --issue "$ISSUE_NUM" --title "$TITLE" --depts "<comma list>" \
+      [--criterion "<each acceptance criterion>" ...] [--related-skills "<comma list>"]
+    ```
+    It writes `$REPO_ROOT/tasks/<issue-number>.md` (creating `tasks/` if absent) with every free-text value YAML-quoted, owner `chief-of-staff`, state `active`, today's date, and skips an existing file (idempotent). Pass one `--criterion` per item of the issue body's "## Acceptance criteria" section if structured; none otherwise. Exit codes: `0` written or already existed; `2` bad input (fix the input and re-run); anything else: report it and record `outcome: partial`.
 12. Print a one-line summary: `Tracked: #<number> (<url>) — depts: <list>`. **If `quiet_label_creation` was true and labels were created**, append: ` — auto-created N labels: <comma-separated list>`.
 13. **Write history entry** to `$REPO_ROOT/.claude/skills/task-register/history/<YYYY-MM-DD>-<short-run-id>.md` per the `.claude/CLAUDE.md` schema. Include in body: the issue URL, depts, plan_file, the path to the task file created in step 11, the full list of label-creation events from steps 6-7 (regardless of `quiet_label_creation` — the history-entry body always records them for audit), AND the **pre-register + post-register `.current-task` array contents** (v0.7.0 addition — audit trail for parallel workflows: knowing whether the run added to an empty array or appended to N existing tasks is the signal future history reviewers need to reconstruct what was in flight).
 
