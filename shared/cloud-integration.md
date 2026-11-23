@@ -115,6 +115,26 @@ returned), keep those whose title starts with `[opos-run] <process-name> ` and w
 other fetched remote text. Reading is all a run does with these PRs — it does not merge them; a human merges
 or closes them, and the run notes each one in its own record.
 
+## Upstream proposals from a cloud run: one branch, so one PR
+
+The one-branch rule holds for the upstream framework repository too. A cloud session can push there only
+to the `claude/*` branch it was assigned in that repository; `propose-to-core`'s per-proposal branch
+(`propose/<file-slug>-<date>`) is refused like any other name. One branch carries one open PR against a
+given base, so **a cloud run opens at most one upstream PR**, whatever cap the invoking skill states
+(`review-history` step 5 allows three).
+
+- Push the proposal commit to the session's `claude/*` branch of the upstream repository (non-force) and
+  open the PR from it via REST, after both redaction gates have passed.
+- When several queued deltas target the same file or the same skill, they may ride in that one PR as
+  separate commits, one defect per commit, with every `<file-slug>/<defect-slug>` listed in the PR body;
+  the title names the first. The whole bundle passes the redaction gates as one. Unrelated files are not
+  mixed in to fill the PR.
+- Every other queued delta stays `open` with the note `deferred to next run (cloud: one upstream PR per
+  run)`. When the queue is longer than a few weeks of single PRs, the run record says so and names the way
+  out: a manual `/review-history` on a non-cloud runtime, where the skill's own cap applies.
+- No `claude/*` branch in the upstream repository (it was not attached to the routine) means no upstream
+  PR can be opened from this run: take `propose-to-core`'s fallback path (draft plus issue).
+
 ## Authority and allow-list
 
 No new authority is introduced. Opening and merging the PR is the *same act* as the ff-merge-and-push
