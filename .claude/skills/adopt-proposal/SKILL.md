@@ -27,6 +27,7 @@ When a proposal bundle exists under some `*/backlog/proposals/<date>-<slug>/` (w
 - **Name collision** with an existing skill folder → present both, require rename or explicit overwrite decision.
 - **Validator failure on a scheduling-declared PROCESS.md** → adoption proceeds only after the human fixes or strips the scheduling fields (a live-but-invalid declaration would fail registration later anyway).
 - **Bundle references an agent that doesn't exist** → adopt still allowed; print the `/design-agent` recommendation (agent creation stays its own interactive flow — never-automate invariant 2).
+- **Cover sheet lists `related_bundles:`** (a multi-skill draft-mode design) → present the sibling bundles with this one and decide the set as one: adopt all or none, each `depends_on:` bundle before the bundle that names it.
 
 ## Related
 

@@ -31,6 +31,7 @@ The skill is INTERACTIVE: it produces proposals, iterates with the user, and onl
 - Steps 5–6 draft the complete `SKILL.md` + `PROCESS.md` pair exactly as usual (lessons pass + provenance stamps included).
 - Steps 7–8 (present + iterate) are SKIPPED — their human judgment moves to adoption.
 - Step 9 writes the bundle to `<owning-dept>/backlog/proposals/<date>-<slug>/` (SKILL.md, PROCESS.md, and a PROPOSAL.md cover sheet: `intended_placement:` (the step-5 placement decision, e.g. `departments/<dept>/.claude/skills/<name>/` — REQUIRED; adoption reads it from here), the source backlog item, consultations run/skipped, lessons applied, open questions) — NEVER into any `.claude/skills/` path. Update the source backlog item: `state: drafted`, Runs-log row.
+- **A multi-skill design** (see "Multi-skill design sessions" below) writes **one bundle per skill**, each in its own folder with its own SKILL.md, PROCESS.md and PROPOSAL.md and its own `intended_placement:`, because adoption moves one bundle into one placement. The Runs-log row on the source backlog item names every bundle. Each cover sheet lists its sibling bundles in `related_bundles:` (bundle paths; the set is adopted together or not at all) and, when this skill needs a sibling to be live first, names that sibling in `depends_on:` (it is adopted before this one).
 - Step 10 (backlinks) is SKIPPED — the process is not live. Step 9 already set the source backlog item to `state: drafted`; the owner agent's `owns_processes:` update and the `state: designed` + `designed_as:` flip happen at adoption (`/adopt-proposal` step 4), never here.
 - Step 11 (history entry) runs normally; the entry notes `mode: draft`.
 
@@ -119,6 +120,8 @@ Draft mode designs PROCESSES only — never agents, departments, or sub-depts (n
 One invocation of `design-process` can legitimately produce MULTIPLE sibling skills in a single session. The skill design isn't constrained to "one job → one skill" — when the user's framing implies a natural decomposition (e.g. a task-lifecycle that splits into register / update / complete), the consultation in step 4 surfaces it and step 5 + step 6 handle the bundle.
 
 Worked example: the task-tracking design session (recorded in `./history/2026-05-22-test-task-tracking.md`) produced three sibling skills (`task-register`, `task-update`, `task-complete`) under a single owner (`chief-of-staff`), with shared templates and config. The placement decision (step 5) treats the bundle as a unit; the file-write step (step 9) iterates over all skills in the bundle on a single approval.
+
+In draft mode there is no single approval to iterate over: each skill becomes its own proposal bundle, tied to its siblings by `related_bundles:` and `depends_on:` (see Draft mode above), and `/adopt-proposal` decides the set.
 
 Indicators that a bundle is appropriate:
 - The job has distinct phases that happen at different times (open, mid-execution, close).
