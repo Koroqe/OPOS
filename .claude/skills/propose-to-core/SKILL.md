@@ -70,6 +70,8 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 
 A pre-gate FAIL goes straight to the human-draft path (step 7) — it cannot be argued with.
 
+**How every sweep above is run.** Pin the locale (`LC_ALL=C.UTF-8 grep ...`): under a non-UTF-8 locale grep can abort on the non-ASCII punctuation every framework file contains, printing nothing. Read the exit code, not the output: `1` (no match) is the only clean result; `0` is a hit and any other code is an error, and both are FAIL. Before trusting a clean result, run a planted-hit control: a copy of the bundle with one blocklist entry appended (for the secret sweep, one secret-shaped string) must exit `0`.
+
 ### 5. Adversarial review
 
 Spawn the `redaction-reviewer` agent (consult-agent pattern — Task subagent adopting `.claude/agents/company/redaction-reviewer.md`; note RISKS Risks 14/28: this is a simulated consultation, one honest layer among three, not a sandbox). Hand it ONLY the bundle + blocklist. Anything other than the literal `REDACTION: PASS` line — including uncertainty — is a FAIL → step 7.
