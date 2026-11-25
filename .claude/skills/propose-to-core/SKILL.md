@@ -13,6 +13,7 @@ tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "Task"]
 
 - Invoked by `review-history`'s triage when an `open` delta targets an upstreamable (CORE) file — the scheduled path.
 - Manually: `/propose-to-core <history-entry-path>` or `/propose-to-core --delta-target <path> --problem "<generic defect description>"`.
+- Sending a held-back draft once a human has decided it should go out: `/propose-to-core --send <proposals/YYYY-MM-DD-slug.md>`. The draft's text is a candidate, not the diff: the run re-drafts against upstream HEAD and runs both gates like any other run; steps 3 and 6 say what differs.
 - `--dry_run` runs everything up to and including the adversarial redaction review, prints the would-be PR (title, body, diff, both gate verdicts), and touches nothing remote.
 
 ## The outbound-write invariant (named, load-bearing)
@@ -28,6 +29,7 @@ Manual invocations write a run record to `./history/` (root-CLAUDE.md schema). *
 - `entry_path` (optional): must resolve to a file inside the repo root — reject `..`, absolute paths outside the root, symlinks escaping the root.
 - `delta_target` (optional; inferable from the entry's `delta_target:` field or its `proposed_delta` text): repo-relative, no leading `/`, no `..`, charset `[A-Za-z0-9._/-]` only.
 - `dry_run` (optional bool; default false).
+- `send` (optional): an existing draft; must resolve to a `YYYY-MM-DD-*.md` file directly inside this skill's `proposals/` folder. The source entry and `delta_target` are read from it.
 - Slugs are ALWAYS re-derived by sanitizing the **upstream file path** to `[a-z0-9-]` — never taken from delta free text.
 
 ## Steps
@@ -46,7 +48,7 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 
 ### 3. Dedupe (ledger first, then upstream)
 
-- `proposals/LEDGER.md` (v0.11): a line with the same `delta_target` AND the same `defect_slug` whose outcome is `pr-opened` or `draft` → skip with a note. A row for the same file with a DIFFERENT defect slug never suppresses — that was the v0.9 fix-loss shape; `merged`/`closed-unmerged`/`rejected-local` rows never suppress either (and if the source entry lacks the `upstream_pr:` annotation, add it from the ledger).
+- `proposals/LEDGER.md` (v0.11): the **latest** line with the same `delta_target` AND the same `defect_slug` decides (rows are append-only, so earlier rows of a pair are history): outcome `pr-opened` or `draft` → skip with a note. **Exception, `--send`:** the `draft` row of the draft being sent is this run's own input, not a duplicate, and does not suppress it; without the exception the skill could never send a draft it wrote. A row for the same file with a DIFFERENT defect slug never suppresses — that was the v0.9 fix-loss shape; `merged`/`closed-unmerged`/`rejected-local` rows never suppress either (and if the source entry lacks the `upstream_pr:` annotation, add it from the ledger).
 - Upstream (v0.11 — fixed from the v0.9 fix-loss shape): `gh pr list --repo <owner>/<repo> --state open --json title,url --limit 100` plus, when 100 rows return, further pages — match the FULL `[opos-core] <file-slug>/<defect-slug>` prefix **locally** (server-side `in:title` search tokenizes on `/` and `.` — unreliable). Matching OPEN PR → skip, ledger line `skipped-duplicate`. Closed/merged PRs no longer suppress: a once-fixed file must not swallow every future DIFFERENT fix to it — the defect-slug (derived from the `mistake_class` when present, else a 2-4 word kebab summary of the defect, sanitized `[a-z0-9-]`) is what distinguishes fixes; merged sameness is the maintainer's call at triage, not the sender's.
 
 ### 4. Draft + canonical redaction checklist + deterministic pre-gate
@@ -90,6 +92,7 @@ All git work happens in an **ephemeral scratch clone** under the session scratch
 - **Commit with a neutral identity:** `git -c user.name="opos-consumer" -c user.email="opos-consumer@users.noreply.github.com" commit ...` — the commit message was part of the redaction bundle. (GitHub *account* attribution — PR author, fork owner — is inherent to GitHub and out of scope; the consumer README discloses it and suggests a neutral account where that matters.)
 - Push the branch, then `gh pr create --repo <owner>/<repo> --title "[opos-core] <file-slug>/<defect-slug>: <short title>" --body-file <rendered core-proposal-pr body>`.
 - **Record:** append the `proposals/LEDGER.md` row (`pr-opened`, per the schema in `./proposals/README.md` — this skill APPENDS rows only) and commit it in the consumer repo; best-effort `upstream_pr:` annotation + note on the source entry (durable only for committed `history/` entries — for gitignored scheduled-run entries the ledger IS the record; the entry stays `status: open` either way — `review-history` transitions it when the PR merges).
+- **On a `--send` run, also:** mark the draft file as sent (a status line at its top naming the PR; the file stays as the record of what was held back and why), comment the PR link on the draft's consumer-repo issue (step 7) and close it. The earlier `draft` row stays as written; the new `pr-opened` row follows it.
 - Delete the scratch clone.
 
 ### 7. Fallback path (pre-gate FAIL, reviewer FAIL, uncertainty, no write access, fork failure)
