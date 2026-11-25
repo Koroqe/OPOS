@@ -20,6 +20,7 @@ A markdown table, one row per proposal event, append-order = chronological:
 - `pr_url` — the upstream PR URL, or `-`.
 - `outcome` — one of: `pr-opened`, `draft`, `skipped-duplicate`, `aborted-starter`, `rejected-local`, `withdrawn`, `merged`, `closed-unmerged`.
 - `defect_slug` — the `<defect-slug>` half of the PR title (from `mistake_class` when present) — OPTIONAL, added v0.11 (additive-forever: old rows without it are treated as matching any slug for their target, preserving their original conservative semantics). Dedupe requires target AND defect_slug to match.
+- A draft that is sent later (`propose-to-core --send`) leaves two rows for its pair: the `draft` row, then a `pr-opened` row. That is the expected shape, not a duplicate; dedupe reads the latest row of a pair.
 
 ## Writer constraints (two writers, strictly bounded)
 
