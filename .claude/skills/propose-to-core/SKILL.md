@@ -67,6 +67,17 @@ Read `.copier-answers.yml` → `_src_path` (parse to `<owner>/<repo>` exactly as
 **Deterministic pre-gate (hard-fails before any agent judgement):** assemble the identifier **blocklist** — the `COMPANY_NAME` value, department/agent/product names unique to the instance, the consumer repo's `nameWithOwner` (`gh repo view --json nameWithOwner`), git author names/e-mails from recent log (`git log -20 --format='%an %ae' | sort -u`), **and (v0.13) every resource name, vendor, and hostname from `company/resources/` (REGISTRY rows + entry frontmatter + `access:` lines) — the registry is a map of the company's accounts and must never leak**. Then:
 - `grep -F -i -f <blocklist-file>` across the full bundle — any hit → FAIL.
 - Secret-shaped regex sweep, independent of the blocklist: `gh[pousr]_[A-Za-z0-9]{36}`, `AKIA[0-9A-Z]{16}`, `xox[baprs]-`, `-----BEGIN [A-Z ]*PRIVATE KEY-----`, `postgres(ql)?://[^ ]*:[^ @]*@`, `[?&](api_?key|token|password)=` — any hit → FAIL.
+- Invisible-character sweep, independent of both: any Unicode format, control (other than tab, line feed and carriage return), private-use, surrogate or unassigned character, any combining mark, and any space other than the ASCII space → FAIL. The reviewer in step 5 judges the text as displayed and cannot see these, and an identifier split by a zero-width character passes the fixed-string blocklist, so this sweep is the only layer that covers them. Run it over every bundle file, the commit message included; like grep, it exits `0` and lists the hits when it finds any, and `1` when clean:
+  ```bash
+  node -e '
+  const fs = require("fs"), hits = [];
+  const bad = /[\p{Cf}\p{Co}\p{Cn}\p{Cs}\p{M}\p{Zl}\p{Zp}]|[^\P{Cc}\t\n\r]|[^\P{Zs} ]/u;
+  for (const p of process.argv.slice(1)) {
+    let i = 0;
+    for (const c of fs.readFileSync(p, "utf8")) { i++; if (bad.test(c)) hits.push(p + ":" + i + ": U+" + c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")); }
+  }
+  console.log(hits.join("\n")); process.exit(hits.length ? 0 : 1);' <bundle-files>
+  ```
 
 A pre-gate FAIL goes straight to the human-draft path (step 7) — it cannot be argued with.
 
