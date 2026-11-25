@@ -54,6 +54,14 @@ structural answer: the maker never certifies its own result.
    - `FAIL` on the plan → do not proceed; fix the plan or re-classify. `FAIL` on the result of an action
      already taken → **roll back per the plan**, then fix and return to step 2, or report the true state
      the checker stated.
+   - **A subject of several files, or a second result FAIL.** When the subject is more than one file,
+     the fix includes a search of every file for each statement it changed (an older wording of a
+     corrected rule tends to survive in another file), and the re-check brief lists the searches run.
+     From the second result FAIL on the same subject, the brief asks the checker to mark each failure
+     `blocking` (it would change the decision the subject serves) or `non-blocking`. When only
+     non-blocking failures remain, the maker may stop looping and report the true state to the
+     decision holder with those failures listed; the subject is not reported as done. A subject that
+     states one rule in many places keeps failing on the copies: state each rule once and refer to it.
    - `UNVERIFIABLE` → treat the action one class higher (R2 → R3: a human decides). If the cause is
      missing access, file or increment a `kind: resource-gap` backlog item.
 5. **Maker — record.** The checker is read-only and writes nothing, so the maker (the session that

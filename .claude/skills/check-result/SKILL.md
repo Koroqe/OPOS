@@ -26,6 +26,10 @@ Follow [`PROCESS.md`](PROCESS.md) (authoritative). Quick facts:
   will be verified) and `phase: result` after it. A result FAIL → roll back per the plan.
 - **Only PASS unlocks.** FAIL → fix and re-check, or report the true state. UNVERIFIABLE → the action
   stays one class higher (R2 is handled as R3) and missing access is filed as a `kind: resource-gap`.
+- **Several files, or a second FAIL.** Fixing a multi-file subject includes a search of every file for
+  each changed statement; the re-check brief lists those searches. From the second result FAIL, ask the
+  checker to mark each failure `blocking` or `non-blocking`; with only non-blocking ones left, report the
+  true state to the decision holder (failures listed) instead of looping. State each rule once.
 - **The checker never lowers a class.** If the claim or plan shows an action of a higher class than the
   maker assumed (e.g. writing a secret, changing access or a schedule — always R3), the verdict is FAIL.
 - **Evidence as pointers** (path, hash, query, URL, command) — never client figures, correspondence or
