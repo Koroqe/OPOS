@@ -62,6 +62,9 @@ structural answer: the maker never certifies its own result.
    and the body says who wrote the entry; `outcome: success` means the check ran, whatever the verdict;
    the verdict goes in the body). Evidence is recorded as **pointers** — a path, a hash, a query, a URL,
    a command — never client figures, correspondence, personal data or confidential deal data.
+   Any later note that reports the check (a corrections log, a summary line, a status update) quotes
+   the verdict's own headline, counts and scope instead of restating them, and copies what was not
+   checked from the verdict's own list: a paraphrase tends to come out wider than the verdict.
 6. **Hand to the human where it matters.** For client, money and document classes, the PASS is evidence
    for the human who set the task, not a replacement of their check: name that human in the report.
 
